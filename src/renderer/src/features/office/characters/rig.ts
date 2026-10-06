@@ -7,15 +7,19 @@ export type MiiActivity = "typing" | "idle" | "waving";
 
 /* Body dimensions (metres). Hips are the rig root; everything above hangs off them. */
 export const HIP_Y = 0.48;
-export const HIP_X = 0.085;
+export const HIP_X = 0.095;
 export const THIGH = 0.21;
 export const SHIN = 0.2;
-/** Upper-body-local heights (relative to the hips). */
-export const TORSO_Y = 0.235;
-export const NECK_Y = 0.48;
-export const HEAD_Y = 0.72;
-export const SHOULDER_X = 0.2;
-export const SHOULDER_Y = 0.39;
+/** Leg block cross-section; two legs side by side fill the torso's width. */
+export const LEG_WIDTH = 0.15;
+/** Torso block, centred `y` above the hips (upper-body local). */
+export const TORSO = { y: 0.22, width: 0.38, height: 0.4, depth: 0.24 } as const;
+export const NECK_Y = 0.445;
+/** Head block, centred `y` above the hips: a big cube that reads from the isometric camera. */
+export const HEAD = { y: 0.66, width: 0.44, height: 0.4, depth: 0.4 } as const;
+export const ARM_WIDTH = 0.11;
+export const SHOULDER_X = TORSO.width / 2 + ARM_WIDTH / 2 + 0.005;
+export const SHOULDER_Y = 0.37;
 /** Shoulder pivot to hand centre. */
 export const ARM_REACH = 0.4;
 
