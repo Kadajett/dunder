@@ -4,3 +4,10 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Build and dependencies
+node_modules/
+out/
+dist/
+*.log
+.vite/

@@ -73,9 +73,16 @@ All app state about agents comes from herdr. All agent actions go through herdr.
 
 ## Milestones (each ends runnable and verified)
 
-1. Electron + TS scaffold, the herdr bridge, and one fully interactive terminal (xterm.js ↔ `terminal session control`) in a plain window, attached to an `omp` agent in the `office` session.
-2. Isometric office rendered from a layout model, with desks bound to live herdr agents (status dots, name tags).
-3. Click-into-computer: zoom, an interactive terminal on the screen, resize, Esc back.
-4. HUD: top bar, Trust Inbox, Activity Feed, Chief of Staff dock, Classic/Office toggle.
-5. Customization: edit mode, hire/fire agents, rooms/zones from workspaces, persistence, multiple companies.
-6. Visual polish toward the reference screenshot: lighting, low-poly characters, decor, typography.
+**Revised 2026-10-06 at Jeremy's direction.** The app *is* the 3D office. From the first milestone on, launching the app shows the isometric office, never a window of bare terminals. The earlier order (terminal-in-a-plain-window first) is cancelled.
+
+1. **The 3D office, now.** An isometric Three.js office rendered from a layout model and recognisably the reference screenshot:
+   - warm room, walls with windows, a floor with rugs and zones, desks with chairs and monitors, low-poly people at the desks, plants, labels;
+   - desks bound to the live agents in the `office` herdr session, with name tags and status dots.
+   - If herdr has no agents yet, start 3–4 `omp` agents there so the desks are occupied.
+   - Verify with a screenshot of the running app next to the reference.
+2. **Click a computer to get a working terminal on that screen.** The camera zooms to the monitor and one correct xterm.js terminal (right size, no duplicates, typing works in `omp`) is attached through `terminal session control`. Esc returns to the office.
+   - Keep the terminal plumbing simple: one session per open screen, closed on exit. Don't build a general registry before it's needed.
+   - Verify by typing into a live agent from the 3D screen and confirming it with `herdr --session office pane read`.
+3. **HUD:** top bar, Trust Inbox, Activity Feed, Chief of Staff dock, Classic/Office toggle.
+4. **Customization:** edit mode, hire/fire agents, rooms/zones from workspaces, persistence, multiple companies.
+5. **Visual polish** toward the reference screenshot: lighting, characters, decor, typography.

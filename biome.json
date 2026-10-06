@@ -1,0 +1,49 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"files": { "ignoreUnknown": true, "includes": ["**", "!.beads"] },
+	"formatter": { "enabled": true, "indentStyle": "tab", "lineWidth": 100 },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"complexity": {
+				"noExcessiveCognitiveComplexity": {
+					"level": "error",
+					"options": { "maxAllowedComplexity": 15 }
+				},
+				"noExcessiveLinesPerFunction": {
+					"level": "error",
+					"options": { "maxLines": 50, "skipBlankLines": true }
+				},
+				"useMaxParams": { "level": "error", "options": { "max": 4 } },
+				"useLiteralKeys": "off"
+			},
+			"style": {
+				"noExcessiveLinesPerFile": {
+					"level": "error",
+					"options": { "maxLines": 300, "skipBlankLines": true }
+				},
+				"noNonNullAssertion": "error",
+				"useImportType": "error",
+				"noParameterAssign": { "level": "error", "options": { "propertyAssignment": "deny" } }
+			},
+			"suspicious": {
+				"noExplicitAny": "error",
+				"noImportCycles": "error"
+			}
+		}
+	},
+	"javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always" } },
+	"overrides": [
+		{
+			"includes": ["**/*.test.ts", "**/*.spec.ts", "**/fixtures/**"],
+			"linter": {
+				"rules": {
+					"complexity": { "noExcessiveLinesPerFunction": "off" },
+					"style": { "noExcessiveLinesPerFile": "off" }
+				}
+			}
+		}
+	]
+}
