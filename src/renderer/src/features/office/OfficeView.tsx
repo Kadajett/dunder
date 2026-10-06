@@ -10,7 +10,7 @@ import { useFocus } from "./focus/focus-store";
 import { openScreen } from "./focus/open-screen";
 import { Clickable } from "./interaction/Clickable";
 import { useSelection } from "./interaction/selection-store";
-import { ZoneCards } from "./labels/ZoneCards";
+import { Callouts } from "./labels/Callouts";
 import type { OfficeModel } from "./model/office-model";
 import { OfficeCamera } from "./OfficeCamera";
 import { Backdrop } from "./scene/Backdrop";
@@ -90,7 +90,7 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 				);
 			})}
 			{editing ? <EditLayer layout={layout} /> : null}
-			<ZoneCards layout={layout} agents={model.agents} />
+			<Callouts callouts={layout.callouts} />
 		</Canvas>
 	);
 }

@@ -1,5 +1,5 @@
 import { snapInRoom } from "./ops";
-import type { Callout, Decor, Desk, Layout, Zone, ZoneLabelMode } from "./schema";
+import type { Callout, Decor, Desk, Layout, Zone } from "./schema";
 
 /**
  * Pure field edits for the edit-mode inspector. Text fields set to "" remove
@@ -11,14 +11,11 @@ const DEFAULT_RUG_COLOR = "#d9c7a5";
 
 export interface ZonePatch {
 	readonly title?: string;
-	readonly subtitle?: string;
 	/** herdr workspace label the zone's desks seat agents from. */
 	readonly workspaceLabel?: string;
 	readonly rugWidth?: number;
 	readonly rugDepth?: number;
 	readonly rugColor?: string;
-	/** Card always shown, or only a caption on hover; once set it is kept explicitly. */
-	readonly labelMode?: ZoneLabelMode;
 }
 
 const clampSize = (value: number, max: number) =>
@@ -29,7 +26,7 @@ function patchRug(layout: Layout, zone: Zone, patch: ZonePatch): Zone["rug"] {
 		patch.rugWidth !== undefined || patch.rugDepth !== undefined || patch.rugColor !== undefined;
 	if (!resized) return zone.rug;
 	const base = zone.rug ?? {
-		center: zone.labelAt ?? { x: 0, z: 0 },
+		center: { x: 0, z: 0 },
 		width: 4,
 		depth: 3,
 		color: DEFAULT_RUG_COLOR,
@@ -41,18 +38,15 @@ function patchRug(layout: Layout, zone: Zone, patch: ZonePatch): Zone["rug"] {
 	return { center, width, depth, color: patch.rugColor ?? base.color };
 }
 
-/** Edit a zone's title, subtitle, label mode, bound workspace label and rug size/colour (adding a rug if it has none). */
+/** Edit a zone's title, bound workspace label and rug size/colour (adding a rug if it has none). */
 export function updateZone(layout: Layout, id: string, patch: ZonePatch): Layout {
 	const edit = (zone: Zone): Zone => {
-		const { subtitle, workspaceLabel, rug: _rug, ...rest } = zone;
-		const nextSubtitle = patch.subtitle ?? subtitle;
+		const { workspaceLabel, rug: _rug, ...rest } = zone;
 		const nextLabel = patch.workspaceLabel ?? workspaceLabel;
 		const rug = patchRug(layout, zone, patch);
 		return {
 			...rest,
 			title: patch.title ?? zone.title,
-			...(patch.labelMode ? { labelMode: patch.labelMode } : {}),
-			...(nextSubtitle ? { subtitle: nextSubtitle } : {}),
 			...(nextLabel ? { workspaceLabel: nextLabel } : {}),
 			...(rug ? { rug } : {}),
 		};

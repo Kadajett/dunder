@@ -21,7 +21,7 @@ const desk = (id: string, zoneId?: string): Desk => ({
 	...(zoneId ? { zoneId } : {}),
 });
 
-const zones: Zone[] = [{ id: "eng", title: "Engineering", labelHeight: 2.2 }];
+const zones: Zone[] = [{ id: "eng", title: "Engineering" }];
 
 describe("classicTiles", () => {
 	it("lists seated agents in desk order, then the rest by pane creation order", () => {

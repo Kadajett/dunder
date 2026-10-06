@@ -56,28 +56,22 @@ export const roomSchema = z.object({
 });
 export type Room = z.infer<typeof roomSchema>;
 
+/**
+ * A named area of the office: a rug, and the desks that seat one herdr
+ * workspace's agents. Its title shows in edit mode and Classic view, not in the
+ * office. Unknown keys are stripped, so layouts saved with the former label
+ * fields (`subtitle`, `labelAt`, `labelHeight`, `labelMode`) still load.
+ */
 export const zoneSchema = z.object({
 	id: z.string(),
 	title: z.string(),
-	subtitle: z.string().optional(),
 	/** herdr workspace label whose agents belong at this zone's desks. */
 	workspaceLabel: z.string().optional(),
 	rug: z
 		.object({ center: vec2Schema, width: z.number(), depth: z.number(), color: z.string() })
 		.optional(),
-	/** Where the zone's floating label card sits (defaults to the rug centre). */
-	labelAt: vec2Schema.optional(),
-	labelHeight: z.number().default(2.2),
-	/**
-	 * `always` (or absent): a floating card. `hover`: only a small caption while
-	 * the pointer is over the zone (its rug, or the floor around its label point).
-	 * Absent rather than defaulted, so a saved layout that predates the field can
-	 * be told apart from one where someone chose `always` (see `migrateLayout`).
-	 */
-	labelMode: z.enum(["always", "hover"]).optional(),
 });
 export type Zone = z.infer<typeof zoneSchema>;
-export type ZoneLabelMode = NonNullable<Zone["labelMode"]>;
 
 export const deskSchema = z.object({
 	id: z.string(),

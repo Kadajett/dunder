@@ -85,16 +85,13 @@ export function handleBox(layout: Layout, ref: ItemRef): HandleBox | undefined {
 		case "decor":
 			return decorBox(layout, ref.id);
 		case "zone": {
-			const zone = layout.zones.find((item) => item.id === ref.id);
-			const rug = zone?.rug;
-			if (rug)
-				return {
-					center: [rug.center.x, 0.03, rug.center.z],
-					size: [rug.width, 0.06, rug.depth],
-					rotationY: 0,
-				};
-			const at = zone?.labelAt;
-			return at ? { center: [at.x, 0.03, at.z], size: [1, 0.06, 1], rotationY: 0 } : undefined;
+			const rug = layout.zones.find((item) => item.id === ref.id)?.rug;
+			if (!rug) return undefined;
+			return {
+				center: [rug.center.x, 0.03, rug.center.z],
+				size: [rug.width, 0.06, rug.depth],
+				rotationY: 0,
+			};
 		}
 		case "callout": {
 			const callout = layout.callouts.find((item) => item.id === ref.id);
