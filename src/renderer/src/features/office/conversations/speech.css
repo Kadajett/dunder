@@ -43,7 +43,7 @@
 	color: #d9cfbd;
 }
 
-/* Thought bubble: the message waits until the colleague is free. */
+/* Hover caption of a waiting message: the colleague isn't free yet. */
 .speech-waiting {
 	background: #3a3631e6;
 	box-shadow:
@@ -63,4 +63,27 @@
 /* No italic: only upright JetBrains Mono is loaded, and a synthesized slant smears. */
 .speech-thought {
 	color: #cfc6b6;
+}
+
+/*
+ * The waiting mark: a faint "…" pill just over the head while a message waits,
+ * small enough to see past. Paper with a dark rim and dots, so it reads over
+ * both the floor and dark furniture. The words show only on hover.
+ */
+.speech-waiting-mark {
+	display: flex;
+	gap: 2.5px;
+	align-items: center;
+	padding: 3px 5px;
+	border-radius: 999px;
+	background: #fbf6ec;
+	box-shadow: inset 0 0 0 1px #26231f;
+	opacity: 0.6;
+}
+
+.speech-waiting-mark i {
+	width: 3.5px;
+	height: 3.5px;
+	border-radius: 50%;
+	background: #26231f;
 }

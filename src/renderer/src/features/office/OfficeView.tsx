@@ -1,10 +1,11 @@
 import { Canvas } from "@react-three/fiber";
 import type { Layout } from "@shared/layout/schema";
+import { useState } from "react";
 import { useChief } from "../chief/chief-store";
 import { EditLayer } from "../edit/EditLayer";
 import { useEdit } from "../edit/edit-store";
 import { useWorlds } from "./behaviour/useWorlds";
-import { AgentActor } from "./characters/AgentActor";
+import { AgentActor, type AgentActorProps } from "./characters/AgentActor";
 import { SpeechBubble } from "./conversations/SpeechBubble";
 import { useFocus } from "./focus/focus-store";
 import { openScreen } from "./focus/open-screen";
@@ -79,21 +80,37 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 				const world = worlds.get(agent.paneId);
 				if (!world) return null;
 				return (
-					<Clickable
+					<Colleague
 						key={agent.paneId}
+						agent={agent}
+						world={world}
+						phase={index * 0.7}
 						onSelect={() => select({ kind: "agent", paneId: agent.paneId })}
-					>
-						<AgentActor
-							agent={agent}
-							world={world}
-							phase={index * 0.7}
-							overlay={<SpeechBubble agentName={agent.name} height={2.35} />}
-						/>
-					</Clickable>
+					/>
 				);
 			})}
 			{editing ? <EditLayer layout={layout} /> : null}
 			<Callouts callouts={layout.callouts} />
 		</Canvas>
+	);
+}
+
+/** One agent in the room: clickable, with what they're saying overhead (and, on hover, what they wait for). */
+function Colleague({
+	agent,
+	world,
+	phase,
+	onSelect,
+}: Pick<AgentActorProps, "agent" | "world" | "phase"> & { readonly onSelect: () => void }) {
+	const [hovered, setHovered] = useState(false);
+	return (
+		<Clickable onSelect={onSelect} onHoverChange={setHovered}>
+			<AgentActor
+				agent={agent}
+				world={world}
+				phase={phase}
+				overlay={<SpeechBubble agentName={agent.name} height={2.35} hovered={hovered} />}
+			/>
+		</Clickable>
 	);
 }
