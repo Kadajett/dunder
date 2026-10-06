@@ -1,3 +1,5 @@
+import type { Group } from "three";
+import { usePokeReaction } from "../interaction/Poke";
 import { PALETTE } from "./palette";
 import { Ball, Block } from "./parts";
 
@@ -64,11 +66,17 @@ function Planter({ pot }: { readonly pot: PotSpec }) {
 	);
 }
 
+/** Poked leaves rustle: they sway from the soil, mostly across the view. */
+function rustle(leaves: Group, strength: number): void {
+	leaves.rotation.set(0.12 * strength, 0, 0.3 * strength);
+}
+
 function PottedPlant(props: { readonly pot: PotSpec; readonly leaves: readonly LeafSpec[] }) {
+	const leaves = usePokeReaction(rustle);
 	return (
 		<group>
 			<Planter pot={props.pot} />
-			<group position={[0, props.pot.height, 0]}>
+			<group ref={leaves} position={[0, props.pot.height, 0]}>
 				{props.leaves.map((leaf) => (
 					<Leaf key={`${leaf.yaw}:${leaf.tilt}`} leaf={leaf} />
 				))}
