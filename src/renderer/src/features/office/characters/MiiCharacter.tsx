@@ -1,16 +1,12 @@
 import { useFrame } from "@react-three/fiber";
 import type { AvatarStyle } from "@shared/avatar/style";
 import { useMemo } from "react";
-import { glassesBlocks, headwearBlocks } from "./accessories";
 import { animateRig } from "./animate";
-import { Block, Blocks, type Cuboid } from "./Block";
+import { Block, Blocks } from "./Block";
 import { animateExercise } from "./exercise";
-import { type FaceStyle, faceDecals, headBlocks } from "./face";
-import { hairBlocks } from "./hair";
-import { outfitBlocks, pantsColorFor, type Sleeve, sleeveFor } from "./outfits";
+import { pantsColorFor } from "./outfits";
+import { armPart, facePart, headPart, upperPart } from "./parts";
 import {
-	ARM_REACH,
-	ARM_WIDTH,
 	createRig,
 	HEAD,
 	HIP_X,
@@ -18,13 +14,11 @@ import {
 	LEG_WIDTH,
 	type MiiActivity,
 	type MiiPose,
-	NECK_Y,
 	type Rig,
 	SHIN,
 	SHOULDER_X,
 	SHOULDER_Y,
 	THIGH,
-	TORSO,
 } from "./rig";
 
 export type { MiiActivity, MiiPose } from "./rig";
@@ -70,50 +64,6 @@ function Leg({
 	);
 }
 
-/** Arm blocks hanging from the shoulder pivot (−y), hand at `ARM_REACH`. */
-function armBlocks(sleeve: Sleeve, skin: string): Cuboid[] {
-	const wide = ARM_WIDTH + 0.016;
-	const blocks: Cuboid[] = [
-		{
-			color: sleeve.long ? sleeve.color : skin,
-			at: [0, -0.17, 0],
-			size: [ARM_WIDTH, 0.36, ARM_WIDTH],
-		},
-		{ color: skin, at: [0, -ARM_REACH, 0], size: [0.1, 0.1, 0.1] },
-	];
-	if (!sleeve.long)
-		blocks.push({ color: sleeve.color, at: [0, -0.055, 0], size: [wide, 0.13, wide] });
-	if (sleeve.cuff) {
-		const cuff = sleeve.long ? { y: -0.33, height: 0.04 } : { y: -0.115, height: 0.025 };
-		blocks.push({
-			color: sleeve.cuff,
-			at: [0, cuff.y, 0],
-			size: [wide - 0.004, cuff.height, wide - 0.004],
-		});
-	}
-	return blocks;
-}
-
-function faceStyleOf(style: AvatarStyle): FaceStyle {
-	return {
-		skin: style.skin,
-		browColor: style.hair.color,
-		eyes: style.eyes,
-		brows: style.brows,
-		mouth: style.mouth,
-	};
-}
-
-/** Everything on the head that has volume: skull, brows, hair, glasses and headwear. */
-function headVolume(style: AvatarStyle): Cuboid[] {
-	return [
-		...headBlocks(faceStyleOf(style)),
-		...hairBlocks(style.hair.style, style.hair.color),
-		...(style.glasses ? glassesBlocks(style.glasses) : []),
-		...(style.headwear ? headwearBlocks(style.headwear.style, style.headwear.color) : []),
-	];
-}
-
 /**
  * A low-poly voxel office worker built from boxes: big cube head, block body.
  * Feet rest on y = 0 when standing (≈1.4 m tall); faces local +z.
@@ -131,13 +81,10 @@ export function MiiCharacter({
 		if (pose === "exercising") animateExercise(rig, (Date.now() - workoutStartedAt) / 1_000);
 		else animateRig(rig, pose, activity, clock.elapsedTime + phase);
 	});
-	const head = useMemo(() => headVolume(style), [style]);
-	const face = useMemo(() => faceDecals(faceStyleOf(style)), [style]);
-	const torso = useMemo(() => outfitBlocks(style.outfit), [style.outfit]);
-	const arm = useMemo(
-		() => armBlocks(sleeveFor(style.outfit), style.skin),
-		[style.outfit, style.skin],
-	);
+	const head = useMemo(() => headPart(style), [style]);
+	const face = useMemo(() => facePart(style), [style]);
+	const upper = useMemo(() => upperPart(style), [style]);
+	const arm = useMemo(() => armPart(style), [style]);
 	const pants = pantsColorFor(style);
 	return (
 		<group ref={rig.root}>
@@ -145,10 +92,7 @@ export function MiiCharacter({
 				<Leg rig={rig} index={0} pants={pants} shoes={style.shoes} />
 				<Leg rig={rig} index={1} pants={pants} shoes={style.shoes} />
 				<group ref={rig.upper}>
-					<group position={[0, TORSO.y, 0]}>
-						<Blocks items={torso} />
-					</group>
-					<Block color={style.skin} at={[0, NECK_Y, 0]} size={[0.14, 0.06, 0.14]} />
+					<Blocks items={upper} />
 					<group ref={rig.head} position={[0, HEAD.y, 0]}>
 						<Blocks items={head} />
 						<Blocks items={face} castShadow={false} />

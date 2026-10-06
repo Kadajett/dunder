@@ -109,7 +109,8 @@ const HAIR: Record<HairStyle, readonly Shape[]> = {
 			[0, 0, -0.207],
 			[0.45, 0.12, 0.02],
 		],
-		...pair(0.223, 0.03, -0.07, [0.015, 0.1, 0.26]),
+		// Runs back into the back panel rather than ending flush with the skull.
+		...pair(0.223, 0.03, -0.075, [0.015, 0.1, 0.27]),
 	],
 	afro: [
 		[
