@@ -14,6 +14,7 @@ import { useSelection } from "./interaction/selection-store";
 import { ZoneCards } from "./labels/ZoneCards";
 import type { OfficeModel } from "./model/office-model";
 import { OfficeCamera } from "./OfficeCamera";
+import { Backdrop } from "./scene/Backdrop";
 import { DecorItems } from "./scene/DecorItems";
 import { DeskStation } from "./scene/DeskStation";
 import { Lights } from "./scene/Lights";
@@ -45,7 +46,7 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 				useEdit.getState().select(null);
 			}}
 		>
-			<color attach="background" args={["#efe6d6"]} />
+			<Backdrop />
 			<OfficeCamera room={layout.room} />
 			<Lights />
 			<Room room={layout.room} />
