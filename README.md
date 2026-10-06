@@ -35,7 +35,10 @@ npm install
 npm run dev      # dev server with hot reload
 npm run office   # production build, supervised: survives edits, relaunches on update
 npm run check    # typecheck, lint and unit tests
+npm run scene:shot  # headless screenshot of the 3D scene (no Electron, stubbed IPC) + side-by-side vs the reference
 ```
+
+`scene:shot` serves `scripts/scene-shot/page` with Vite and renders it in headless Chrome (a system Chrome/Chromium, Playwright's cached headless shell, or `$SCENE_SHOT_CHROME`). It writes `docs/screenshots/m5-office.png` and `docs/screenshots/m5-vs-reference.png`. Use it instead of a second app instance, which would start its own workforce on the live `office` session.
 
 ## Architecture
 

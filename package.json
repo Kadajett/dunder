@@ -24,7 +24,8 @@
 		"installer:build": "tsc -p packages/installer/tsconfig.build.json",
 		"site:build": "npm --prefix site ci --no-audit --no-fund && npm --prefix site run build",
 		"site:deploy": "npm --prefix site ci --no-audit --no-fund && npm --prefix site run deploy",
-		"release:bump": "node scripts/release/bump.mts"
+		"release:bump": "node scripts/release/bump.mts",
+		"scene:shot": "node scripts/scene-shot/shot.mts"
 	},
 	"dependencies": {
 		"zod": "^4.6.5"
