@@ -1,4 +1,4 @@
-import { addAfterEffect, addEffect } from "@react-three/fiber";
+import { addAfterEffect, addEffect, type RootState } from "@react-three/fiber";
 import { type GlCallCounts, glCallCounts, glCallsPerFrame, instrumentGl } from "./gl-calls";
 import {
 	dynamicTargets,
@@ -51,6 +51,8 @@ declare global {
 			sceneStats(): Record<string, MeshCounts>;
 			dynamicTargets(): ScreenPoint[];
 			screenTextures(): Promise<string[]>;
+			/** The R3F root state (scene, camera, gl) for ad-hoc inspection from the console. */
+			rootState(): RootState | undefined;
 		};
 	}
 }
@@ -145,5 +147,6 @@ export function installFrameProbe(): void {
 		sceneStats,
 		dynamicTargets,
 		screenTextures,
+		rootState,
 	};
 }

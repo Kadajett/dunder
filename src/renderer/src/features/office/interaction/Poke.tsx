@@ -1,6 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { createContext, type ReactNode, type RefObject, useContext, useRef } from "react";
 import type { Group } from "three";
+import { DYNAMIC } from "../scene/StaticBatch";
 import { pokeStrength, REACTION_SECONDS } from "./reaction";
 
 /** `performance.now()` of the last click on the enclosing decor item; null until poked. */
@@ -34,8 +35,15 @@ function glug(target: Group, strength: number): void {
 	target.rotation.set(0, 0, 0.04 * strength);
 }
 
-/** Wraps a whole decor item that has no moving parts of its own, so a poke jiggles it. */
+/**
+ * Wraps a whole decor item that has no moving parts of its own, so a poke jiggles it.
+ * Marked dynamic: a static batch would bake the item and leave only the hidden original moving.
+ */
 export function Jiggle({ children }: { readonly children: ReactNode }) {
 	const group = usePokeReaction(glug);
-	return <group ref={group}>{children}</group>;
+	return (
+		<group ref={group} userData={DYNAMIC}>
+			{children}
+		</group>
+	);
 }

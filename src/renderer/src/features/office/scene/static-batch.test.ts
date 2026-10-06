@@ -77,6 +77,24 @@ describe("bakeStaticBatch", () => {
 		expect(screen.visible).toBe(true);
 	});
 
+	it("leaves a DYNAMIC subtree out of the merge, however deep its meshes sit", () => {
+		const { source, target } = scene();
+		const leaves = new Group();
+		leaves.userData = { ...DYNAMIC };
+		const stem = new Group();
+		stem.add(box("#ff0000", 0), box("#ff0000", 1));
+		leaves.add(stem);
+		const pot = box("#ff0000", 5);
+		source.add(leaves, pot);
+		bakeStaticBatch(source, target);
+
+		// Only the pot was merged: one box's worth of vertices, same colour as the leaves.
+		expect(target.children).toHaveLength(1);
+		expect((target.children[0] as Mesh).geometry.attributes["position"]?.count).toBe(24);
+		expect(pot.visible).toBe(false);
+		for (const leaf of stem.children) expect(leaf.visible).toBe(true);
+	});
+
 	it("undo restores the originals and removes the merged meshes", () => {
 		const { source, target } = scene();
 		source.add(box("#ff0000", 0), box("#0000ff", 2));
