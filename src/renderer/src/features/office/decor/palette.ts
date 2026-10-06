@@ -23,6 +23,33 @@ export const PALETTE = {
 	deskGreen: "#3f7a55",
 	ledGreen: "#4fd18b",
 	ledTeal: "#3fc7c0",
+	// Reference-matched tones (docs/reference/orpex-office.png).
+	planter: "#8a6c4a",
+	planterDark: "#6e553a",
+	sage: "#5e8158",
+	sageMid: "#77986c",
+	sageLight: "#91ad86",
+	shelfWood: "#7a6446",
+	shelfWoodLight: "#a58e6c",
+	shelfShadow: "#3a3127",
+	plum: "#7d4f78",
+	plumDark: "#663f61",
+	plumLight: "#8d5c87",
+	cushionTan: "#c5a979",
+	receptionWood: "#8a6c47",
+	receptionLedge: "#c8b28b",
+	receptionGreen: "#438f69",
+	rackBody: "#55564f",
+	rackCap: "#7a7b74",
+	ledGray: "#8a8b85",
+	ledMint: "#38a877",
+	bellMustard: "#c8a761",
+	clockRim: "#6b5a43",
+	clockFace: "#f9f5ec",
+	boardBorder: "#e6dcc3",
+	postingGreen: "#529a75",
+	postingBlue: "#7689b3",
+	postingGray: "#c3bdb1",
 } as const;
 
 /** Muted spine colours for books and folders. */
@@ -35,4 +62,14 @@ export const SPINES = [
 	"#e3d7c0",
 	"#2f4858",
 	"#c27a4a",
+] as const;
+
+/** Brighter spines for the library shelves, as in the reference. */
+export const BRIGHT_SPINES = [
+	"#3fa39c",
+	"#9a6aa8",
+	"#d9b24a",
+	"#5a9a4f",
+	"#4a78b8",
+	"#c9706a",
 ] as const;

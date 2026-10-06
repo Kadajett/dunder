@@ -18,12 +18,12 @@ const TAU = Math.PI * 2;
 const SWING_SECONDS = 2.5;
 
 /**
- * Brass bell hanging from a wooden wall bracket; `label` is painted on the wall beneath.
+ * Matte mustard bell on a slim wall hanger; `label` is painted on the wall beneath.
  * Ringing it (a click) calls everyone to a workout.
  */
 export function WallBell({ label }: DecorProps) {
-	const brass = { color: PALETTE.brass, metalness: 0.55, roughness: 0.35 } as const;
-	const hangZ = 0.3;
+	const brass = { color: PALETTE.bellMustard, metalness: 0.15, roughness: 0.6 } as const;
+	const hangZ = 0.18;
 	const bell = useRef<Group>(null);
 	const clock = useThree((state) => state.clock);
 	const rungAt = useRef(Number.NEGATIVE_INFINITY);
@@ -45,16 +45,19 @@ export function WallBell({ label }: DecorProps) {
 				<boxGeometry args={[0.7, 0.8, 0.4]} />
 				<meshBasicMaterial transparent opacity={0} depthWrite={false} />
 			</mesh>
-			<Block size={[0.26, 0.4, 0.04]} position={[0, 0, 0.02]} color={PALETTE.woodDark} />
-			<Block size={[0.05, 0.05, 0.3]} position={[0, 0.14, 0.19]} color={PALETTE.woodDark} />
-			<Block size={[0.04, 0.12, 0.04]} position={[0, 0.06, 0.06]} color={PALETTE.woodDark} />
-			<group ref={bell} position={[0, 0.12, hangZ]}>
-				<group position={[0, -0.12, 0]}>
+			<Block size={[0.1, 0.05, 0.02]} position={[0, 0.24, 0.01]} color={PALETTE.bellMustard} />
+			<Block
+				size={[0.024, 0.024, hangZ]}
+				position={[0, 0.24, hangZ / 2]}
+				color={PALETTE.bellMustard}
+			/>
+			<group ref={bell} position={[0, 0.24, hangZ]}>
+				<group position={[0, -0.2, 0]}>
 					<Cylinder
 						radiusTop={0.012}
-						height={0.06}
+						height={0.14}
 						segments={6}
-						position={[0, 0.09, 0]}
+						position={[0, 0.13, 0]}
 						{...brass}
 					/>
 					<Ball radius={0.065} segments={10} position={[0, 0.045, 0]} {...brass} />
@@ -81,7 +84,7 @@ export function WallBell({ label }: DecorProps) {
 					font={FONTS.monoBold}
 					fontSize={0.07}
 					letterSpacing={0.2}
-					color="#7d6a4c"
+					color="#a08b68"
 					anchorX="center"
 					anchorY="top"
 					position={[0, -0.28, 0.004]}
@@ -117,9 +120,10 @@ function Hand(props: { readonly turns: number; readonly length: number; readonly
 	);
 }
 
-const TICKS = Array.from({ length: 12 }, (_, i) => i);
+/** Only the quarter hours get a mark; the reference face is otherwise bare. */
+const TICKS = [0, 3, 6, 9] as const;
 
-/** Round wall clock (white face, dark rim) showing the local time. */
+/** Round wall clock (cream face, thin wood rim) showing the local time. */
 export function WallClock() {
 	const now = useWallTime();
 	const minutes = (now.getMinutes() + now.getSeconds() / 60) / 60;
@@ -132,29 +136,26 @@ export function WallClock() {
 				segments={16}
 				rotation={FACE_FORWARD}
 				position={[0, 0, 0.03]}
-				color={PALETTE.charcoal}
+				color={PALETTE.clockRim}
 			/>
 			<Cylinder
-				radiusTop={0.27}
+				radiusTop={0.29}
 				height={0.012}
 				segments={16}
 				rotation={FACE_FORWARD}
 				position={[0, 0, 0.064]}
-				color={PALETTE.paper}
+				color={PALETTE.clockFace}
 			/>
-			{TICKS.map((tick) => {
-				const major = tick % 3 === 0;
-				return (
-					<group key={tick} rotation={[0, 0, (tick / 12) * TAU]}>
-						<Block
-							size={[major ? 0.03 : 0.016, major ? 0.06 : 0.035, 0.006]}
-							position={[0, 0.22, 0.072]}
-							color={PALETTE.charcoal}
-							noShadow
-						/>
-					</group>
-				);
-			})}
+			{TICKS.map((tick) => (
+				<group key={tick} rotation={[0, 0, (tick / 12) * TAU]}>
+					<Block
+						size={[0.022, 0.045, 0.006]}
+						position={[0, 0.235, 0.072]}
+						color={PALETTE.clockRim}
+						noShadow
+					/>
+				</group>
+			))}
 			<Hand turns={hours} length={0.17} z={0.076} />
 			<Hand turns={minutes} length={0.24} z={0.084} />
 			<Cylinder
@@ -163,7 +164,7 @@ export function WallClock() {
 				segments={10}
 				rotation={FACE_FORWARD}
 				position={[0, 0, 0.088]}
-				color={PALETTE.brass}
+				color={PALETTE.charcoal}
 				noShadow
 			/>
 		</group>

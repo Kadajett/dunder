@@ -72,31 +72,37 @@ function ShelfFrame({ f }: { readonly f: FrameSpec }) {
 }
 
 const PLINTH = 0.08;
+const CROWN = 0.07;
 const SHELF: FrameSpec = {
 	width: 2,
-	height: 2 - PLINTH,
+	height: 2 - PLINTH - CROWN,
 	depth: 0.45,
 	cols: 1,
-	rows: 4,
+	rows: 3,
 	bottom: PLINTH,
-	color: PALETTE.woodDark,
-	backColor: PALETTE.woodDeep,
+	color: PALETTE.shelfWood,
+	backColor: PALETTE.shelfShadow,
 };
 const SHELF_ROWS: readonly ShelfRow[] = Array.from({ length: SHELF.rows }, (_, i) => ({
 	y: rowFloor(SHELF, i),
 	clearance: cellHeight(SHELF),
 }));
 
-/** Dark wood bookshelf 2.0 × 0.45 × 2.0 packed with books of varying heights. */
+/** Warm wood bookcase 2.0 × 0.45 × 2.0 with an overhanging top and rows of bright spines. */
 export function Bookshelf() {
 	return (
 		<group>
 			<Block
 				size={[SHELF.width - 0.06, PLINTH, SHELF.depth - 0.04]}
 				position={[0, PLINTH / 2, 0]}
-				color={PALETTE.woodDeep}
+				color={PALETTE.planterDark}
 			/>
 			<ShelfFrame f={SHELF} />
+			<Block
+				size={[SHELF.width + 0.08, CROWN, SHELF.depth + 0.06]}
+				position={[0, 2 - CROWN / 2, 0.02]}
+				color={PALETTE.shelfWoodLight}
+			/>
 			<BookRows
 				rows={SHELF_ROWS}
 				span={SHELF.width - BOARD * 2}

@@ -3,58 +3,65 @@ import { Block, Cylinder } from "./parts";
 
 const RACK_W = 0.7;
 const RACK_H = 1.9;
-const RACK_UNITS = Array.from({ length: 9 }, (_, i) => i);
+const CAP = 0.06;
+const FRONT = RACK_W / 2;
+const FACE_FORWARD: [number, number, number] = [Math.PI / 2, 0, 0];
 
-/** One rack unit: a slotted face plate with a couple of status LEDs. */
-function RackUnit({ index }: { readonly index: number }) {
-	const pitch = (RACK_H - 0.3) / RACK_UNITS.length;
-	const y = 0.16 + pitch * (index + 0.5);
-	const front = RACK_W / 2 + 0.012;
-	const leds = index % 3 === 0 ? 3 : 2;
+/** Status dots down the front, top to bottom: two idle (grey), two live (glowing mint). */
+const LEDS = [
+	{ y: 1.42, live: false },
+	{ y: 1.27, live: false },
+	{ y: 1.12, live: true },
+	{ y: 0.97, live: true },
+] as const;
+
+function StatusDot({ y, live }: { readonly y: number; readonly live: boolean }) {
+	const color = live ? PALETTE.ledMint : PALETTE.ledGray;
 	return (
-		<group position={[0, y, front]}>
-			<Block size={[RACK_W - 0.12, pitch - 0.035, 0.02]} color={PALETTE.charcoalLight} />
-			<Block size={[0.3, 0.012, 0.005]} position={[-0.08, 0, 0.012]} color="#1d2025" noShadow />
-			{Array.from({ length: leds }, (_, i) => {
-				const x = 0.16 + i * 0.05;
-				const glow = (index + i) % 4 === 0 ? PALETTE.ledTeal : PALETTE.ledGreen;
-				return (
-					<Block
-						key={x}
-						size={[0.034, 0.034, 0.01]}
-						position={[x, 0, 0.014]}
-						color={glow}
-						emissive={glow}
-						emissiveIntensity={1.4}
-						noShadow
-					/>
-				);
-			})}
-		</group>
+		<Cylinder
+			radiusTop={0.035}
+			height={0.012}
+			segments={10}
+			rotation={FACE_FORWARD}
+			position={[0.2, y, FRONT + 0.006]}
+			color={color}
+			{...(live ? { emissive: color, emissiveIntensity: 0.9 } : {})}
+			noShadow
+		/>
 	);
 }
 
-/** Charcoal server rack 0.7 × 0.7 × 1.9 with glowing green/teal LEDs. */
+/** Plain charcoal server rack 0.7 × 0.7 × 1.9 with a capped top and a column of status dots. */
 export function ServerRack() {
+	const body = RACK_H - CAP - 0.04;
 	return (
 		<group>
 			<Block
-				size={[RACK_W, RACK_H - 0.04, RACK_W]}
-				position={[0, 0.04 + (RACK_H - 0.04) / 2, 0]}
+				size={[RACK_W - 0.06, 0.04, RACK_W - 0.06]}
+				position={[0, 0.02, 0]}
 				color={PALETTE.charcoal}
 			/>
-			<Block size={[RACK_W - 0.06, 0.04, RACK_W - 0.06]} position={[0, 0.02, 0]} color="#1d2025" />
-			{RACK_UNITS.map((index) => (
-				<RackUnit key={index} index={index} />
-			))}
-			{[0.5, 1.0, 1.5].map((y) => (
+			<Block
+				size={[RACK_W, body, RACK_W]}
+				position={[0, 0.04 + body / 2, 0]}
+				color={PALETTE.rackBody}
+			/>
+			<Block
+				size={[RACK_W + 0.04, CAP, RACK_W + 0.04]}
+				position={[0, RACK_H - CAP / 2, 0]}
+				color={PALETTE.rackCap}
+			/>
+			{[0.6, 1.6].map((y) => (
 				<Block
 					key={y}
-					size={[0.006, 0.18, 0.4]}
-					position={[RACK_W / 2 + 0.003, y, 0]}
-					color="#1d2025"
+					size={[RACK_W - 0.1, 0.008, 0.006]}
+					position={[0, y, FRONT + 0.003]}
+					color={PALETTE.charcoal}
 					noShadow
 				/>
+			))}
+			{LEDS.map((led) => (
+				<StatusDot key={led.y} y={led.y} live={led.live} />
 			))}
 		</group>
 	);
