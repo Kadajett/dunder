@@ -11,6 +11,7 @@ import { openScreen } from "./focus/open-screen";
 import { Clickable } from "./interaction/Clickable";
 import { useSelection } from "./interaction/selection-store";
 import { Callouts } from "./labels/Callouts";
+import { DeskNotes } from "./mail/DeskNotes";
 import type { OfficeModel } from "./model/office-model";
 import { OfficeCamera } from "./OfficeCamera";
 import { Backdrop } from "./scene/Backdrop";
@@ -72,6 +73,8 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 					);
 				})}
 			</StaticBatch>
+			{/* Outside the batch: notes come and go with the mail, so they are never baked. */}
+			<DeskNotes seated={model.seated} />
 			{model.seated.map(({ agent }, index) => {
 				const world = worlds.get(agent.paneId);
 				if (!world) return null;

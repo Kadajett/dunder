@@ -5,6 +5,7 @@ import type { CompaniesApi } from "./company/company";
 import type { RosterApi } from "./company/roster";
 import type { WorkforceApi } from "./company/workforce";
 import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
+import type { MailQueueApi } from "./mail-queue";
 import type { ModelsApi } from "./models";
 import type { OfficeStatsApi } from "./office-stats";
 import type { ScreensApi, Unsubscribe } from "./screens";
@@ -41,6 +42,9 @@ export const IPC = {
 	/** Agent-to-agent mail: recent history (invoke) and live updates (main → renderer). */
 	switchboardRecent: "switchboard:recent",
 	switchboardMessage: "switchboard:message",
+	/** Undelivered mail per agent (sticky notes): current queue (invoke) and every change (main → renderer). */
+	mailQueued: "mail:queued",
+	mailQueuedChanged: "mail:queued-changed",
 	/** Workforce roster: current roster (invoke) and every change (main → renderer). */
 	getRoster: "roster:get",
 	roster: "roster:changed",
@@ -120,6 +124,7 @@ export interface OfficeApi {
 		recent(): Promise<readonly OfficeMessage[]>;
 		onMessage(listener: (message: OfficeMessage) => void): Unsubscribe;
 	};
+	readonly mailQueue: MailQueueApi;
 	readonly roster: RosterApi;
 	readonly models: ModelsApi;
 	readonly chief: ChiefApi;

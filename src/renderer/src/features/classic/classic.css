@@ -76,6 +76,16 @@
 	text-transform: uppercase;
 }
 
+/* Undelivered mail, the sticky-note yellow of the 3D desks. */
+.classic-tile-mail {
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: #ffd23a;
+	color: var(--ink);
+	font: 700 11px var(--font-mono);
+	white-space: nowrap;
+}
+
 .classic-tile-model {
 	margin-left: auto;
 	padding: 3px 8px;

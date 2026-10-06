@@ -61,6 +61,10 @@ const api: OfficeApi = {
 		recent: () => ipcRenderer.invoke(IPC.switchboardRecent),
 		onMessage: (listener) => listen(IPC.switchboardMessage, listener),
 	},
+	mailQueue: {
+		get: () => ipcRenderer.invoke(IPC.mailQueued),
+		onChange: (listener) => listen(IPC.mailQueuedChanged, listener),
+	},
 	roster: {
 		get: () => ipcRenderer.invoke(IPC.getRoster),
 		onChange: (listener) => listen(IPC.roster, listener),

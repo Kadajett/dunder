@@ -19,6 +19,7 @@ import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
 import { registerIpc } from "./ipc";
 import { configureMainLogging } from "./logging";
+import { MailQueueTracker } from "./mail-queue/tracker";
 import { registerModelsIpc } from "./models/ipc";
 import { createModels } from "./models/service";
 import { CostTracker } from "./office-stats/cost-tracker";
@@ -73,9 +74,15 @@ const weather = createWeatherService({
 const calisthenics = createCalisthenics(app.getPath("userData"), (workout) =>
 	broadcast(IPC.calisthenicsWorkout, workout),
 );
-const switchboard = createSwitchboardService(app.getPath("userData"), (message) =>
-	broadcast(IPC.switchboardMessage, message),
-);
+/** Undelivered mail per agent, for the sticky notes on their desks. */
+const mailQueue = new MailQueueTracker({
+	chiefName: () => chief.status()?.name,
+	emit: (queue) => broadcast(IPC.mailQueuedChanged, queue),
+});
+const switchboard = createSwitchboardService(app.getPath("userData"), (message) => {
+	broadcast(IPC.switchboardMessage, message);
+	mailQueue.switchboard(message);
+});
 const workforce = createWorkforce(
 	{ userData: app.getPath("userData"), appRoot: app.getAppPath() },
 	(roster) => broadcast(IPC.roster, roster),
@@ -94,7 +101,10 @@ const staffDesk = createStaffDesk({
 const chief = createChief(app.getPath("userData"), {
 	roster: () => workforce.roster(),
 	modelOf: (name) => models.service.live()[name]?.model,
-	emit: (message) => broadcast(IPC.chiefMessage, message),
+	emit: (message) => {
+		broadcast(IPC.chiefMessage, message);
+		mailQueue.chief(message);
+	},
 });
 const aiCost = new CostTracker((cost) => broadcast(IPC.statsCostTodayChanged, cost));
 const companies = createCompanies(
@@ -201,6 +211,7 @@ app.whenReady().then(() => {
 		calisthenics,
 		switchboard,
 		roster: () => workforce.roster(),
+		mailQueue: () => mailQueue.current(),
 	});
 	registerModelsIpc(models.catalog, models.service);
 	registerChiefIpc(chief);
@@ -223,6 +234,7 @@ app.whenReady().then(() => {
 		.catch((error: unknown) => createLogger("workforce").warn("not started", { error }));
 	models.service.start();
 	chief.start();
+	void chief.history().then((messages) => mailQueue.chiefHistory(messages));
 	aiCost.start();
 	void appUpdate.start();
 	staffDesk

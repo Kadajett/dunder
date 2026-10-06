@@ -1,0 +1,40 @@
+/* Hover card over a desk's sticky notes: who wrote and the first words of each. */
+.desk-notes-card {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	max-width: 400px;
+	padding: 8px 12px 9px;
+	border-radius: 10px;
+	background: #fffdf8f5;
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 6px 16px #6b553a29;
+	user-select: none;
+}
+
+.desk-notes-card strong {
+	font: 800 11.5px / 1.2 var(--font-ui);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink);
+}
+
+.desk-notes-card span {
+	padding-left: 8px;
+	border-left: 3px solid #ffd23a;
+	font: 400 11px / 1.35 var(--font-mono);
+	color: var(--ink-soft);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.desk-notes-card span[data-jeremy="true"] {
+	border-left-color: #ff7aa2;
+}
+
+.desk-notes-card b {
+	font-weight: 700;
+	color: var(--ink);
+}

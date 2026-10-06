@@ -1,5 +1,6 @@
 import type { Roster } from "@shared/company/roster";
 import { type BridgeStatus, IPC } from "@shared/ipc";
+import type { MailQueue } from "@shared/mail-queue";
 import type { WeatherFeed } from "@shared/tv";
 import {
 	type IpcMainEvent,
@@ -69,6 +70,7 @@ export interface IpcDeps {
 	readonly calisthenics: Calisthenics;
 	readonly switchboard: Pick<SwitchboardService, "recent">;
 	readonly roster: () => Roster | undefined;
+	readonly mailQueue: () => MailQueue;
 }
 
 /** Register every renderer-facing handler. Renderer payloads are untrusted. */
@@ -79,6 +81,7 @@ export function registerIpc(deps: IpcDeps): void {
 	ipcMain.handle(IPC.getStatus, () => deps.status());
 	ipcMain.handle(IPC.getWeather, () => deps.weather());
 	ipcMain.handle(IPC.switchboardRecent, () => deps.switchboard.recent());
+	ipcMain.handle(IPC.mailQueued, () => deps.mailQueue());
 	ipcMain.handle(IPC.getRoster, () => deps.roster() ?? null);
 	ipcMain.handle(IPC.calisthenicsActive, () => deps.calisthenics.active());
 	ipcMain.handle(IPC.calisthenicsStart, () => {
