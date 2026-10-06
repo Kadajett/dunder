@@ -3,8 +3,8 @@ import type { LiveAgent } from "../model/live-agents";
 import { ZoneCard } from "./Labels";
 
 interface ZoneLine {
-	readonly subtitle: string | undefined;
-	readonly highlight?: string;
+	readonly subtitle?: string | undefined;
+	readonly highlight?: string | undefined;
 }
 
 /**
