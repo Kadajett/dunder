@@ -1,4 +1,11 @@
-import { appendFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+	appendFileSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
@@ -122,6 +129,46 @@ describe("Switchboard", () => {
 			expect.any(Number),
 		);
 		again.stop();
+	});
+
+	it.each([
+		["another mailbox path", { mailboxPath: "/old/herdr-office/mailbox.ndjson", offset: 12 }],
+		["a legacy state file whose offset lands mid-line", { offset: 12 }],
+	])("ignores an offset saved for %s and reads the mailbox from the top", async (_, saved) => {
+		const call = vi.fn(async () => ({}));
+		const { board, send, dir } = setup(call);
+		send("w1:p1", "ava", "sent while the app tailed the old path");
+		writeFileSync(join(dir, "state.json"), JSON.stringify(saved));
+		board.updateSnapshot(office({ nora: "idle", ava: "idle" }));
+		await board.start();
+		await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1));
+		expect(call).toHaveBeenCalledWith(
+			"agent.prompt",
+			expect.objectContaining({ text: expect.stringContaining("sent while the app tailed") }),
+		);
+		await vi.waitFor(() =>
+			expect(JSON.parse(readFileSync(join(dir, "state.json"), "utf8"))).toMatchObject({
+				mailboxPath: join(dir, "mailbox.ndjson"),
+			}),
+		);
+		board.stop();
+	});
+
+	it("resumes a legacy offset that starts a line, so a migrated mailbox is not replayed", async () => {
+		const call = vi.fn(async () => ({}));
+		const { board, send, dir } = setup(call);
+		send("w1:p1", "ava", "delivered before the upgrade");
+		const handled = statSync(join(dir, "mailbox.ndjson")).size;
+		writeFileSync(join(dir, "state.json"), JSON.stringify({ offset: handled }));
+		board.updateSnapshot(office({ nora: "idle", ava: "idle" }));
+		await board.start();
+		send("w1:p1", "ava", "first after the upgrade");
+		await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1));
+		expect(call).toHaveBeenCalledWith(
+			"agent.prompt",
+			expect.objectContaining({ text: expect.stringContaining("first after the upgrade") }),
+		);
+		board.stop();
 	});
 });
 
