@@ -1,6 +1,8 @@
 import type { CalisthenicsApi } from "./calisthenics";
 import type { ChiefApi } from "./chief";
+import type { CompaniesApi } from "./company/company";
 import type { RosterApi } from "./company/roster";
+import type { WorkforceApi } from "./company/workforce";
 import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
 import type { ModelsApi } from "./models";
 import type { OfficeStatsApi } from "./office-stats";
@@ -54,6 +56,22 @@ export const IPC = {
 	statsCostTodayChanged: "stats:cost-today-changed",
 	statsMemories: "stats:memories",
 	statsMarkSeen: "stats:mark-seen",
+	statsRemember: "stats:remember",
+	statsForget: "stats:forget",
+	/** Companies (invoke) and every change of the current company (main → renderer). */
+	companiesList: "companies:list",
+	companiesCurrent: "companies:current",
+	companiesChanged: "companies:current-changed",
+	companiesSwitch: "companies:switch",
+	companiesCreate: "companies:create",
+	companiesRename: "companies:rename",
+	companiesSaveLayout: "companies:save-layout",
+	companiesEnsureWorkspace: "companies:ensure-workspace",
+	/** Workforce actions (invoke): hire-dialog defaults, hire, fire, restart. */
+	workforceDefaults: "workforce:defaults",
+	workforceHire: "workforce:hire",
+	workforceFire: "workforce:fire",
+	workforceRestart: "workforce:restart",
 } as const;
 
 export type BridgeStatus =
@@ -91,4 +109,6 @@ export interface OfficeApi {
 	readonly models: ModelsApi;
 	readonly chief: ChiefApi;
 	readonly stats: OfficeStatsApi;
+	readonly companies: CompaniesApi;
+	readonly workforce: WorkforceApi;
 }

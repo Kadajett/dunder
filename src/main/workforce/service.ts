@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
+import { stat } from "node:fs/promises";
 import { delimiter, join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { CHIEF_NAME, CHIEF_ROLE, CHIEF_WORKSPACE } from "@shared/chief";
 import type { Roster } from "@shared/company/roster";
 import { officeArgs, runHerdr } from "../herdr/cli";
+import type { ModelCatalog } from "../models/catalog";
+import { Staffing } from "./staffing";
 import { WorkforceSupervisor } from "./supervisor";
 
 export interface WorkforcePaths {
@@ -38,5 +42,20 @@ export function createWorkforce(
 			workspaceLabel: CHIEF_WORKSPACE,
 			cwd: paths.appRoot,
 		},
+	});
+}
+
+/** Hire, fire and restart on top of the supervisor, against the real office session. */
+export function createStaffing(supervisor: WorkforceSupervisor, catalog: ModelCatalog): Staffing {
+	return new Staffing({
+		supervisor,
+		cli: (args, timeoutMs) => runHerdr(officeArgs(args), timeoutMs),
+		catalog: () => catalog.list(),
+		isDirectory: (path) =>
+			stat(path).then(
+				(info) => info.isDirectory(),
+				() => false,
+			),
+		sleep: (ms) => delay(ms),
 	});
 }

@@ -271,3 +271,7 @@
 	color: var(--ink);
 	cursor: pointer;
 }
+
+.team-hire {
+	margin: 0 0 10px;
+}

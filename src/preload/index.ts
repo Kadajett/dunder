@@ -82,7 +82,25 @@ const api: OfficeApi = {
 		costToday: () => ipcRenderer.invoke(IPC.statsCostToday),
 		onCostToday: (listener) => listen(IPC.statsCostTodayChanged, listener),
 		memories: () => ipcRenderer.invoke(IPC.statsMemories),
+		remember: (request) => ipcRenderer.invoke(IPC.statsRemember, request),
+		forget: (cwd, key) => ipcRenderer.invoke(IPC.statsForget, { cwd, key }),
 		markSeen: (agentName) => ipcRenderer.invoke(IPC.statsMarkSeen, agentName),
+	},
+	companies: {
+		list: () => ipcRenderer.invoke(IPC.companiesList),
+		current: () => ipcRenderer.invoke(IPC.companiesCurrent),
+		onCurrent: (listener) => listen(IPC.companiesChanged, listener),
+		switchTo: (id) => ipcRenderer.invoke(IPC.companiesSwitch, id),
+		create: (name, subtitle) => ipcRenderer.invoke(IPC.companiesCreate, { name, subtitle }),
+		rename: (id, name, subtitle) => ipcRenderer.invoke(IPC.companiesRename, { id, name, subtitle }),
+		saveLayout: (layout) => ipcRenderer.invoke(IPC.companiesSaveLayout, layout),
+		ensureWorkspace: (label) => ipcRenderer.invoke(IPC.companiesEnsureWorkspace, label),
+	},
+	workforce: {
+		defaults: () => ipcRenderer.invoke(IPC.workforceDefaults),
+		hire: (request) => ipcRenderer.invoke(IPC.workforceHire, request),
+		fire: (name) => ipcRenderer.invoke(IPC.workforceFire, name),
+		restart: (name) => ipcRenderer.invoke(IPC.workforceRestart, name),
 	},
 };
 

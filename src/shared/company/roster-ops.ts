@@ -1,6 +1,12 @@
 import { type AvatarStyle, avatarStyleFor } from "@shared/avatar/style";
 import type { AgentSession, SessionSnapshot } from "@shared/herdr/schema";
-import { agentNameSchema, ROSTER_VERSION, type Roster, type RosterAgent } from "./roster";
+import {
+	agentNameSchema,
+	type Harness,
+	ROSTER_VERSION,
+	type Roster,
+	type RosterAgent,
+} from "./roster";
 
 export const EMPTY_ROSTER: Roster = { version: ROSTER_VERSION, agents: [] };
 
@@ -10,6 +16,8 @@ export const ADOPTED_ROLE = "generalist";
 export interface NewAgent {
 	readonly name: string;
 	readonly role: string;
+	/** Defaults to omp. */
+	readonly harness?: Harness;
 	readonly workspaceLabel: string;
 	readonly cwd: string;
 	readonly model?: string;
@@ -45,7 +53,7 @@ export function hireAgent(roster: Roster, input: NewAgent, now: Date, id: string
 		name: input.name,
 		style: structuredClone(input.style ?? avatarStyleFor(input.name)),
 		role: input.role,
-		harness: "omp",
+		harness: input.harness ?? "omp",
 		workspaceLabel: input.workspaceLabel,
 		cwd: input.cwd,
 		createdAt: now.toISOString(),
@@ -105,19 +113,24 @@ export function adoptLiveAgents(
 	return next;
 }
 
-function sessionPathOf(session: AgentSession | undefined): string | undefined {
-	return session?.kind === "path" && session.value.length > 0 ? session.value : undefined;
+/** omp resumes from its session file; claude and codex from whatever names their session. */
+function sessionPathOf(
+	session: AgentSession | undefined,
+	harness: Harness = "omp",
+): string | undefined {
+	if (!session || session.value.length === 0) return undefined;
+	return harness !== "omp" || session.kind === "path" ? session.value : undefined;
 }
 
 /**
- * Record the session file herdr reports for each live roster worker, so a
+ * Record the session herdr reports for each live roster worker, so a
  * respawn resumes where it left off. Returns the same roster when nothing changed.
  */
 export function syncSessions(roster: Roster, snapshot: SessionSnapshot): Roster {
 	let changed = false;
 	const agents = roster.agents.map((agent) => {
 		const live = snapshot.agents.find((a) => a.name === agent.name && a.agent === agent.harness);
-		const session = sessionPathOf(live?.agent_session);
+		const session = sessionPathOf(live?.agent_session, agent.harness);
 		if (session === undefined || session === agent.lastSessionPath) return agent;
 		changed = true;
 		return { ...agent, lastSessionPath: session };

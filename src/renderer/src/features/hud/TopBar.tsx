@@ -1,5 +1,6 @@
 import "./hud.css";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { EditButton } from "../edit/EditButton";
 import type { OfficeModel } from "../office/model/office-model";
 import { CompanySwitcher } from "./CompanySwitcher";
 import { HudClock } from "./HudClock";
@@ -93,7 +94,7 @@ function ViewToggle() {
 	);
 }
 
-/** The HUD's top bar: company, nav, live stats, Trust Inbox, clock, view toggle and the user. */
+/** The HUD's top bar: company, nav, live stats, Trust Inbox, clock, edit and view toggles and the user. */
 export function TopBar({ model, snapshot }: TopBarProps) {
 	return (
 		<header className="hud-topbar">
@@ -103,6 +104,7 @@ export function TopBar({ model, snapshot }: TopBarProps) {
 			<span className="hud-spacer" />
 			<TrustInboxButton snapshot={snapshot} />
 			<HudClock />
+			<EditButton />
 			<ViewToggle />
 			<span className="hud-avatar" title="Jeremy Stover">
 				JS

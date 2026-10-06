@@ -1,4 +1,5 @@
 import type { Decor, DecorKind, Layout } from "@shared/layout/schema";
+import { useHire } from "../../hire/hire-store";
 import { useHud } from "../../hud/view-store";
 import { DECOR } from "../decor";
 import { Clickable } from "../interaction/Clickable";
@@ -10,20 +11,24 @@ import { DEG } from "./station";
  * their own click behaviour (TV, bell) handle it inside the component.
  */
 const ACTIONS: Partial<
-	Record<DecorKind, { readonly ring: number; readonly opens: "card" | "brain" }>
+	Record<DecorKind, { readonly ring: number; readonly opens: "card" | "brain" | "hire" }>
 > = {
 	"server-rack": { ring: 0.65, opens: "card" },
 	"mail-cubby": { ring: 0.85, opens: "card" },
 	// The library is the company brain: its shelves open the Brain panel.
 	bookshelf: { ring: 1.15, opens: "brain" },
+	// Reception is where new agents are hired.
+	"reception-desk": { ring: 1.25, opens: "hire" },
 };
 
 function useDecorAction(item: Decor): (() => void) | undefined {
 	const select = useSelection((state) => state.select);
 	const togglePanel = useHud((state) => state.togglePanel);
+	const showHire = useHire((state) => state.show);
 	const action = ACTIONS[item.kind];
 	if (!action) return undefined;
 	if (action.opens === "brain") return () => togglePanel("brain");
+	if (action.opens === "hire") return showHire;
 	return () => select({ kind: "decor", id: item.id });
 }
 

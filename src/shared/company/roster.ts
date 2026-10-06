@@ -3,8 +3,9 @@ import { avatarStyleSchema } from "./avatar-style-schema";
 
 export const ROSTER_VERSION = 1;
 
-/** The coding harness a worker runs in. Only omp is supervised today. */
-export const harnessSchema = z.literal("omp");
+/** The coding harness a worker runs in; also its herdr agent kind and executable. */
+export const HARNESSES = ["omp", "claude", "codex"] as const;
+export const harnessSchema = z.enum(HARNESSES);
 export type Harness = z.infer<typeof harnessSchema>;
 
 /**
@@ -30,7 +31,10 @@ export const rosterAgentSchema = z.object({
 	/** herdr workspace (office room) the worker sits in, matched by label. */
 	workspaceLabel: z.string().min(1).max(200),
 	cwd: z.string().min(1).max(4_096),
-	/** omp session file the worker resumes on respawn, as last reported by herdr. */
+	/**
+	 * The session the worker resumes on respawn, as last reported by herdr:
+	 * an omp session file, or a claude/codex session (id or file naming it).
+	 */
 	lastSessionPath: z.string().min(1).max(4_096).exactOptional(),
 	createdAt: z.iso.datetime(),
 	/** Set when the user lets the worker go; fired workers are never respawned. */

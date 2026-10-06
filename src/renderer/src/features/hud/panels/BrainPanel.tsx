@@ -1,59 +1,60 @@
-import type { MemoriesResult } from "@shared/office-stats";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import "./brain.css";
+import { useMemo, useState } from "react";
+import { MemoryCard } from "./MemoryCard";
+import { type ProjectGroup, searchMemories } from "./memory-search";
+import { RememberForm } from "./RememberForm";
+import { useCompanyMemories } from "./use-company-memories";
 
-const RESTART: MemoriesResult = {
-	state: "unavailable",
-	cwd: "",
-	reason: "restart the app to load company memory",
-};
-
-interface Memories {
-	readonly result: MemoriesResult | undefined;
-	readonly reload: () => void;
-}
-
-function useMemories(): Memories {
-	const [result, setResult] = useState<MemoriesResult>();
-	const reload = useCallback(() => {
-		if (!("stats" in window.office)) {
-			setResult(RESTART);
-			return;
-		}
-		setResult(undefined);
-		void window.office.stats.memories().then(setResult);
-	}, []);
-	useEffect(reload, [reload]);
-	return { result, reload };
-}
-
-function EmptyBrain() {
+function ProjectSection(props: { readonly group: ProjectGroup; readonly reload: () => void }) {
+	const { group, reload } = props;
+	const { project } = group;
+	const count =
+		group.shown.length === group.total
+			? `${group.total}`
+			: `${group.shown.length} / ${group.total}`;
 	return (
-		<p className="hud-panel-empty">
-			No company memories yet. Agents save what the company should remember with{" "}
-			<code>bd remember "…"</code>; it shows up here, searchable.
-		</p>
+		<section className="hud-brain-project">
+			<header title={project.cwd}>
+				<strong>{project.name}</strong>
+				<span className="hud-brain-count">{count}</span>
+				<code>{project.cwd}</code>
+			</header>
+			{project.state === "unavailable" ? (
+				<p className="hud-panel-empty">Memory unavailable here: {project.reason}</p>
+			) : null}
+			{project.state === "ok" && group.total === 0 ? (
+				<p className="hud-panel-empty">
+					No memories yet. Agents save durable insights with <code>bd remember "…" --key …</code>,
+					or use Remember… above.
+				</p>
+			) : null}
+			{group.shown.map((memory) => (
+				<MemoryCard key={memory.key} cwd={project.cwd} memory={memory} onForgotten={reload} />
+			))}
+		</section>
 	);
 }
 
-/** Brain: the company's memory, kept as Beads memories in the office agents' project. */
+/** Brain: company memory — the Beads memories of every project the office works in. */
 export function BrainPanel() {
-	const { result, reload } = useMemories();
+	const { load, reload } = useCompanyMemories();
 	const [query, setQuery] = useState("");
-	const memories = result?.state === "ok" ? result.memories : [];
-	const shown = useMemo(() => {
-		const needle = query.trim().toLowerCase();
-		if (!needle) return memories;
-		return memories.filter((memory) =>
-			`${memory.key} ${memory.text}`.toLowerCase().includes(needle),
-		);
-	}, [memories, query]);
+	const projects = load.state === "ready" ? load.memories.projects : [];
+	const groups = useMemo(() => searchMemories(projects, query), [projects, query]);
+	const total = projects.reduce(
+		(sum, project) => sum + (project.state === "ok" ? project.memories.length : 0),
+		0,
+	);
+	if (load.state === "restart") {
+		return <p className="hud-panel-empty">Restart the app to load company memory.</p>;
+	}
 	return (
 		<>
 			<div className="hud-panel-toolbar">
 				<input
 					className="hud-panel-search"
 					type="search"
-					placeholder={`Search ${memories.length} memories`}
+					placeholder={`Search ${total} memories in ${projects.length} projects`}
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
 				/>
@@ -61,29 +62,14 @@ export function BrainPanel() {
 					Refresh
 				</button>
 			</div>
-			{result === undefined ? <p className="hud-panel-empty">Reading company memory…</p> : null}
-			{result?.state === "unavailable" ? (
-				<p className="hud-panel-empty">
-					Company memory is unavailable: {result.reason}
-					{result.cwd ? (
-						<>
-							{" "}
-							(in <code>{result.cwd}</code>)
-						</>
-					) : null}
-				</p>
-			) : null}
-			{result?.state === "ok" && memories.length === 0 ? <EmptyBrain /> : null}
-			{result?.state === "ok" && memories.length > 0 && shown.length === 0 ? (
+			<RememberForm projects={projects} onSaved={reload} />
+			{load.state === "loading" ? <p className="hud-panel-empty">Reading company memory…</p> : null}
+			{load.state === "ready" && query.trim() && groups.length === 0 ? (
 				<p className="hud-panel-empty">No memory matches “{query}”.</p>
 			) : null}
-			{shown.map((memory) => (
-				<article key={memory.key} className="hud-card">
-					<div className="hud-memory-key">{memory.key}</div>
-					<p className="hud-card-line">{memory.text}</p>
-				</article>
+			{groups.map((group) => (
+				<ProjectSection key={group.project.cwd} group={group} reload={reload} />
 			))}
-			{result?.state === "ok" ? <p className="hud-card-meta">bd memories · {result.cwd}</p> : null}
 		</>
 	);
 }

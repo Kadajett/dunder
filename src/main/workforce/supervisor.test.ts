@@ -18,16 +18,23 @@ const jonasGone = snapshot({ workspaces, agents: [agent("nora", "w1:p1", "/s/nor
 let dir = "";
 let clock = 0;
 let calls: string[][] = [];
+/** Make `agent start` fail, as herdr does when a harness stops at a startup dialog. */
+let failStart = false;
 const running: WorkforceSupervisor[] = [];
 
+/** A live agent by name, or an unnamed one in a pane. */
+type LiveEntry = string | { readonly pane_id: string; readonly agent: string };
+
 /** Fake `herdr --session office`: `agent list` reports `live`, splits yield `w1:p9`. */
-function fakeCli(live: () => readonly string[]) {
+function fakeCli(live: () => readonly LiveEntry[]) {
 	return async (args: readonly string[]): Promise<CliResult> => {
 		calls.push([...args]);
 		const [group, verb] = args;
+		if (failStart && group === "agent" && verb === "start") throw new Error("startup timed out");
+		const agents = live().map((entry) => (typeof entry === "string" ? { name: entry } : entry));
 		const json =
 			group === "agent" && verb === "list"
-				? { result: { agents: live().map((name) => ({ name })) } }
+				? { result: { agents } }
 				: group === "pane" && verb === "split"
 					? { result: { pane: { pane_id: "w1:p9" } } }
 					: { result: {} };
@@ -35,7 +42,7 @@ function fakeCli(live: () => readonly string[]) {
 	};
 }
 
-async function supervisor(live: () => readonly string[] = () => []) {
+async function supervisor(live: () => readonly LiveEntry[] = () => []) {
 	const changes: Roster[] = [];
 	let id = 0;
 	const sup = new WorkforceSupervisor({
@@ -65,6 +72,7 @@ beforeEach(async () => {
 	dir = await mkdtemp(join(tmpdir(), "workforce-"));
 	clock = 1_000_000;
 	calls = [];
+	failStart = false;
 	await writeFile(join(dir, "protocol.md"), "# Office protocol\n");
 });
 afterEach(async () => {
@@ -145,5 +153,67 @@ describe("WorkforceSupervisor", () => {
 		await sup.settled();
 		expect(calls.filter((c) => c[1] === "list")).toHaveLength(1);
 		expect(calls.filter((c) => c[0] !== "agent")).toEqual([]);
+	});
+
+	it("starts a hired worker right away with its own harness", async () => {
+		const { sup } = await supervisor(() => ["nora", "jonas"]);
+		sup.handleSnapshot(staffed);
+		await sup.settled();
+		await sup.hire({
+			name: "kim",
+			role: "backend",
+			harness: "claude",
+			workspaceLabel: "sales",
+			cwd: "/work",
+		});
+		sup.handleSnapshot(snapshot({ workspaces, panes: [pane("w1:p2")], agents: staffed.agents }));
+		await sup.settled();
+		const start = calls.find((c) => c[1] === "start");
+		expect(start?.slice(0, 5)).toEqual(["agent", "start", "kim", "--kind", "claude"]);
+		expect(start?.slice(start.indexOf("--") + 1)).toEqual([
+			"--dangerously-skip-permissions",
+			"--append-system-prompt-file",
+			join(dir, "prompts", "kim.md"),
+		]);
+		await expect(
+			sup.hire({ name: "kim", role: "x", workspaceLabel: "sales", cwd: "/work" }),
+		).rejects.toThrow();
+	});
+
+	it("never respawns a fired worker", async () => {
+		const { sup } = await supervisor(() => ["nora"]);
+		sup.handleSnapshot(staffed);
+		await sup.settled();
+		expect(await sup.fire("jonas")).toBe(true);
+		expect(await sup.fire("nobody")).toBe(false);
+		sup.respawnSoon("jonas");
+		clock += MISSING_GRACE_MS;
+		sup.handleSnapshot(snapshot({ workspaces, panes: [pane("w1:p2")], agents: jonasGone.agents }));
+		await sup.settled();
+		expect(calls.filter((c) => c[1] === "start")).toEqual([]);
+		expect(sup.roster()?.agents.find((a) => a.name === "jonas")?.firedAt).toBeDefined();
+	});
+
+	it("names a harness held at a startup dialog instead of starting it again", async () => {
+		let live: LiveEntry[] = ["nora", "jonas"];
+		const { sup } = await supervisor(() => live);
+		sup.handleSnapshot(staffed);
+		await sup.settled();
+		failStart = true;
+		live = ["nora", "jonas", { pane_id: "w1:p9", agent: "codex" }];
+		await sup.hire({
+			name: "kim",
+			role: "x",
+			harness: "codex",
+			workspaceLabel: "sales",
+			cwd: "/w",
+		});
+		await sup.settled();
+		expect(calls.filter((c) => c[1] === "rename")).toEqual([["agent", "rename", "w1:p9", "kim"]]);
+		live = ["nora", "jonas", "kim"];
+		clock += 60_000;
+		sup.handleSnapshot(staffed);
+		await sup.settled();
+		expect(calls.filter((c) => c[1] === "start")).toHaveLength(1);
 	});
 });

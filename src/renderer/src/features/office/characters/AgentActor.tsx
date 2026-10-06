@@ -1,11 +1,11 @@
 import { useFrame } from "@react-three/fiber";
-import { avatarStyleFor } from "@shared/avatar/style";
 import { WORKOUT_SECONDS, type Workout } from "@shared/calisthenics";
 import type { AgentStatus } from "@shared/herdr/schema";
 import type { Vec2 } from "@shared/layout/schema";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import type { Group } from "three";
 import { useAgentWorkout } from "../../calisthenics/workout-store";
+import { useAgentStyle } from "../../hire/roster-store";
 import {
 	type Brain,
 	type BrainWorld,
@@ -120,7 +120,7 @@ export interface AgentActorProps {
 
 /** A live agent's body: sits and works at its desk, wanders when idle, joins workouts. */
 export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
-	const style = useMemo(() => avatarStyleFor(agent.name), [agent.name]);
+	const style = useAgentStyle(agent.name);
 	const brain = useRef<Brain>(initialBrain(0, world.random));
 	const [mode, setMode] = useState<Brain["mode"]>(brain.current.mode);
 	const body = useRef<Group>(null);

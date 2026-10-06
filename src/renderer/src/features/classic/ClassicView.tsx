@@ -1,6 +1,6 @@
 import "./classic.css";
-import { DEFAULT_LAYOUT } from "@shared/layout/default-layout";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCompany } from "../company/company-store";
 import type { OfficeModel } from "../office/model/office-model";
 import { ClassicTile } from "./ClassicTile";
 import { classicTiles } from "./classic-tiles";
@@ -13,7 +13,8 @@ import { closeTile, NO_OPEN_TILES, openTile, pruneTiles, toggleWide } from "./op
  * a pane is never open here and in the 3D focus overlay together.
  */
 export function ClassicView({ model }: { readonly model: OfficeModel }) {
-	const tiles = useMemo(() => classicTiles(model, DEFAULT_LAYOUT.zones), [model]);
+	const { zones } = useCompany().layout;
+	const tiles = useMemo(() => classicTiles(model, zones), [model, zones]);
 	const [open, setOpen] = useState(NO_OPEN_TILES);
 
 	useEffect(() => {

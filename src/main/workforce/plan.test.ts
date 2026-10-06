@@ -26,7 +26,11 @@ function plan(current: SessionSnapshot, overrides: Partial<PlanInput> = {}) {
 		now: DUE,
 		missingSince: trackMissing(new Map(), overrides.roster ?? roster, current, T0),
 		attempts: new Map(),
-		existingSessions: new Set(["/s/nora.jsonl", "/s/jonas.jsonl", "/s/ava.jsonl"]),
+		resumable: new Map([
+			["nora", "/s/nora.jsonl"],
+			["jonas", "/s/jonas.jsonl"],
+			["ava", "/s/ava.jsonl"],
+		]),
 		lastPane: new Map(),
 		promptDir: "/prompts",
 	};
@@ -44,30 +48,27 @@ describe("planSpawns", () => {
 		expect(plan(full)).toEqual([]);
 	});
 
-	it("respawns a missing worker in yolo mode, resuming its last session", () => {
+	it("respawns a missing worker, resuming its last session", () => {
 		const [spawn, ...rest] = plan(withoutJonas);
 		expect(rest).toEqual([]);
 		expect(spawn?.agent.name).toBe("jonas");
-		expect(spawn?.args).toEqual([
-			"--approval-mode=yolo",
-			"--append-system-prompt=/prompts/jonas.md",
-			"--resume=/s/jonas.jsonl",
-		]);
+		expect(spawn?.resume).toBe("/s/jonas.jsonl");
 		expect(spawn?.promptPath).toBe("/prompts/jonas.md");
 		expect(spawn?.target).toEqual({ kind: "split", paneId: "w1:p2" });
 	});
 
-	it("starts fresh when the session file is gone, and passes the model", () => {
-		const modelled = {
-			...roster,
-			agents: roster.agents.map((a) => (a.name === "jonas" ? { ...a, model: "m/x" } : a)),
-		};
-		const [spawn] = plan(withoutJonas, { roster: modelled, existingSessions: new Set() });
-		expect(spawn?.args).toEqual([
-			"--approval-mode=yolo",
-			"--append-system-prompt=/prompts/jonas.md",
-			"--model=m/x",
-		]);
+	it("starts fresh when the session cannot be resumed", () => {
+		const [spawn] = plan(withoutJonas, { resumable: new Map() });
+		expect(spawn?.resume).toBeUndefined();
+	});
+
+	it("gives up resuming after two failed starts, in case the session is what fails", () => {
+		const once = afterFailure(undefined, T0);
+		const resumeOf = (attempts: typeof once) =>
+			plan(withoutJonas, { attempts: new Map([["jonas", attempts]]), now: DUE + 60_000 })[0]
+				?.resume;
+		expect(resumeOf(once)).toBe("/s/jonas.jsonl");
+		expect(resumeOf(afterFailure(once, T0))).toBeUndefined();
 	});
 
 	it("waits out the grace period before respawning", () => {

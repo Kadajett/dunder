@@ -1,0 +1,154 @@
+/* Hire dialog: a modal card over the office, Mii preview on the left. */
+.hire-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 950;
+	display: grid;
+	place-items: center;
+}
+
+.hire-backdrop {
+	position: absolute;
+	inset: 0;
+	border: 0;
+	background: #26231f40;
+	cursor: default;
+}
+
+.hire-dialog {
+	position: relative;
+	width: min(720px, calc(100vw - 40px));
+	max-height: calc(100vh - 40px);
+	overflow-y: auto;
+	padding: 16px 18px 18px;
+	border-radius: 16px;
+	background: #fffdf8;
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 20px 48px #6b553a4d;
+	font: 400 12px var(--font-ui);
+	color: var(--ink);
+}
+
+.hire-dialog header {
+	display: flex;
+	align-items: center;
+}
+
+.hire-dialog header strong {
+	flex: 1;
+	font: 700 13px var(--font-mono);
+	letter-spacing: 0.08em;
+}
+
+.hire-body {
+	display: grid;
+	grid-template-columns: 200px 1fr;
+	gap: 18px;
+	margin-top: 12px;
+}
+
+.hire-look {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+}
+
+.hire-preview {
+	width: 200px;
+	height: 260px;
+	overflow: hidden;
+	border-radius: 12px;
+	background: #efe6d6;
+}
+
+.hire-reroll,
+.hire-cancel,
+.hire-chips button {
+	padding: 6px 10px;
+	border: 0;
+	border-radius: 8px;
+	background: #efe6d6;
+	color: var(--ink);
+	font: 600 11.5px var(--font-ui);
+	cursor: pointer;
+}
+
+.hire-look small {
+	color: var(--ink-soft);
+	font-size: 10.5px;
+	text-align: center;
+}
+
+.hire-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.hire-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.hire-field > span {
+	font: 700 9.5px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.hire-field input,
+.hire-model input,
+.hire-model select {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 6px 8px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: 400 11.5px var(--font-mono);
+}
+
+.hire-model {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.hire-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.hire-chips button[aria-pressed="true"] {
+	background: var(--ink);
+	color: #f6efe2;
+}
+
+.hire-status {
+	margin: 12px 0 0;
+	color: var(--ink-soft);
+}
+
+.hire-status[data-error="true"] {
+	color: var(--status-blocked);
+}
+
+.hire-dialog footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.hire-dialog footer .card-action {
+	width: auto;
+	margin: 0;
+	padding: 8px 18px;
+}

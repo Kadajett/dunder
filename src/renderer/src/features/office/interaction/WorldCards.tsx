@@ -1,6 +1,7 @@
 import "./cards.css";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import type { Layout } from "@shared/layout/schema";
+import { StaffActions } from "../../hire/StaffActions";
 import { openScreen } from "../focus/open-screen";
 import type { OfficeModel, SeatedAgent } from "../model/office-model";
 import { ModelPicker } from "../models/ModelPicker";
@@ -52,6 +53,7 @@ function AgentCard({ seat, close }: { readonly seat: SeatedAgent; readonly close
 			>
 				Open screen
 			</button>
+			<StaffActions name={agent.name} onFired={close} />
 		</aside>
 	);
 }

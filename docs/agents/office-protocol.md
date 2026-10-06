@@ -17,9 +17,11 @@ To message a colleague, run this in your shell:
 
 ## Shared memory and work
 
-- The global memory is Beads: `bd prime` and `bd memories <keyword>`. Record durable insights with `bd remember "…"`.
+- The global memory is Beads: `bd prime` and `bd memories <keyword>`. Jeremy reads it in the office's Brain panel.
+- When you learn something durable — a gotcha, a decision and its reason, how a part of the system really works — save it once with `bd remember "<insight>" --key <short-slug>`. Reusing a key updates that memory in place.
+- Never save trivia, status updates or anything already in the code or docs. One clear sentence or two beats a paragraph.
 - Your todo list is Beads: `bd ready` and your in-progress issues (`bd list --status=in_progress`).
 
 ## Calisthenics breaks
 
-Once a day (and whenever your context compacts), the office does a short synced workout. When you get the calisthenics prompt, re-read the global memory, recall your todo list, and answer in one line with what you'll do next.
+Once a day (and whenever your context compacts), the office does a short synced workout. When you get the calisthenics prompt, re-read the global memory, recall your todo list, save one durable insight with `bd remember` if you learned something worth keeping since the last break, and answer in one line with what you'll do next.

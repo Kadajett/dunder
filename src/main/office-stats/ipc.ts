@@ -1,32 +1,22 @@
 import { agentNameSchema, type Roster } from "@shared/company/roster";
 import { IPC } from "@shared/ipc";
-import type { MarkSeenResult } from "@shared/office-stats";
+import type { StatsActionResult } from "@shared/office-stats";
 import { ipcMain } from "electron";
 import { officeArgs, runHerdr } from "../herdr/cli";
 import type { CostTracker } from "./cost-tracker";
-import { loadMemories } from "./memories";
+import { forget, loadCompanyMemories, memoryProjects, remember } from "./memories";
+import { forgetRequestSchema, parseProjectRequest, rememberRequestSchema } from "./memory-requests";
 
 const MARK_SEEN_TIMEOUT_MS = 5_000;
 
 export interface OfficeStatsDeps {
 	readonly cost: Pick<CostTracker, "current">;
-	/** Fallback working directory for company memory. */
+	/** The app's own project; always part of company memory. */
 	readonly appRoot: string;
 	readonly roster: () => Roster | undefined;
 }
 
-/** Where the office agents work: the most common roster cwd of hired workers, else the app root. */
-export function memoriesCwd(roster: Roster | undefined, appRoot: string): string {
-	const counts = new Map<string, number>();
-	for (const agent of roster?.agents ?? []) {
-		if (!agent.firedAt) counts.set(agent.cwd, (counts.get(agent.cwd) ?? 0) + 1);
-	}
-	let best: [string, number] = [appRoot, 0];
-	for (const entry of counts) if (entry[1] > best[1]) best = entry;
-	return best[0];
-}
-
-async function markSeen(payload: unknown): Promise<MarkSeenResult> {
+async function markSeen(payload: unknown): Promise<StatsActionResult> {
 	const name = agentNameSchema.safeParse(payload);
 	if (!name.success) return { ok: false, reason: "invalid agent name" };
 	try {
@@ -38,9 +28,20 @@ async function markSeen(payload: unknown): Promise<MarkSeenResult> {
 	}
 }
 
-/** `window.office.stats` handlers: today's AI cost, company memory, mark-seen. Payloads are untrusted. */
+/** `window.office.stats` handlers: AI cost, company memory, mark-seen. Payloads are untrusted. */
 export function registerOfficeStatsIpc(deps: OfficeStatsDeps): void {
+	const projects = (): string[] => memoryProjects(deps.roster(), deps.appRoot);
 	ipcMain.handle(IPC.statsCostToday, () => deps.cost.current());
-	ipcMain.handle(IPC.statsMemories, () => loadMemories(memoriesCwd(deps.roster(), deps.appRoot)));
+	ipcMain.handle(IPC.statsMemories, () => loadCompanyMemories(projects()));
+	ipcMain.handle(IPC.statsRemember, (_event, payload: unknown): Promise<StatsActionResult> => {
+		const parsed = parseProjectRequest(rememberRequestSchema, payload, projects());
+		if (!parsed.ok) return Promise.resolve(parsed);
+		const { cwd, text, key } = parsed.request;
+		return remember(cwd, text, key);
+	});
+	ipcMain.handle(IPC.statsForget, (_event, payload: unknown): Promise<StatsActionResult> => {
+		const parsed = parseProjectRequest(forgetRequestSchema, payload, projects());
+		return parsed.ok ? forget(parsed.request.cwd, parsed.request.key) : Promise.resolve(parsed);
+	});
 	ipcMain.handle(IPC.statsMarkSeen, (_event, payload: unknown) => markSeen(payload));
 }

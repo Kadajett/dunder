@@ -3,11 +3,12 @@ import { avatarStyleFor } from "@shared/avatar/style";
 import type { RosterAgent } from "@shared/company/roster";
 import { type AgentModel, shortModelName } from "@shared/models";
 import { useMemo } from "react";
+import { useHire } from "../../hire/hire-store";
+import { useRosterStore } from "../../hire/roster-store";
 import type { LiveAgent } from "../../office/model/live-agents";
 import type { OfficeModel } from "../../office/model/office-model";
 import { ModelPicker } from "../../office/models/ModelPicker";
 import { useModels } from "../../office/models/models-store";
-import { useRoster } from "../live-data";
 import { openAgentScreen } from "./open-agent";
 
 const STATUS_LABEL = {
@@ -41,7 +42,10 @@ function TeamCard(props: {
 	readonly model: OfficeModel;
 }) {
 	const { agent, hired } = props;
-	const color = useMemo(() => avatarStyleFor(agent.name).outfit.color, [agent.name]);
+	const color = useMemo(
+		() => (hired?.style ?? avatarStyleFor(agent.name)).outfit.color,
+		[hired, agent.name],
+	);
 	const live = useModels((state) => state.live[agent.name]);
 	const seat = props.model.seated.find((seated) => seated.agent.paneId === agent.paneId);
 	return (
@@ -82,16 +86,28 @@ function TeamCard(props: {
 
 /** Team: every agent in the office with status, room, model and role. */
 export function TeamPanel({ model }: { readonly model: OfficeModel }) {
-	const roster = useRoster();
+	const roster = useRosterStore((state) => state.roster);
 	const hiredByName = useMemo(
 		() => new Map((roster?.agents ?? []).map((agent) => [agent.name, agent])),
 		[roster],
 	);
+	const showHire = useHire((state) => state.show);
+	const hire = (
+		<button type="button" className="card-action team-hire" onClick={showHire}>
+			+ Hire an agent
+		</button>
+	);
 	if (model.agents.length === 0) {
-		return <p className="hud-panel-empty">No agents in the office session yet.</p>;
+		return (
+			<>
+				{hire}
+				<p className="hud-panel-empty">No agents in the office session yet.</p>
+			</>
+		);
 	}
 	return (
 		<>
+			{hire}
 			{model.agents.map((agent) => (
 				<TeamCard
 					key={agent.paneId}

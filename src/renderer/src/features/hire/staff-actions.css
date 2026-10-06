@@ -1,0 +1,36 @@
+/* Restart / Fire in the agent card. */
+.staff-actions {
+	margin-top: 4px;
+}
+
+.staff-row {
+	display: flex;
+	gap: 8px;
+}
+
+.staff-row .card-action {
+	margin-top: 8px;
+}
+
+.staff-fire {
+	background: var(--status-blocked);
+}
+
+.staff-fire-outline {
+	color: var(--status-blocked);
+}
+
+.staff-confirm,
+.staff-message {
+	margin: 10px 0 0;
+	font-size: 11.5px;
+}
+
+.staff-confirm {
+	color: var(--ink);
+	font-weight: 600;
+}
+
+.staff-message {
+	color: var(--ink-soft);
+}

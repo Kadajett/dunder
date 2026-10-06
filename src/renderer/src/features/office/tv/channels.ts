@@ -14,11 +14,17 @@ export const BADGE_MS = 3_000;
 
 const DEFAULT_CHANNEL: ChannelId = "pulse";
 
-/** The channel a click switches to; wraps from the last back to the first. */
-export function nextChannel(id: ChannelId): ChannelId {
+/** The channel `delta` presses of ▶ (or ◀ for negative) away, wrapping round the line-up. */
+export function stepChannel(id: ChannelId, delta: number): ChannelId {
+	const count = TV_CHANNELS.length;
 	const index = TV_CHANNELS.findIndex((channel) => channel.id === id);
-	const next = TV_CHANNELS[(index + 1) % TV_CHANNELS.length];
+	const next = TV_CHANNELS[(((index + delta) % count) + count) % count];
 	return next?.id ?? DEFAULT_CHANNEL;
+}
+
+/** Remote-control number key (1-based) to channel, or null when no channel has that number. */
+export function channelForKey(key: string): ChannelId | null {
+	return /^[1-9]$/.test(key) ? (TV_CHANNELS[Number(key) - 1]?.id ?? null) : null;
 }
 
 /** A persisted channel id, or the default when it is missing or no longer exists. */

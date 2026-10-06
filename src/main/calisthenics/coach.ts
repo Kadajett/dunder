@@ -5,8 +5,10 @@ export const COMPACT_COMMAND = "/compact";
 
 export const REFLECTION_PROMPT =
 	"Calisthenics break: re-read the global memory (`bd prime`/`bd memories` and AGENTS.md), " +
-	"recall your todo list (`bd ready` and your in-progress beads), then reply with one line: " +
-	"what you're doing next.";
+	"recall your todo list (`bd ready` and your in-progress beads). If you learned something " +
+	"durable since your last break (a gotcha, a decision, how something really works), save it " +
+	'once with `bd remember "<insight>" --key <short-slug>`; never trivia or status. ' +
+	"Then reply with one line: what you're doing next.";
 
 export interface CompactionExpectation {
 	/** True once the agent's next compaction lands, false when the wait times out or is cancelled. */

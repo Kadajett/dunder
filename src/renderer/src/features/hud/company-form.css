@@ -1,0 +1,65 @@
+/* "New company…" / "Rename…" form inside the companies menu. */
+.company-form {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 260px;
+}
+
+.company-form-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0 4px;
+	font: 600 10px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.company-form-field input {
+	padding: 7px 9px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: 400 13px var(--font-ui);
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.company-form-error {
+	margin: 0 4px;
+	color: #b0413e;
+	font: 400 11.5px var(--font-ui);
+}
+
+.company-form-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+	margin: 2px 4px 4px;
+}
+
+.company-form-actions button {
+	padding: 6px 12px;
+	border: 0;
+	border-radius: 8px;
+	font: 700 12px var(--font-ui);
+	cursor: pointer;
+}
+
+.company-form-cancel {
+	background: #efe6d6;
+	color: var(--ink);
+}
+
+.company-form-submit {
+	background: var(--ink);
+	color: #f6efe2;
+}
+
+.company-form-submit:disabled {
+	opacity: 0.5;
+	cursor: default;
+}

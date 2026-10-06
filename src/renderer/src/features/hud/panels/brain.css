@@ -1,0 +1,141 @@
+/* Brain panel: company memory grouped by project, with Remember / Forget. */
+.hud-brain-project {
+	margin-bottom: 14px;
+}
+
+.hud-brain-project > header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 8px;
+	margin: 4px 2px 8px;
+}
+
+.hud-brain-project > header strong {
+	font: 700 12px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.hud-brain-project > header code {
+	flex-basis: 100%;
+	font: 400 10px var(--font-mono);
+	color: var(--ink-soft);
+	overflow-wrap: anywhere;
+}
+
+.hud-brain-count {
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: #e7f1ea;
+	font: 700 10px var(--font-mono);
+	color: #2f7d55;
+}
+
+.hud-memory .hud-card-head {
+	justify-content: space-between;
+}
+
+.hud-memory-forget {
+	padding: 2px 8px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: transparent;
+	font: 600 10.5px var(--font-ui);
+	color: var(--ink-soft);
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 120ms;
+}
+
+.hud-memory:hover .hud-memory-forget,
+.hud-memory-forget:focus-visible {
+	opacity: 1;
+}
+
+.hud-memory-forget:hover {
+	border-color: #f1c9b0;
+	color: var(--status-blocked);
+}
+
+.hud-memory[data-forget="confirm"],
+.hud-memory[data-forget="forgetting"] {
+	border-color: #f1c9b0;
+	background: #fff8f3;
+}
+
+.hud-memory[data-forget="confirm"] .hud-card-actions button:first-child {
+	background: #b4532a;
+}
+
+/* Remember… */
+.hud-remember {
+	margin-bottom: 12px;
+	padding: 9px 11px;
+	border: 1px dashed #d9cdb7;
+	border-radius: 12px;
+	background: #fbf7ef;
+}
+
+.hud-remember summary {
+	cursor: pointer;
+	font: 700 12px var(--font-ui);
+	color: #2f7d55;
+}
+
+.hud-remember form {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	margin-top: 9px;
+}
+
+.hud-remember textarea,
+.hud-remember input,
+.hud-remember select {
+	width: 100%;
+	padding: 7px 9px;
+	border: 1px solid #e2d8c6;
+	border-radius: 8px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: 400 12px var(--font-ui);
+}
+
+.hud-remember textarea {
+	resize: vertical;
+	line-height: 1.4;
+}
+
+.hud-remember input {
+	font-family: var(--font-mono);
+	font-size: 11px;
+}
+
+.hud-remember input:invalid {
+	border-color: var(--status-blocked);
+}
+
+.hud-remember-row {
+	display: flex;
+	gap: 7px;
+}
+
+.hud-remember-row select {
+	flex: 0 0 40%;
+}
+
+.hud-remember button[type="submit"] {
+	padding: 8px 10px;
+	border: 0;
+	border-radius: 8px;
+	background: #2f7d55;
+	color: #fff;
+	font: 700 12px var(--font-ui);
+	cursor: pointer;
+}
+
+.hud-remember button[type="submit"]:disabled {
+	opacity: 0.5;
+	cursor: default;
+}

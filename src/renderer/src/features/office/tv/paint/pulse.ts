@@ -46,7 +46,8 @@ function paintWorkspaces(pen: Pen, pulse: OfficePulse): void {
 			maxWidth: 330,
 		});
 		const working = workspace.statuses.filter((status) => status === "working").length;
-		const summary = `${workspace.statuses.length} agents · ${working} working`;
+		const count = workspace.statuses.length;
+		const summary = `${count} ${count === 1 ? "agent" : "agents"} · ${working} working`;
 		pen.text(summary, [left + 28, top + 88], { font: font(400, 26, "mono"), color: INK.dim });
 		workspace.statuses.slice(0, 6).forEach((status, index) => {
 			const x = left + width - 48 - index * 52;

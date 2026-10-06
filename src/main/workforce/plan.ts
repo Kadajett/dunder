@@ -20,8 +20,8 @@ export type PaneTarget =
 export interface SpawnPlan {
 	readonly agent: RosterAgent;
 	readonly target: PaneTarget;
-	/** omp arguments after `--`. */
-	readonly args: readonly string[];
+	/** Session to resume (see `resumeRef`); undefined starts the worker fresh. */
+	readonly resume: string | undefined;
 	/** Where the shell writes the worker's appended system prompt before starting it. */
 	readonly promptPath: string;
 }
@@ -38,29 +38,16 @@ export interface PlanInput {
 	/** When each absent worker was first seen missing (see `trackMissing`). */
 	readonly missingSince: ReadonlyMap<string, number>;
 	readonly attempts: ReadonlyMap<string, SpawnAttempts>;
-	/** Session files that still exist on disk. */
-	readonly existingSessions: ReadonlySet<string>;
+	/** Worker name → the session it can resume right now (see `resumeRef`). */
+	readonly resumable: ReadonlyMap<string, string>;
 	/** Pane each worker last occupied; reused when it is back at a bare shell. */
 	readonly lastPane: ReadonlyMap<string, string>;
 	/** Directory holding each worker's appended system prompt, `<name>.md`. */
 	readonly promptDir: string;
 }
 
-/**
- * Every worker runs in yolo mode with the office protocol appended to its
- * system prompt, resuming its last session when the file survives.
- */
-export function ompArgs(
-	agent: RosterAgent,
-	existingSessions: ReadonlySet<string>,
-	promptPath: string,
-): string[] {
-	const args = ["--approval-mode=yolo", `--append-system-prompt=${promptPath}`];
-	if (agent.model !== undefined) args.push(`--model=${agent.model}`);
-	const session = agent.lastSessionPath;
-	if (session !== undefined && existingSessions.has(session)) args.push(`--resume=${session}`);
-	return args;
-}
+/** Failed starts after which a worker starts fresh: its saved session may be what fails. */
+const RESUME_ATTEMPTS = 2;
 
 /** Exponential backoff after a failed start: 10 s, 20 s, 40 s … capped at 10 min. */
 export function afterFailure(previous: SpawnAttempts | undefined, now: number): SpawnAttempts {
@@ -139,8 +126,9 @@ export function planSpawns(input: PlanInput): SpawnPlan[] {
 		if (claimed.has(key)) continue;
 		claimed.add(key);
 		const promptPath = join(input.promptDir, `${agent.name}.md`);
-		const args = ompArgs(agent, input.existingSessions, promptPath);
-		plans.push({ agent, target, args, promptPath });
+		const failures = input.attempts.get(agent.name)?.failures ?? 0;
+		const resume = failures < RESUME_ATTEMPTS ? input.resumable.get(agent.name) : undefined;
+		plans.push({ agent, target, resume, promptPath });
 	}
 	return plans;
 }

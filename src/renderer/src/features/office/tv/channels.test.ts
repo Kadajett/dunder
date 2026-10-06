@@ -4,8 +4,9 @@ import {
 	badgeVisible,
 	type ChannelId,
 	channelBadge,
-	nextChannel,
+	channelForKey,
 	parseStoredChannel,
+	stepChannel,
 	TV_CHANNELS,
 } from "./channels";
 import { frameKey, type TvInputs } from "./screen";
@@ -16,10 +17,25 @@ describe("channel line-up", () => {
 		let channel: ChannelId = TV_CHANNELS[0].id;
 		for (let i = 0; i < TV_CHANNELS.length; i++) {
 			seen.push(channel);
-			channel = nextChannel(channel);
+			channel = stepChannel(channel, 1);
 		}
 		expect(new Set(seen).size).toBe(5);
 		expect(channel).toBe(TV_CHANNELS[0].id);
+	});
+
+	it("steps backwards from the first channel to the last, and by more than a lap", () => {
+		expect(stepChannel("pulse", -1)).toBe("standby");
+		expect(stepChannel("standby", 1)).toBe("pulse");
+		expect(stepChannel("pulse", 7)).toBe("activity");
+		expect(stepChannel("weather", -6)).toBe("pulse");
+	});
+
+	it("maps remote number keys 1–5 to channels and ignores the rest", () => {
+		expect(channelForKey("1")).toBe("pulse");
+		expect(channelForKey("5")).toBe("standby");
+		expect(channelForKey("6")).toBeNull();
+		expect(channelForKey("0")).toBeNull();
+		expect(channelForKey("ArrowLeft")).toBeNull();
 	});
 
 	it("restores a stored channel and falls back to the first for junk", () => {

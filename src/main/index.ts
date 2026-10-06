@@ -4,6 +4,8 @@ import { app, BrowserWindow, Menu } from "electron";
 import { createCalisthenics } from "./calisthenics/service";
 import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
+import { registerCompaniesIpc } from "./companies/ipc";
+import { createCompanies } from "./companies/service";
 import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
@@ -21,7 +23,8 @@ import { TerminalRegistry } from "./terminal/registry";
 import { ScreensService } from "./terminal/screens-service";
 import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
-import { createWorkforce } from "./workforce/service";
+import { registerWorkforceIpc } from "./workforce/ipc";
+import { createStaffing, createWorkforce } from "./workforce/service";
 
 /** Resolves once the office server is up; screens size themselves from its layout. */
 const officeApi = Promise.withResolvers<HerdrApi>();
@@ -56,12 +59,17 @@ const workforce = createWorkforce(
 	(roster) => broadcast(IPC.roster, roster),
 );
 const models = createModels(workforce, (live) => broadcast(IPC.modelsLiveChanged, live));
+const staffing = createStaffing(workforce, models.catalog);
 const chief = createChief(app.getPath("userData"), {
 	roster: () => workforce.roster(),
 	modelOf: (name) => models.service.live()[name]?.model,
 	emit: (message) => broadcast(IPC.chiefMessage, message),
 });
 const aiCost = new CostTracker((cost) => broadcast(IPC.statsCostTodayChanged, cost));
+const companies = createCompanies(
+	{ userData: app.getPath("userData"), appRoot: app.getAppPath() },
+	(company) => broadcast(IPC.companiesChanged, company),
+);
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -136,6 +144,8 @@ app.whenReady().then(() => {
 	});
 	registerModelsIpc(models.catalog, models.service);
 	registerChiefIpc(chief);
+	registerCompaniesIpc(companies);
+	registerWorkforceIpc(staffing, app.getAppPath());
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),

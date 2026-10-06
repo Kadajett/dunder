@@ -5,15 +5,26 @@ import {
 	activeAgents,
 	adoptLiveAgents,
 	findByName,
+	fireAgent,
+	hireAgent,
+	type NewAgent,
 	syncSessions,
 	updateAgent,
 } from "@shared/company/roster-ops";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { type ChiefSeed, ensureChief } from "./chief";
-import { afterFailure, planSpawns, type SpawnAttempts, type SpawnPlan, trackMissing } from "./plan";
+import { harnessArgs, resumeRef } from "./harness";
+import {
+	afterFailure,
+	MISSING_GRACE_MS,
+	planSpawns,
+	type SpawnAttempts,
+	type SpawnPlan,
+	trackMissing,
+} from "./plan";
 import { agentPrompt } from "./prompt";
 import { loadRoster, saveRoster } from "./roster-store";
-import { executeSpawn, liveAgentNames, type OfficeCli } from "./spawner";
+import { executeSpawn, liveAgentNames, type OfficeCli, reclaimStartedAgent } from "./spawner";
 
 /** Re-check on a timer too: grace periods and backoffs expire without any herdr event. */
 const TICK_MS = 5_000;
@@ -97,6 +108,33 @@ export class WorkforceSupervisor {
 		await this.#commit(updateAgent(this.#roster, agent.id, { model }));
 	}
 
+	/** Put a new worker on the roster; it starts on the next reconcile, without a grace wait. */
+	async hire(input: NewAgent): Promise<void> {
+		if (!this.#roster) throw new Error("the workforce is still starting");
+		const now = this.#deps.now();
+		await this.#commit(hireAgent(this.#roster, input, new Date(now), this.#deps.newId()));
+		this.respawnSoon(input.name);
+	}
+
+	/** Let a roster worker go for good. False when the name is not on the roster. */
+	async fire(name: string): Promise<boolean> {
+		const agent = this.#roster && findByName(this.#roster, name);
+		if (!this.#roster || !agent) return false;
+		if (agent.firedAt === undefined) {
+			await this.#commit(fireAgent(this.#roster, agent.id, new Date(this.#deps.now())));
+		}
+		this.#missingSince.delete(name);
+		this.#attempts.delete(name);
+		return true;
+	}
+
+	/** Respawn this worker as soon as it is absent, skipping the grace period and any backoff. */
+	respawnSoon(name: string): void {
+		this.#missingSince.set(name, this.#deps.now() - MISSING_GRACE_MS);
+		this.#attempts.delete(name);
+		this.#kick();
+	}
+
 	handleSnapshot(snapshot: SessionSnapshot): void {
 		this.#snapshot = snapshot;
 		this.#kick();
@@ -141,10 +179,11 @@ export class WorkforceSupervisor {
 		if (roster !== current || this.#adoptPending) await this.#commit(roster);
 		this.#adoptPending = false;
 		this.#observe(roster, snapshot, now);
-		const existingSessions = new Set(
-			activeAgents(roster).flatMap((a) =>
-				a.lastSessionPath && this.#deps.sessionExists(a.lastSessionPath) ? [a.lastSessionPath] : [],
-			),
+		const resumable = new Map(
+			activeAgents(roster).flatMap((agent) => {
+				const ref = resumeRef(agent, this.#deps.sessionExists);
+				return ref === undefined ? [] : [[agent.name, ref] as const];
+			}),
 		);
 		const plans = planSpawns({
 			roster,
@@ -152,7 +191,7 @@ export class WorkforceSupervisor {
 			now,
 			missingSince: this.#missingSince,
 			attempts: this.#attempts,
-			existingSessions,
+			resumable,
 			lastPane: this.#lastPane,
 			promptDir: this.#deps.spawn.promptDir,
 		});
@@ -178,32 +217,46 @@ export class WorkforceSupervisor {
 		this.#missingSince = trackMissing(this.#missingSince, roster, snapshot, now);
 	}
 
-	/** Fresh each spawn, so protocol and role edits reach the next start. */
-	async #writePrompt(plan: SpawnPlan): Promise<void> {
+	/** Fresh each spawn, so protocol and role edits reach the next start. Returns the text. */
+	async #writePrompt(plan: SpawnPlan): Promise<string> {
 		const protocol = await readFile(this.#deps.spawn.protocolPath, "utf8");
 		const briefPath = this.#deps.spawn.rolePrompts?.[plan.agent.role];
 		const brief = briefPath === undefined ? undefined : await readFile(briefPath, "utf8");
+		const prompt = agentPrompt(protocol, plan.agent, brief);
 		await mkdir(dirname(plan.promptPath), { recursive: true });
-		await writeFile(plan.promptPath, agentPrompt(protocol, plan.agent, brief), "utf8");
+		await writeFile(plan.promptPath, prompt, "utf8");
+		return prompt;
 	}
 
 	async #spawn(plan: SpawnPlan): Promise<void> {
-		const { name } = plan.agent;
+		const { name, harness } = plan.agent;
 		try {
 			// The snapshot may lag; never start a second copy of a live worker.
 			if ((await liveAgentNames(this.#deps.cli)).has(name)) return;
-			await this.#writePrompt(plan);
-			console.info(`[workforce] respawning ${name}: omp ${plan.args.join(" ")}`);
-			await executeSpawn(this.#deps.cli, plan, {
+			const prompt = await this.#writePrompt(plan);
+			const { promptPath, resume } = plan;
+			const args = harnessArgs({ agent: plan.agent, promptPath, prompt, resume });
+			const resuming = resume ? ` resuming ${resume}` : "";
+			console.info(`[workforce] starting ${name}: ${harness}${resuming}`);
+			await executeSpawn(this.#deps.cli, plan, args, {
 				env: this.#deps.spawn.paneEnv,
 				onPane: (paneId) => this.#lastPane.set(name, paneId),
 			});
 			this.#attempts.delete(name);
 			console.info(`[workforce] ${name} is back at ${this.#lastPane.get(name)}`);
 		} catch (error) {
+			const paneId = this.#lastPane.get(name);
+			const reclaimed =
+				paneId !== undefined &&
+				(await reclaimStartedAgent(this.#deps.cli, paneId, name, harness).catch(() => false));
+			if (reclaimed) {
+				this.#attempts.delete(name);
+				console.warn(`[workforce] ${name} is up but held at startup:`, describe(error));
+				return;
+			}
 			const next = afterFailure(this.#attempts.get(name), this.#deps.now());
 			this.#attempts.set(name, next);
-			// A reused pane that refused omp is not a bare shell after all.
+			// A reused pane that refused the harness is not a bare shell after all.
 			if (plan.target.kind === "reuse") this.#lastPane.delete(name);
 			console.warn(
 				`[workforce] ${name} failed to start (attempt ${next.failures}):`,

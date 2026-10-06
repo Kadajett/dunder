@@ -19,11 +19,36 @@ export interface CompanyMemory {
 	readonly text: string;
 }
 
-export type MemoriesResult =
-	| { readonly state: "ok"; readonly cwd: string; readonly memories: readonly CompanyMemory[] }
-	| { readonly state: "unavailable"; readonly cwd: string; readonly reason: string };
+/** One project's Beads memories; `name` is its folder name. */
+export type MemoryProject =
+	| {
+			readonly state: "ok";
+			readonly cwd: string;
+			readonly name: string;
+			readonly memories: readonly CompanyMemory[];
+	  }
+	| {
+			readonly state: "unavailable";
+			readonly cwd: string;
+			readonly name: string;
+			readonly reason: string;
+	  };
 
-export type MarkSeenResult =
+/** Company memory: every project the office agents work in, plus the app's own. */
+export interface CompanyMemories {
+	readonly projects: readonly MemoryProject[];
+}
+
+/** Save a memory in one of the company's projects (`bd remember`). */
+export interface RememberRequest {
+	/** Must be one of the `cwd`s `memories()` returned. */
+	readonly cwd: string;
+	readonly text: string;
+	/** Slug to store it under; bd derives one from the text when omitted. */
+	readonly key?: string;
+}
+
+export type StatsActionResult =
 	| { readonly ok: true }
 	| { readonly ok: false; readonly reason: string };
 
@@ -31,8 +56,11 @@ export type MarkSeenResult =
 export interface OfficeStatsApi {
 	costToday(): Promise<CostToday>;
 	onCostToday(listener: (cost: CostToday) => void): Unsubscribe;
-	/** Company memory: `bd memories --json` in the office agents' working directory. */
-	memories(): Promise<MemoriesResult>;
+	/** Company memory: `bd memories --json` in every office project. */
+	memories(): Promise<CompanyMemories>;
+	remember(request: RememberRequest): Promise<StatsActionResult>;
+	/** Delete a memory by key from one office project (`bd forget`). */
+	forget(cwd: string, key: string): Promise<StatsActionResult>;
 	/** Tell herdr the user has seen an agent's finished work (`agent focus <name>`). */
-	markSeen(agentName: string): Promise<MarkSeenResult>;
+	markSeen(agentName: string): Promise<StatsActionResult>;
 }

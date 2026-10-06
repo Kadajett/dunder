@@ -2,6 +2,8 @@ import { Canvas } from "@react-three/fiber";
 import type { Layout } from "@shared/layout/schema";
 import { PCFSoftShadowMap } from "three";
 import { useChief } from "../chief/chief-store";
+import { EditLayer } from "../edit/EditLayer";
+import { useEdit } from "../edit/edit-store";
 import { useWorlds } from "./behaviour/useWorlds";
 import { AgentActor } from "./characters/AgentActor";
 import { SpeechBubble } from "./conversations/SpeechBubble";
@@ -23,13 +25,14 @@ export interface OfficeViewProps {
 	readonly model: OfficeModel;
 }
 
-/** The isometric office: a pure function of the layout and live herdr state. */
+/** The isometric office: a pure function of the layout and live herdr state (plus edit mode's pick layer). */
 export function OfficeView({ layout, model }: OfficeViewProps) {
 	const worlds = useWorlds(layout, model.seated);
 	const focusedDesk = useFocus((state) => state.target?.deskId);
 	const select = useSelection((state) => state.select);
 	const clearSelection = useSelection((state) => state.clear);
 	const openChief = useChief((state) => state.open);
+	const editing = useEdit((state) => state.editing);
 	const seatByDesk = new Map(model.seated.map((seat) => [seat.desk.id, seat]));
 
 	return (
@@ -37,7 +40,10 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 			shadows={{ type: PCFSoftShadowMap }}
 			dpr={[1, 2]}
 			orthographic
-			onPointerMissed={clearSelection}
+			onPointerMissed={() => {
+				clearSelection();
+				useEdit.getState().select(null);
+			}}
 		>
 			<color attach="background" args={["#efe6d6"]} />
 			<OfficeCamera room={layout.room} />
@@ -56,7 +62,9 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 						status={seat?.agent.status ?? "empty"}
 						paneId={seat?.agent.paneId}
 						screenLive={focusedDesk !== desk.id}
-						onOpenScreen={seat ? () => openScreen(seat) : yours ? openChief : undefined}
+						onOpenScreen={
+							editing ? undefined : seat ? () => openScreen(seat) : yours ? openChief : undefined
+						}
 					/>
 				);
 			})}
@@ -77,6 +85,7 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 					</Clickable>
 				);
 			})}
+			{editing ? <EditLayer layout={layout} /> : null}
 			<ZoneCards layout={layout} agents={model.agents} />
 		</Canvas>
 	);

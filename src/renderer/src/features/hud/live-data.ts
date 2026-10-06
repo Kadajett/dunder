@@ -1,4 +1,3 @@
-import type { Roster } from "@shared/company/roster";
 import type { CostToday } from "@shared/office-stats";
 import { useEffect, useState } from "react";
 
@@ -20,16 +19,4 @@ export function useCostToday(): CostToday {
 		return stats.onCostToday(setCost);
 	}, []);
 	return cost;
-}
-
-/** The workforce roster (roles, harnesses), when the main process has one. */
-export function useRoster(): Roster | null {
-	const [roster, setRoster] = useState<Roster | null>(null);
-	useEffect(() => {
-		if (!("roster" in window.office)) return;
-		const { roster: api } = window.office;
-		void api.get().then(setRoster);
-		return api.onChange(setRoster);
-	}, []);
-	return roster;
 }
