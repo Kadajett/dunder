@@ -1,12 +1,15 @@
+import { CaptureUpdateAction, getSceneVersion } from "@excalidraw/excalidraw";
+import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import type { BinaryFiles, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { createLogger } from "@shared/log/logger";
-import type { WhiteboardBoard } from "@shared/whiteboard";
+import type { WhiteboardBoard, WhiteboardScene } from "@shared/whiteboard";
 import { useEffect } from "react";
-import { type Editor, getSnapshot } from "tldraw";
-import { mergeRecords, missingRecords, remoteStep } from "./board-sync";
+import { remoteStep } from "./board-sync";
+import { changesScene, mergeElements } from "./scene-merge";
 
 const log = createLogger("whiteboard");
 
-/** Quiet time after Jeremy's last edit before the document goes to main. */
+/** Quiet time after Jeremy's last edit before the scene goes to main. */
 const SAVE_DEBOUNCE_MS = 500;
 
 /** Board to sync, and what to do when main says the editor needs a different document. */
@@ -15,57 +18,81 @@ interface SyncTarget {
 	readonly onReload: (board: WhiteboardBoard) => void;
 }
 
+/** Files (pasted images) the editor does not have yet. */
+function newFiles(api: ExcalidrawImperativeAPI, files: BinaryFiles | undefined) {
+	const known = api.getFiles();
+	return Object.values(files ?? {}).filter((file) => !Object.hasOwn(known, file.id));
+}
+
 /** Wire one mounted editor to main; returns the teardown, which saves any edit still waiting. */
-function startBoardSync(editor: Editor, { board, onReload }: SyncTarget): () => void {
-	const api = window.office.whiteboard;
+function startBoardSync(api: ExcalidrawImperativeAPI, { board, onReload }: SyncTarget): () => void {
+	const whiteboard = window.office.whiteboard;
 	let revision = board.revision;
+	// Sum of element versions already in step with main: changes that leave it alone
+	// (selection, zoom, merged remote elements) are not Jeremy's edits. Taken from
+	// main's scene: the editor loads its initial data after this runs.
+	let synced = getSceneVersion(board.scene?.elements ?? []);
 	let timer: number | undefined;
 	let saving = Promise.resolve();
 	let stopped = false;
 
-	const save = async (): Promise<void> => {
-		const snapshot = getSnapshot(editor.store).document;
-		const result = await api.put({ companyId: board.companyId, baseRevision: revision, snapshot });
+	const applyRemote = (scene: WhiteboardScene | null): void => {
+		if (!scene || stopped) return;
+		const local = api.getSceneElementsIncludingDeleted();
+		const files = newFiles(api, scene.files);
+		if (files.length > 0) api.addFiles(files);
+		if (!changesScene(local, scene.elements)) return;
+		const elements: ExcalidrawElement[] = mergeElements(local, scene.elements);
+		synced = getSceneVersion(elements);
+		// Not in Jeremy's undo history: agents' notes are theirs.
+		api.updateScene({ elements, captureUpdate: CaptureUpdateAction.NEVER });
+	};
+	const save = async (scene: WhiteboardScene): Promise<void> => {
+		const result = await whiteboard.put({
+			companyId: board.companyId,
+			baseRevision: revision,
+			scene,
+		});
 		if (result.state === "rejected") {
 			log.info("save rejected, reloading the board", { reason: result.reason });
 			if (!stopped) onReload(result.board);
 			return;
 		}
 		revision = Math.max(revision, result.board.revision);
-		if (result.merged && !stopped) {
-			mergeRecords(editor.store, missingRecords(editor.store, result.board.snapshot));
-		}
+		if (result.merged) applyRemote(result.board.scene);
 	};
 	// One save at a time, so each one's base revision includes the one before.
 	const flush = (): void => {
 		if (timer === undefined) return;
 		window.clearTimeout(timer);
 		timer = undefined;
+		// Read the scene now: by the time the previous save is done the editor may be gone (closed).
+		const scene = { elements: api.getSceneElementsIncludingDeleted(), files: api.getFiles() };
 		saving = saving
-			.then(save)
+			.then(() => save(scene))
 			.catch((error: unknown) => log.warn("whiteboard not saved", { error }));
 	};
-	const offEdits = editor.store.listen(
-		() => {
-			window.clearTimeout(timer);
-			timer = window.setTimeout(flush, SAVE_DEBOUNCE_MS);
-		},
-		{ source: "user", scope: "document" },
-	);
-	const offRemote = api.onChanged((change) => {
+	const offEdits = api.onChange((elements) => {
+		const version = getSceneVersion(elements);
+		if (version === synced) return;
+		synced = version;
+		window.clearTimeout(timer);
+		timer = window.setTimeout(flush, SAVE_DEBOUNCE_MS);
+	});
+	const offRemote = whiteboard.onChanged((change) => {
 		const step = remoteStep(change, board.companyId);
 		if (step.kind === "merge") {
-			mergeRecords(editor.store, step.records);
+			applyRemote({ elements: step.records });
 			revision = Math.max(revision, step.revision);
 		} else if (step.kind === "reload") {
 			onReload(step.board);
 		}
 	});
 	return () => {
+		flush();
 		stopped = true;
 		offEdits();
 		offRemote();
-		flush();
 	};
 }
 
@@ -75,12 +102,12 @@ function startBoardSync(editor: Editor, { board, onReload }: SyncTarget): () => 
  * live; a cleared board or another company's goes to `onReload`.
  */
 export function useBoardSync(
-	editor: Editor | null,
+	api: ExcalidrawImperativeAPI | null,
 	board: WhiteboardBoard,
 	onReload: (board: WhiteboardBoard) => void,
 ): void {
 	useEffect(() => {
-		if (!editor) return;
-		return startBoardSync(editor, { board, onReload });
-	}, [editor, board, onReload]);
+		if (!api) return;
+		return startBoardSync(api, { board, onReload });
+	}, [api, board, onReload]);
 }

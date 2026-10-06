@@ -33,7 +33,7 @@ function MarkerTray() {
 
 /**
  * The office whiteboard on the wall: centred on the origin, back plane at
- * z = 0, facing +z. Its face is the live tldraw document (agents' notes show up
+ * z = 0, facing +z. Its face is the live board (agents' notes show up
  * as they post them); a click opens the editor.
  */
 export function WallWhiteboard() {

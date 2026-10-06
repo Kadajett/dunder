@@ -1,42 +1,43 @@
-import type { TLRecord, TLStoreSnapshot } from "@tldraw/tlschema";
+import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import { z } from "zod";
 import type { Unsubscribe } from "./screens";
 
 /**
- * The office whiteboard: one tldraw document per company, owned by the main
- * process. Jeremy edits it in the renderer's tldraw editor; agents add sticky
- * notes and text from the shell with `office-board`. Main merges both.
+ * The office whiteboard: one Excalidraw scene per company, owned by the main
+ * process as plain JSON. Jeremy edits it in the renderer's Excalidraw editor;
+ * agents add sticky notes and text from the shell with `office-board`. Main
+ * merges both element by element (higher `version` wins, a tie goes to the
+ * lower `versionNonce`; deletions are `isDeleted` versions).
  */
 
-/**
- * A tldraw document snapshot, as the editor produces and loads it:
- * `getSnapshot(editor.store).document` / `loadSnapshot(editor.store, { document })`.
- * Main and renderer must use the same tldraw version (package.json pins it
- * exactly); main migrates and validates every snapshot it is given.
- */
-export type WhiteboardSnapshot = TLStoreSnapshot;
+/** One Excalidraw element (type-only: main never loads Excalidraw). */
+export type WhiteboardElement = ExcalidrawElement;
 
-/** One tldraw record. */
-export type WhiteboardRecord = TLRecord;
+/** The board's drawing: every element, deleted ones included, plus pasted images. */
+export interface WhiteboardScene {
+	readonly elements: readonly WhiteboardElement[];
+	readonly files?: BinaryFiles;
+}
 
 /** The current company's board. */
 export interface WhiteboardBoard {
 	readonly companyId: string;
 	/** Goes up by one on every accepted change: an editor put, an agent's note or text, a clear. */
 	readonly revision: number;
-	/** `null` until anything is drawn: start the editor on an empty document. */
-	readonly snapshot: WhiteboardSnapshot | null;
+	/** `null` until anything is drawn: start the editor on an empty scene. */
+	readonly scene: WhiteboardScene | null;
 }
 
 /** Why the board changed, for listeners that apply changes incrementally. */
 export type WhiteboardCause =
 	/** Jeremy's editor saved (another window may need to reload). */
 	| { readonly kind: "editor" }
-	/** An agent added shapes: exactly these records, already in `board.snapshot`. */
+	/** An agent added elements: exactly these (a note is a rectangle plus its bound text), already in `board.scene`. */
 	| {
 			readonly kind: "note" | "text";
 			readonly by: string;
-			readonly records: readonly WhiteboardRecord[];
+			readonly records: readonly WhiteboardElement[];
 	  }
 	/** The chief wiped every shape. */
 	| { readonly kind: "clear"; readonly by: string }
@@ -49,18 +50,18 @@ export interface WhiteboardChange {
 	readonly cause: WhiteboardCause;
 }
 
-/** `IPC.whiteboardPut`: the editor's whole document, debounced by the renderer. */
+/** `IPC.whiteboardPut`: the editor's whole scene, debounced by the renderer. */
 export interface WhiteboardPutRequest {
 	readonly companyId: string;
-	/** The revision the editor's document was last loaded at or merged up to. */
+	/** The revision the editor's scene was last loaded at or merged up to. */
 	readonly baseRevision: number;
-	readonly snapshot: WhiteboardSnapshot;
+	readonly scene: WhiteboardScene;
 }
 
 export type WhiteboardPutResult =
 	/**
-	 * Saved as `board`. `merged`: agents added shapes after `baseRevision`;
-	 * they were kept, so `board.snapshot` has them and the editor should take them.
+	 * Saved as `board`. `merged`: agents added elements after `baseRevision`;
+	 * they were kept, so `board.scene` has them and the editor should take them.
 	 */
 	| { readonly state: "saved"; readonly board: WhiteboardBoard; readonly merged: boolean }
 	/**

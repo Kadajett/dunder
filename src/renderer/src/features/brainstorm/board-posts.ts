@@ -1,6 +1,4 @@
 import type { WhiteboardChange } from "@shared/whiteboard";
-import { plainText } from "@shared/whiteboard-text";
-import { isShape } from "@tldraw/tlschema";
 import { create } from "zustand";
 
 /** An agent's latest note or text on the whiteboard, for its speech bubble. */
@@ -19,13 +17,12 @@ export const useBoardPosts = create<{ readonly posts: Readonly<Record<string, Bo
 	}),
 );
 
-/** The words of an agent's post: its note's or text's rich text. */
+/** The words of an agent's post: the text of its note's (bound) or plain text element. */
 export function postText(change: WhiteboardChange): string | undefined {
 	if (change.cause.kind !== "note" && change.cause.kind !== "text") return undefined;
-	const words = change.cause.records.flatMap((record) => {
-		if (!isShape(record) || (record.type !== "note" && record.type !== "text")) return [];
-		return [plainText(record.props.richText)];
-	});
+	const words = change.cause.records.flatMap((element) =>
+		element.type === "text" && !element.isDeleted ? [element.originalText || element.text] : [],
+	);
 	return words.join("\n").trim() || undefined;
 }
 
