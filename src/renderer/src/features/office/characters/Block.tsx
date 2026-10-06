@@ -94,8 +94,17 @@ export function mergeBlocks(items: readonly Cuboid[]): ColorGeometry[] {
 	return merged;
 }
 
-/** A static list of blocks in the parent's space, drawn as one mesh per colour. */
-export function Blocks({ items }: { readonly items: readonly Cuboid[] }) {
+/**
+ * A static list of blocks in the parent's space, drawn as one mesh per colour.
+ * Flat decals pass `castShadow={false}` to stay out of the shadow pass.
+ */
+export function Blocks({
+	items,
+	castShadow = true,
+}: {
+	readonly items: readonly Cuboid[];
+	readonly castShadow?: boolean;
+}) {
 	const merged = useMemo(() => mergeBlocks(items), [items]);
 	useEffect(
 		() => () => {
@@ -106,7 +115,12 @@ export function Blocks({ items }: { readonly items: readonly Cuboid[] }) {
 	return (
 		<>
 			{merged.map(({ color, geometry }) => (
-				<mesh key={color} castShadow geometry={geometry} material={materialFor(color)} />
+				<mesh
+					key={color}
+					castShadow={castShadow}
+					geometry={geometry}
+					material={materialFor(color)}
+				/>
 			))}
 		</>
 	);

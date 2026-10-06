@@ -23,7 +23,7 @@ const CAMERA_DISTANCE = 60;
 const TWEEN_SECONDS = 0.45;
 
 /** The room's silhouette: floor corners plus the tops of both walls. */
-function roomPoints(room: Room): Vector3[] {
+export function roomPoints(room: Room): Vector3[] {
 	const [w, d, h] = [room.width / 2, room.depth / 2, room.wallHeight];
 	return [
 		new Vector3(-w, 0, -d),

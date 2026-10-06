@@ -5,7 +5,7 @@ import { glassesBlocks, headwearBlocks } from "./accessories";
 import { animateRig } from "./animate";
 import { Block, Blocks, type Cuboid } from "./Block";
 import { animateExercise } from "./exercise";
-import { faceBlocks } from "./face";
+import { type FaceStyle, faceDecals, headBlocks } from "./face";
 import { hairBlocks } from "./hair";
 import { outfitBlocks, pantsColorFor, type Sleeve, sleeveFor } from "./outfits";
 import {
@@ -94,15 +94,20 @@ function armBlocks(sleeve: Sleeve, skin: string): Cuboid[] {
 	return blocks;
 }
 
-function headBlocks(style: AvatarStyle): Cuboid[] {
+function faceStyleOf(style: AvatarStyle): FaceStyle {
+	return {
+		skin: style.skin,
+		browColor: style.hair.color,
+		eyes: style.eyes,
+		brows: style.brows,
+		mouth: style.mouth,
+	};
+}
+
+/** Everything on the head that has volume: skull, brows, hair, glasses and headwear. */
+function headVolume(style: AvatarStyle): Cuboid[] {
 	return [
-		...faceBlocks({
-			skin: style.skin,
-			browColor: style.hair.color,
-			eyes: style.eyes,
-			brows: style.brows,
-			mouth: style.mouth,
-		}),
+		...headBlocks(faceStyleOf(style)),
 		...hairBlocks(style.hair.style, style.hair.color),
 		...(style.glasses ? glassesBlocks(style.glasses) : []),
 		...(style.headwear ? headwearBlocks(style.headwear.style, style.headwear.color) : []),
@@ -126,7 +131,8 @@ export function MiiCharacter({
 		if (pose === "exercising") animateExercise(rig, (Date.now() - workoutStartedAt) / 1_000);
 		else animateRig(rig, pose, activity, clock.elapsedTime + phase);
 	});
-	const head = useMemo(() => headBlocks(style), [style]);
+	const head = useMemo(() => headVolume(style), [style]);
+	const face = useMemo(() => faceDecals(faceStyleOf(style)), [style]);
 	const torso = useMemo(() => outfitBlocks(style.outfit), [style.outfit]);
 	const arm = useMemo(
 		() => armBlocks(sleeveFor(style.outfit), style.skin),
@@ -145,6 +151,7 @@ export function MiiCharacter({
 					<Block color={style.skin} at={[0, NECK_Y, 0]} size={[0.14, 0.06, 0.14]} />
 					<group ref={rig.head} position={[0, HEAD.y, 0]}>
 						<Blocks items={head} />
+						<Blocks items={face} castShadow={false} />
 					</group>
 					{([0, 1] as const).map((index) => (
 						<group
