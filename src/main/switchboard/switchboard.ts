@@ -94,6 +94,11 @@ export class Switchboard {
 	#queue: Pending[] = [];
 	#recent: OfficeMessage[] = [];
 	#snapshot: SessionSnapshot | undefined;
+	/**
+	 * Mail read before the first snapshot (the startup backlog): the sender's
+	 * name comes from the snapshot's pane → agent map, so it waits for one.
+	 */
+	#early: string[] = [];
 	#prompted = new Map<string, number>();
 	#tail: MailboxTail | undefined;
 	#timer: NodeJS.Timeout | undefined;
@@ -126,6 +131,12 @@ export class Switchboard {
 
 	updateSnapshot(snapshot: SessionSnapshot): void {
 		this.#snapshot = snapshot;
+		if (this.#early.length > 0) {
+			const early = this.#early;
+			this.#early = [];
+			log.info("accepting mail read before the first snapshot", { lines: early.length });
+			this.#accept(early);
+		}
 		void this.pump();
 	}
 
@@ -177,6 +188,10 @@ export class Switchboard {
 	}
 
 	#accept(lines: readonly string[]): void {
+		if (!this.#snapshot) {
+			this.#early.push(...lines);
+			return;
+		}
 		for (const line of lines) {
 			let json: unknown;
 			try {
