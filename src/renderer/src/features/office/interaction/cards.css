@@ -21,10 +21,12 @@
 	gap: 8px;
 }
 
+/* Same title face as the zone labels: heavy, tracked Inter capitals. */
 .world-card header strong {
 	flex: 1;
-	font: 700 13px var(--font-mono);
-	letter-spacing: 0.08em;
+	font: 800 12.5px var(--font-ui);
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
 }
 
 .card-close {
@@ -53,7 +55,7 @@
 }
 
 .card-row code {
-	font: 500 11px var(--font-mono);
+	font: 400 11px var(--font-mono);
 }
 
 .card-action {
@@ -97,7 +99,7 @@
 
 .mail-state {
 	float: right;
-	font: 500 10px var(--font-mono);
+	font: 400 10px var(--font-mono);
 	color: var(--ink-soft);
 }
 
