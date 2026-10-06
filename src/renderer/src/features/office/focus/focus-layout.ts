@@ -1,8 +1,9 @@
 import type { ScreenRect } from "./focus-store";
 
 /**
- * Width the expanded Chief of Staff chat claims on the right: the 360px card
- * (.chief-chat), the dock's 20px right margin (.chief) and a 24px gutter.
+ * Width the expanded Chief of Staff chat claims on the right. The camera needs
+ * it as a number; the source of truth is `--chief-dock-reserve` in
+ * chief/chief.css (keep the two equal).
  */
 export const CHIEF_DOCK_RESERVE = 404;
 
