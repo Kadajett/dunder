@@ -1,13 +1,14 @@
 import type { UpdateStatus } from "@shared/app-update";
 import type { HudPanel, ViewMode } from "./view-store";
 
-/** What the top-bar menu reflects: open panel, view, and the layout editor. */
+/** What the top-bar menu reflects: open panel, view, the layout editor and a running brainstorm. */
 export interface MenuState {
 	readonly panel: HudPanel | null;
 	readonly view: ViewMode;
 	readonly editing: boolean;
 	/** The editor has a saved layout to start from; until then it can't open. */
 	readonly editReady: boolean;
+	readonly brainstorming: boolean;
 }
 
 /** Panels reached through the menu; the Trust Inbox has its own button in the bar. */
@@ -17,7 +18,9 @@ export type MenuAction =
 	| { readonly kind: "panel"; readonly panel: MenuPanel }
 	| { readonly kind: "view"; readonly view: ViewMode }
 	| { readonly kind: "edit" }
-	| { readonly kind: "whiteboard" };
+	| { readonly kind: "whiteboard" }
+	/** Open the topic dialog, or end the running brainstorm. */
+	| { readonly kind: "brainstorm" };
 
 export interface MenuEntry {
 	readonly label: string;
@@ -71,6 +74,11 @@ export function menuSections(state: MenuState): readonly MenuSection[] {
 					}),
 				),
 				{ label: "Whiteboard", role: "menuitem", action: { kind: "whiteboard" } },
+				{
+					label: state.brainstorming ? "End brainstorm" : "Start brainstorm…",
+					role: "menuitem",
+					action: { kind: "brainstorm" },
+				},
 			],
 		},
 		{

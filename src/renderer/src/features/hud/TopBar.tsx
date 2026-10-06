@@ -1,5 +1,6 @@
 import "./hud.css";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { BrainstormChip } from "../brainstorm/BrainstormChip";
 import { CompanySwitcher } from "./CompanySwitcher";
 import { HudClock } from "./HudClock";
 import { HudMenu } from "./HudMenu";
@@ -39,6 +40,7 @@ export function TopBar({ snapshot }: TopBarProps) {
 		<header className="hud-topbar">
 			<CompanySwitcher snapshot={snapshot} />
 			<span className="hud-spacer" />
+			<BrainstormChip />
 			<TrustInboxButton snapshot={snapshot} />
 			<HudClock />
 			<HudMenu update={update} />

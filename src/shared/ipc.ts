@@ -1,4 +1,5 @@
 import type { AppUpdateApi } from "./app-update";
+import type { BrainstormApi } from "./brainstorm";
 import type { CalisthenicsApi } from "./calisthenics";
 import type { ChiefApi } from "./chief";
 import type { CompaniesApi } from "./company/company";
@@ -100,6 +101,11 @@ export const IPC = {
 	poolLeave: "pool:leave",
 	poolViewing: "pool:viewing",
 	poolShoot: "pool:shoot",
+	/** Brainstorm: the running one (invoke), Jeremy's start/end (invoke), every change (main → renderer). */
+	brainstormCurrent: "brainstorm:current",
+	brainstormStart: "brainstorm:start",
+	brainstormEnd: "brainstorm:end",
+	brainstormChanged: "brainstorm:changed",
 } as const;
 
 export type BridgeStatus =
@@ -144,4 +150,5 @@ export interface OfficeApi {
 	readonly update: AppUpdateApi;
 	readonly whiteboard: WhiteboardApi;
 	readonly pool: PoolApi;
+	readonly brainstorm: BrainstormApi;
 }

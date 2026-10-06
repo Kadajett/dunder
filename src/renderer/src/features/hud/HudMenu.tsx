@@ -1,5 +1,7 @@
 import type { UpdateStatus } from "@shared/app-update";
 import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useBrainstormDialog } from "../brainstorm/BrainstormDialog";
+import { endBrainstorm, useBrainstorm, useBrainstormStore } from "../brainstorm/brainstorm-store";
 import { useEdit } from "../edit/edit-store";
 import { toggleEditMode } from "../edit/edit-toggle";
 import { useWhiteboard } from "../whiteboard/whiteboard-store";
@@ -24,6 +26,10 @@ function runAction(action: MenuAction): void {
 			return;
 		case "whiteboard":
 			useWhiteboard.getState().setOpen(true);
+			return;
+		case "brainstorm":
+			if (useBrainstormStore.getState().current) endBrainstorm();
+			else useBrainstormDialog.getState().setOpen(true);
 			return;
 	}
 }
@@ -63,7 +69,7 @@ function MenuItem({
 			onClick={() => onRun(action)}
 		>
 			{action.kind === "panel" ? <PanelIcon panel={action.panel} /> : null}
-			{action.kind === "whiteboard" ? <BoardGlyph /> : null}
+			{action.kind === "whiteboard" || action.kind === "brainstorm" ? <BoardGlyph /> : null}
 			<span>{entry.label}</span>
 			{entry.hint ? <small>{entry.hint}</small> : null}
 			{entry.checked ? <span className="hud-check">✓</span> : null}
@@ -82,6 +88,7 @@ function MenuPopup({ update, onClose }: MenuPopupProps) {
 	const view = useHud((state) => state.view);
 	const editing = useEdit((state) => state.editing);
 	const editReady = useEdit((state) => state.base !== null);
+	const brainstorming = useBrainstorm() !== null;
 	const menu = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		menu.current?.querySelector<HTMLElement>(ITEMS)?.focus();
@@ -125,7 +132,7 @@ function MenuPopup({ update, onClose }: MenuPopupProps) {
 				aria-label="Office"
 				onKeyDown={onKeyDown}
 			>
-				{menuSections({ panel, view, editing, editReady }).map((section) => (
+				{menuSections({ panel, view, editing, editReady, brainstorming }).map((section) => (
 					<Fragment key={section.heading}>
 						<p className="hud-menu-heading">{section.heading}</p>
 						{section.entries.map((entry) => (

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Brainstorm at the office whiteboard: office-brainstorm start "<topic>", office-brainstorm end
+exec node "$(dirname "$(readlink -f "$0")")/../src/cli/office-brainstorm.mts" "$@"

@@ -51,11 +51,14 @@ export interface CoachOutcome {
 	readonly compacted: boolean;
 }
 
+/** What waiting for an agent to be free needs: its status and a clock. */
+export type FreeWaitDeps = Pick<CoachDeps, "statusOf" | "sleep" | "now">;
+
 /** Wait out a running turn. Blocked agents are skipped: their dialogs belong to the human. */
-async function whenFree(
+export async function whenFree(
 	agent: string,
-	deps: CoachDeps,
-	limits: CoachLimits,
+	deps: FreeWaitDeps,
+	limits: Pick<CoachLimits, "pollMs" | "queueMs">,
 ): Promise<"ready" | "blocked" | "gone" | "busy"> {
 	const deadline = deps.now() + limits.queueMs;
 	for (;;) {
