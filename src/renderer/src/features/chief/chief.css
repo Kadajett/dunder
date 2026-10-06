@@ -1,4 +1,14 @@
 /* Chief of Staff dock: dark pill bottom-right, chat card above it (docs/reference/orpex-office.png). */
+
+/*
+ * Width the open chat claims on the right edge: the 360px .chief-chat card, the
+ * dock's 20px right inset and a 24px gutter. Focus mode frames screens left of
+ * it; CHIEF_DOCK_RESERVE in office/focus/focus-layout.ts mirrors this value.
+ */
+:root {
+	--chief-dock-reserve: 404px;
+}
+
 .chief {
 	position: absolute;
 	right: 20px;
@@ -11,6 +21,14 @@
 	pointer-events: none;
 	font-family: var(--font-ui);
 	--chief-dot: var(--status-idle);
+}
+
+/*
+ * A focused screen (.focus-layer, z 1000) is framed beside the dock, so the dock
+ * stays above its click-to-leave backdrop and remains usable.
+ */
+.office-app:has(.focus-layer) .chief {
+	z-index: 1010;
 }
 
 .chief[data-presence="idle"],

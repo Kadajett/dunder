@@ -43,6 +43,29 @@
 	white-space: nowrap;
 }
 
+/*
+ * Chief chat open: centre the bar in the free strip left of the dock. With both
+ * insets set and auto margins, a bar wider than the strip pins to the left
+ * inset instead of clipping off-screen.
+ */
+.focus-layer[data-dock="open"] .focus-bar {
+	left: 16px;
+	right: var(--chief-dock-reserve);
+	width: max-content;
+	margin-inline: auto;
+	transform: none;
+}
+
+/*
+ * The full ~710px bar would run under the dock (chat or pill, which sit above
+ * focus mode) in narrower windows: drop the hint there, keep the way back.
+ */
+@media (max-width: 1250px) {
+	.focus-hint {
+		display: none;
+	}
+}
+
 .focus-back {
 	border: 0;
 	border-radius: 8px;

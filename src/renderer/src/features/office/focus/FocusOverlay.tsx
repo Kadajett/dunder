@@ -1,5 +1,6 @@
 import "./focus.css";
 import { useEffect } from "react";
+import { useChief } from "../../chief/chief-store";
 import { TerminalView } from "../../terminal/TerminalView";
 import { useFocus } from "./focus-store";
 
@@ -27,6 +28,7 @@ export function FocusOverlay() {
 	const target = useFocus((state) => state.target);
 	const rect = useFocus((state) => state.rect);
 	const leave = useFocus((state) => state.leave);
+	const dockOpen = useChief((state) => state.expanded);
 
 	useEffect(() => {
 		if (phase === null) return;
@@ -44,7 +46,7 @@ export function FocusOverlay() {
 	if (phase === null || !target) return null;
 	const showTerminal = phase === "focused" && rect !== null;
 	return (
-		<div className="focus-layer" data-phase={phase}>
+		<div className="focus-layer" data-phase={phase} data-dock={dockOpen ? "open" : "closed"}>
 			<button
 				type="button"
 				className="focus-backdrop"
