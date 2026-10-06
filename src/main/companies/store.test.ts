@@ -247,3 +247,88 @@ describe("whiteboard by the couches (office-hgr.3)", () => {
 		expect(boards(layout)).toEqual(["my-board"]);
 	});
 });
+
+describe("pool table replaces the clients lounge (office-dk7.2)", () => {
+	type Layout = Company["layout"];
+	type Decor = Layout["decor"][number];
+
+	const LOUNGE: readonly Decor[] = [
+		{
+			id: "crm-armchair-1",
+			kind: "armchair",
+			position: { x: -11.8, z: -1.6 },
+			rotation: 90,
+			elevation: 0,
+		},
+		{
+			id: "crm-armchair-2",
+			kind: "armchair",
+			position: { x: -11.8, z: -4.2 },
+			rotation: 90,
+			elevation: 0,
+		},
+		{
+			id: "crm-table",
+			kind: "coffee-table",
+			position: { x: -10.2, z: -2.9 },
+			rotation: 0,
+			elevation: 0,
+		},
+	];
+
+	async function load(layout: Layout): Promise<Layout> {
+		const company = { ...seedCompany("acme", "Acme", "", NOW), layout };
+		await writeFile(join(dir, "acme.json"), JSON.stringify(company));
+		const [loaded] = await loadCompanies(dir);
+		if (!loaded) throw new Error("company did not load");
+		return loaded.layout;
+	}
+
+	/** Saved after the whiteboard, before the pool table: the lounge where it shipped. */
+	function savedWithLounge(lounge: readonly Decor[] = LOUNGE): Layout {
+		const layout = seedCompany("acme", "Acme", "", NOW).layout;
+		const decor = layout.decor.filter(
+			(item) => item.kind !== "pool-table" && item.kind !== "cue-rack",
+		);
+		return {
+			...layout,
+			decor: [...decor, ...lounge],
+			migrations: ["sales-near-tv", "whiteboard-1"],
+		};
+	}
+
+	const ids = (layout: Layout, kinds: readonly string[]): string[] =>
+		layout.decor.filter((item) => kinds.includes(item.kind)).map((item) => item.id);
+
+	it("swaps a lounge left where it shipped for the table and cue rack, once", async () => {
+		const swapped = await load(savedWithLounge());
+		const lounge = ids(swapped, ["armchair", "coffee-table"]).filter((id) => id.startsWith("crm"));
+		expect(lounge).toEqual([]);
+		expect(ids(swapped, ["pool-table", "cue-rack"])).toEqual(["pool-table", "cue-rack"]);
+		expect(swapped.migrations).toEqual(DEFAULT_LAYOUT.migrations);
+		// A table Jeremy deletes afterwards stays deleted.
+		const deleted = {
+			...swapped,
+			decor: swapped.decor.filter((item) => item.kind !== "pool-table"),
+		};
+		expect(ids(await load(deleted), ["pool-table"])).toEqual([]);
+	});
+
+	it("keeps lounge pieces Jeremy moved, and adds no second table", async () => {
+		const moved = LOUNGE.map((item) =>
+			item.id === "crm-armchair-1" ? { ...item, position: { x: 2, z: 2 } } : item,
+		);
+		const own: Decor = {
+			id: "my-table",
+			kind: "pool-table",
+			position: { x: 6, z: 6 },
+			rotation: 0,
+			elevation: 0,
+		};
+		const layout = await load(savedWithLounge([...moved, own]));
+		expect(ids(layout, ["armchair", "coffee-table"]).filter((id) => id.startsWith("crm"))).toEqual([
+			"crm-armchair-1",
+		]);
+		expect(ids(layout, ["pool-table"])).toEqual(["my-table"]);
+	});
+});

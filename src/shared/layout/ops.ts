@@ -26,6 +26,8 @@ const WALL_ELEVATION: Partial<Record<DecorKind, number>> = {
 	"wall-placard": 2.8,
 	// Low enough to clear the window sills (2.4 m), with the marker tray at hand height.
 	whiteboard: 1.45,
+	// Cues stand from hip to above head height, below the window sills.
+	"cue-rack": 1.3,
 };
 
 /** `prefix-N` with the smallest N not used by any item of the layout. */

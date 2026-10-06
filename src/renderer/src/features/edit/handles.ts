@@ -34,6 +34,8 @@ const DECOR_SIZE: Record<DecorKind, Vec3> = {
 	"wall-tv": [2.2, 1.3, 0.15],
 	"wall-placard": [1.5, 0.9, 0.1],
 	whiteboard: [2.3, 1.3, 0.14],
+	"pool-table": [3.3, 0.9, 1.9],
+	"cue-rack": [0.95, 1.7, 0.15],
 };
 
 const WALL_KINDS: Partial<Record<DecorKind, true>> = {
@@ -42,6 +44,7 @@ const WALL_KINDS: Partial<Record<DecorKind, true>> = {
 	"wall-tv": true,
 	"wall-placard": true,
 	whiteboard: true,
+	"cue-rack": true,
 };
 
 /** Every editable item, in draw order. */
