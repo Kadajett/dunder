@@ -35,10 +35,13 @@ npm install
 npm run dev      # dev server with hot reload
 npm run office   # production build, supervised: survives edits, relaunches on update
 npm run check    # typecheck, lint and unit tests
-npm run scene:shot  # headless screenshot of the 3D scene (no Electron, stubbed IPC) + side-by-side vs the reference
+npm run scene:shot     # headless screenshot of the 3D scene (no Electron, stubbed IPC) + side-by-side vs the reference
+npm run scene:profile  # the same stubbed scene served at http://localhost:5179/profile.html with a frame probe
 ```
 
 `scene:shot` serves `scripts/scene-shot/page` with Vite and renders it in headless Chrome (a system Chrome/Chromium, Playwright's cached headless shell, or `$SCENE_SHOT_CHROME`). It writes `docs/screenshots/m5-office.png` and `docs/screenshots/m5-vs-reference.png`. Use it instead of a second app instance, which would start its own workforce on the live `office` session.
+
+`scene:profile` serves the same page for a browser you drive yourself; `window.__probe.measure(ms)` reports frame time, R3F loop CPU time, draw calls and WebGL calls per frame, `window.__probe.sceneStats()` mesh and shadow-caster counts per scene child.
 
 ## Architecture
 

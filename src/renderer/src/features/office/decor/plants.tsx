@@ -1,5 +1,6 @@
 import type { Group } from "three";
 import { usePokeReaction } from "../interaction/Poke";
+import { DYNAMIC } from "../scene/StaticBatch";
 import { PALETTE } from "./palette";
 import { Ball, Block } from "./parts";
 
@@ -76,7 +77,7 @@ function PottedPlant(props: { readonly pot: PotSpec; readonly leaves: readonly L
 	return (
 		<group>
 			<Planter pot={props.pot} />
-			<group ref={leaves} position={[0, props.pot.height, 0]}>
+			<group ref={leaves} position={[0, props.pot.height, 0]} userData={DYNAMIC}>
 				{props.leaves.map((leaf) => (
 					<Leaf key={`${leaf.yaw}:${leaf.tilt}`} leaf={leaf} />
 				))}
