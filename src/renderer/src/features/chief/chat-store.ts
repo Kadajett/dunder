@@ -1,6 +1,9 @@
 import type { ChiefMessage, ChiefSendResult, ChiefStatus } from "@shared/chief";
+import { createLogger } from "@shared/log/logger";
 import { create } from "zustand";
 import { upsertMessage } from "./chat-model";
+
+const log = createLogger("chief");
 
 /** Status is re-read this often too, since herdr status changes don't touch the roster. */
 const STATUS_POLL_MS = 5_000;
@@ -39,14 +42,14 @@ export function connectChief(): () => void {
 			(status) => {
 				if (live) useChiefChat.setState({ status });
 			},
-			(error: unknown) => console.warn("[chief] status failed", error),
+			(error: unknown) => log.warn("status failed", { error }),
 		);
 	};
 	void chief.history().then(
 		(history) => {
 			if (live) merge(history);
 		},
-		(error: unknown) => console.warn("[chief] history failed", error),
+		(error: unknown) => log.warn("history failed", { error }),
 	);
 	refresh();
 	const offs = [chief.onMessage((message) => merge([message]))];

@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { CHIEF_NAME, CHIEF_ROLE, CHIEF_WORKSPACE } from "@shared/chief";
 import type { Roster } from "@shared/company/roster";
 import { officeArgs, runHerdr } from "../herdr/cli";
 import type { ModelCatalog } from "../models/catalog";
+import { ARCHETYPE_ROLES, fileSeedSource } from "./seed";
 import { Staffing } from "./staffing";
 import { WorkforceSupervisor } from "./supervisor";
 
@@ -23,13 +25,17 @@ export function createWorkforce(
 	onChange: (roster: Roster) => void,
 ): WorkforceSupervisor {
 	const path = [join(paths.appRoot, "bin"), process.env["PATH"]].filter(Boolean).join(delimiter);
+	const briefs = join(paths.appRoot, "docs", "agents");
+	const rolePrompts = Object.fromEntries(
+		ARCHETYPE_ROLES.map((role) => [role, join(briefs, "archetypes", `${role}.md`)]),
+	);
 	return new WorkforceSupervisor({
 		rosterPath: join(paths.userData, "roster.json"),
 		spawn: {
 			promptDir: join(paths.userData, "agent-prompts"),
-			protocolPath: join(paths.appRoot, "docs", "agents", "office-protocol.md"),
+			protocolPath: join(briefs, "office-protocol.md"),
 			paneEnv: { PATH: path },
-			rolePrompts: { [CHIEF_ROLE]: join(paths.appRoot, "docs", "agents", "chief-of-staff.md") },
+			rolePrompts: { ...rolePrompts, [CHIEF_ROLE]: join(briefs, "chief-of-staff.md") },
 		},
 		cli: (args, timeoutMs) => runHerdr(officeArgs(args), timeoutMs),
 		sessionExists: existsSync,
@@ -42,6 +48,7 @@ export function createWorkforce(
 			workspaceLabel: CHIEF_WORKSPACE,
 			cwd: paths.appRoot,
 		},
+		seed: fileSeedSource(paths.userData, homedir()),
 	});
 }
 

@@ -3,11 +3,14 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { WORKOUT_SECONDS, type Workout, type WorkoutReason } from "@shared/calisthenics";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import { officeArgs, runHerdr } from "../herdr/cli";
 import { type CoachDeps, type CompactionExpectation, coachAgent } from "./coach";
 import { CompactionWatch, hasConversation } from "./compaction-watch";
 import { isDailyDue, localDateKey } from "./schedule";
 import { type CalisthenicsSettings, loadSettings, saveSettings } from "./settings";
+
+const log = createLogger("calisthenics");
 
 /** A workout counts as running until everyone has had time to walk back to their desk. */
 const ACTIVE_MS = (WORKOUT_SECONDS + 20) * 1_000;
@@ -94,7 +97,7 @@ export class Calisthenics {
 		const workout: Workout = { id: randomUUID(), reason, startedAt: Date.now(), agents };
 		this.#workouts.push(workout);
 		this.#deps.publish(workout);
-		console.info(`[calisthenics] ${reason} workout for ${agents.join(", ")}`);
+		log.info("workout started", { reason, agents });
 		if (isGroup(reason)) void this.#coachAll(agents);
 		return workout;
 	}
@@ -122,7 +125,7 @@ export class Calisthenics {
 		const coached = agents.filter((name) => agentNamed(name)?.agent === "omp");
 		await Promise.all(
 			coached.map(async (name) => {
-				console.info(`[calisthenics] ${name}:`, await coachAgent(name, deps));
+				log.info("agent coached", { agent: name, ...(await coachAgent(name, deps)) });
 			}),
 		);
 	}
@@ -163,7 +166,7 @@ export class Calisthenics {
 			await saveSettings(this.#deps.settingsPath, next);
 			this.startWorkout("daily", agents);
 		} catch (error) {
-			console.warn("[calisthenics] daily check failed:", error);
+			log.warn("daily check failed", { error });
 		} finally {
 			this.#checking = false;
 		}

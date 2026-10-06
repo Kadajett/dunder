@@ -6,6 +6,7 @@ import { agent, pane, snapshot, workspace } from "@shared/herdr/fixtures/snapsho
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliResult } from "../herdr/cli";
 import { MISSING_GRACE_MS } from "./plan";
+import type { SeedSource } from "./seed";
 import { WorkforceSupervisor } from "./supervisor";
 
 const workspaces = [workspace("w1", "sales")];
@@ -42,7 +43,7 @@ function fakeCli(live: () => readonly LiveEntry[]) {
 	};
 }
 
-async function supervisor(live: () => readonly LiveEntry[] = () => []) {
+async function supervisor(live: () => readonly LiveEntry[] = () => [], seed?: SeedSource) {
 	const changes: Roster[] = [];
 	let id = 0;
 	const sup = new WorkforceSupervisor({
@@ -57,6 +58,7 @@ async function supervisor(live: () => readonly LiveEntry[] = () => []) {
 		onChange: (roster) => changes.push(roster),
 		now: () => clock,
 		newId: () => `id-${++id}`,
+		...(seed && { seed }),
 	});
 	running.push(sup);
 	await sup.start();
@@ -215,5 +217,29 @@ describe("WorkforceSupervisor", () => {
 		sup.handleSnapshot(staffed);
 		await sup.settled();
 		expect(calls.filter((c) => c[1] === "start")).toHaveLength(1);
+	});
+
+	it("hires the seeded staff into an empty roster once and starts them without a grace wait", async () => {
+		let loads = 0;
+		let applied = 0;
+		const seed: SeedSource = {
+			load: async () => {
+				loads++;
+				return [{ name: "dwight", role: "backend", workspaceLabel: "sales", cwd: "/work" }];
+			},
+			applied: async () => {
+				applied++;
+			},
+		};
+		const { sup } = await supervisor(() => [], seed);
+		expect(await savedNames()).toEqual(["dwight"]);
+		expect(applied).toBe(1);
+		sup.handleSnapshot(snapshot({ workspaces, panes: [pane("w1:p2")], agents: [] }));
+		await sup.settled();
+		expect(calls.find((c) => c[1] === "start")?.slice(0, 3)).toEqual(["agent", "start", "dwight"]);
+		sup.stop();
+
+		await supervisor(() => [], seed);
+		expect([loads, applied]).toEqual([1, 1]);
 	});
 });

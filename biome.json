@@ -30,7 +30,8 @@
 			},
 			"suspicious": {
 				"noExplicitAny": "error",
-				"noImportCycles": "error"
+				"noImportCycles": "error",
+				"noConsole": "error"
 			}
 		}
 	},
@@ -57,6 +58,10 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["src/shared/log/console-sink.ts"],
+			"linter": { "rules": { "suspicious": { "noConsole": "off" } } }
 		}
 	]
 }

@@ -15,7 +15,16 @@ export default defineConfig({
 		projects: [
 			{
 				extends: true,
-				test: { name: "unit", include: ["src/**/*.test.ts"], exclude: [CONTRACT_TESTS] },
+				test: {
+					name: "unit",
+					include: [
+						"src/**/*.test.ts",
+						"site/src/**/*.test.ts",
+						"scripts/**/*.test.mts",
+						"packages/installer/src/**/*.test.ts",
+					],
+					exclude: [CONTRACT_TESTS],
+				},
 			},
 			{
 				// Against the real `office` herdr session: run with `npm run test:contract`.

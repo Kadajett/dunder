@@ -1,0 +1,42 @@
+{
+	"name": "dunder-ai",
+	"version": "0.1.0",
+	"description": "Installs Dunder, the 3D office where your AI coding agents work, with herdr, omp and bd",
+	"keywords": [
+		"dunder",
+		"herdr",
+		"omp",
+		"ai",
+		"agents",
+		"installer"
+	],
+	"homepage": "https://dunder.yougotserved.dev",
+	"author": "Jeremy Stover <jeremy.ryan.stover@gmail.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Kadajett/dunder.git",
+		"directory": "packages/installer"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"type": "module",
+	"bin": {
+		"dunder-ai": "dist/cli.js"
+	},
+	"files": [
+		"dist"
+	],
+	"os": [
+		"linux"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json"
+	},
+	"dependencies": {
+		"zod": "^4.6.5"
+	}
+}

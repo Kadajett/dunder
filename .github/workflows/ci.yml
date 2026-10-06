@@ -1,0 +1,44 @@
+name: CI
+
+# Pushes to main run these same checks through release.yml, which gates releases on them.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            site/package-lock.json
+
+      - run: npm ci
+
+      # Installs site/ dependencies too, which the site typecheck inside `check` relies on.
+      - run: npm run site:build
+
+      # Typecheck, lint, unit tests. Contract tests need a live herdr server and stay local.
+      - run: npm run check
+
+      - name: Installer version matches the app
+        run: node scripts/release/sync-installer-version.mts --check
+
+      - run: npm run installer:build

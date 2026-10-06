@@ -51,7 +51,7 @@ export function CompanyForm(props: CompanyFormProps) {
 				<input
 					value={subtitle}
 					maxLength={120}
-					placeholder="AI-native company · runs on herdr"
+					placeholder="AI-native company · runs on Dunder"
 					onChange={(event) => setSubtitle(event.target.value)}
 				/>
 			</label>

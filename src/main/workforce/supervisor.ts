@@ -12,6 +12,7 @@ import {
 	updateAgent,
 } from "@shared/company/roster-ops";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import { type ChiefSeed, ensureChief } from "./chief";
 import { harnessArgs, resumeRef } from "./harness";
 import {
@@ -24,6 +25,7 @@ import {
 } from "./plan";
 import { agentPrompt } from "./prompt";
 import { loadRoster, saveRoster } from "./roster-store";
+import { type SeedSource, seedRoster } from "./seed";
 import { executeSpawn, liveAgentNames, type OfficeCli, reclaimStartedAgent } from "./spawner";
 
 /** Re-check on a timer too: grace periods and backoffs expire without any herdr event. */
@@ -51,11 +53,11 @@ export interface SupervisorDeps {
 	readonly newId: () => string;
 	/** Hired into the roster on the first reconcile when it has no chief of staff. */
 	readonly chief?: ChiefSeed;
+	/** The installer's starting staff, hired once into an empty roster at start. */
+	readonly seed?: SeedSource;
 }
 
-function describe(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
+const log = createLogger("workforce");
 
 /**
  * Keeps the roster's workers employed: adopts the live staff on first run,
@@ -86,6 +88,9 @@ export class WorkforceSupervisor {
 		this.#roster = loaded.roster;
 		this.#adoptPending = !loaded.existed;
 		this.#deps.onChange(loaded.roster);
+		await this.#applySeed().catch((error: unknown) =>
+			log.warn("could not hire the starting staff", { error }),
+		);
 		this.#timer = setInterval(() => this.#kick(), TICK_MS);
 		this.#timer.unref();
 		this.#kick();
@@ -99,6 +104,19 @@ export class WorkforceSupervisor {
 
 	roster(): Roster | undefined {
 		return this.#roster;
+	}
+
+	/** First run only: the seeded workers join an empty roster and start without a grace wait. */
+	async #applySeed(): Promise<void> {
+		const { seed } = this.#deps;
+		const roster = this.#roster;
+		if (!seed || !roster || roster.agents.length > 0) return;
+		const hires = await seed.load();
+		if (hires.length === 0) return;
+		await this.#commit(seedRoster(roster, hires, new Date(this.#deps.now()), this.#deps.newId));
+		await seed.applied();
+		for (const hire of hires) this.respawnSoon(hire.name);
+		log.info("hired the starting staff", { agents: hires.map((hire) => hire.name) });
 	}
 
 	/** Remember the model (`selector[:thinking]`) a worker respawns with. No-op off the roster. */
@@ -158,9 +176,7 @@ export class WorkforceSupervisor {
 	async #drain(): Promise<void> {
 		do {
 			this.#rerun = false;
-			await this.#reconcile().catch((error: unknown) =>
-				console.warn("[workforce] reconcile failed:", describe(error)),
-			);
+			await this.#reconcile().catch((error: unknown) => log.warn("reconcile failed", { error }));
 		} while (this.#rerun);
 		this.#running = false;
 	}
@@ -236,14 +252,13 @@ export class WorkforceSupervisor {
 			const prompt = await this.#writePrompt(plan);
 			const { promptPath, resume } = plan;
 			const args = harnessArgs({ agent: plan.agent, promptPath, prompt, resume });
-			const resuming = resume ? ` resuming ${resume}` : "";
-			console.info(`[workforce] starting ${name}: ${harness}${resuming}`);
+			log.info("starting agent", { agent: name, harness, resume });
 			await executeSpawn(this.#deps.cli, plan, args, {
 				env: this.#deps.spawn.paneEnv,
 				onPane: (paneId) => this.#lastPane.set(name, paneId),
 			});
 			this.#attempts.delete(name);
-			console.info(`[workforce] ${name} is back at ${this.#lastPane.get(name)}`);
+			log.info("agent is back", { agent: name, paneId: this.#lastPane.get(name) });
 		} catch (error) {
 			const paneId = this.#lastPane.get(name);
 			const reclaimed =
@@ -251,17 +266,14 @@ export class WorkforceSupervisor {
 				(await reclaimStartedAgent(this.#deps.cli, paneId, name, harness).catch(() => false));
 			if (reclaimed) {
 				this.#attempts.delete(name);
-				console.warn(`[workforce] ${name} is up but held at startup:`, describe(error));
+				log.warn("agent is up but held at startup", { agent: name, error });
 				return;
 			}
 			const next = afterFailure(this.#attempts.get(name), this.#deps.now());
 			this.#attempts.set(name, next);
 			// A reused pane that refused the harness is not a bare shell after all.
 			if (plan.target.kind === "reuse") this.#lastPane.delete(name);
-			console.warn(
-				`[workforce] ${name} failed to start (attempt ${next.failures}):`,
-				describe(error),
-			);
+			log.warn("agent failed to start", { agent: name, attempt: next.failures, error });
 		}
 	}
 }

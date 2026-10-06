@@ -54,7 +54,7 @@ export async function ensureOfficeServer(deps: SessionDeps, timeoutMs = 10_000):
 		const office = await findOfficeSession(deps);
 		if (office?.running) return office.socket_path;
 	}
-	throw new Error(`herdr office session did not start within ${timeoutMs}ms`);
+	throw new Error(`herdr "office" session did not start within ${timeoutMs}ms`);
 }
 
 export function defaultSessionDeps(logPath: string): SessionDeps {

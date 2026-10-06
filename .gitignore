@@ -8,6 +8,11 @@
 # Build and dependencies
 node_modules/
 out/
+out-next/
+out-prev/
 dist/
 *.log
 .vite/
+release/
+release-assets/
+.wrangler/

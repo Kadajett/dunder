@@ -1,6 +1,7 @@
 import "./hud-company.css";
 import type { Company } from "@shared/company/company";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import { useState } from "react";
 import {
 	createCompany,
@@ -10,6 +11,8 @@ import {
 	useCompany,
 } from "../company/company-store";
 import { CompanyForm } from "./CompanyForm";
+
+const log = createLogger("companies");
 
 type MenuMode = "list" | "create" | "rename";
 
@@ -94,7 +97,7 @@ function CompanyList({ current, onMode, onClose }: CompanyListProps) {
 	const choose = (id: string): void => {
 		onClose();
 		if (id === current.id) return;
-		switchCompany(id).catch((error: unknown) => console.warn("[companies] switch failed:", error));
+		switchCompany(id).catch((error: unknown) => log.warn("switch failed", { company: id, error }));
 	};
 	return (
 		<>

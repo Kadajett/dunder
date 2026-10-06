@@ -4,9 +4,12 @@ import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/700.css";
 import "./styles.css";
+import { setLogLevel } from "@shared/log/logger";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
+
+setLogLevel(import.meta.env.DEV ? "debug" : "info");
 
 const root = document.getElementById("root");
 if (!root) throw new Error("index.html is missing #root");

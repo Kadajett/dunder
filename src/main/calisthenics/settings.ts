@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { createLogger } from "@shared/log/logger";
 import { z } from "zod";
 import { dailyTimeSchema } from "./schedule";
 
@@ -23,7 +24,7 @@ export async function loadSettings(path: string): Promise<CalisthenicsSettings> 
 	try {
 		return settingsSchema.parse(JSON.parse(text));
 	} catch (error) {
-		console.warn(`[calisthenics] ignoring invalid ${path}:`, error);
+		createLogger("calisthenics").warn("ignoring invalid settings", { path, error });
 		return DEFAULTS;
 	}
 }

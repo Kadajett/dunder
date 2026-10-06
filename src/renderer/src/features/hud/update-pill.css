@@ -1,0 +1,157 @@
+/* Stable-mode update pill, its popovers and the agent-request countdown banner. */
+.update {
+	position: relative;
+}
+
+.update-pill {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 13px;
+	font: 700 12.5px var(--font-ui);
+	white-space: nowrap;
+}
+
+.update-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--status-working);
+	box-shadow: 0 0 0 3px #3fae6a33;
+}
+
+.update-pill.update-failed {
+	border-color: #e7b7a6;
+	background: #fdeee8;
+	color: #b0391a;
+}
+
+.update-building {
+	color: var(--ink-soft);
+	cursor: progress;
+}
+
+.update-spinner {
+	width: 11px;
+	height: 11px;
+	border: 2px solid #d8cdb9;
+	border-top-color: var(--status-working);
+	border-radius: 50%;
+	animation: update-spin 0.8s linear infinite;
+}
+
+@keyframes update-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.update-backdrop {
+	position: fixed;
+	inset: 0;
+	border: 0;
+	background: transparent;
+	cursor: default;
+}
+
+.update-popover {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 0;
+	width: 380px;
+	padding: 12px;
+	border-radius: 12px;
+	background: var(--panel);
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 14px 32px #6b553a33;
+}
+
+.update-heading {
+	margin: 0 0 8px;
+	font: 700 13px var(--font-ui);
+}
+
+.update-note {
+	margin: 8px 0;
+	font: 400 12px var(--font-ui);
+	color: var(--ink-soft);
+}
+
+.update-commits {
+	max-height: 220px;
+	margin: 0;
+	padding: 0;
+	overflow: auto;
+	list-style: none;
+	font: 400 12px var(--font-ui);
+}
+
+.update-commits li {
+	padding: 4px 0;
+	border-bottom: 1px solid #f0e8da;
+}
+
+.update-commits code {
+	font: 600 11px var(--font-mono);
+	color: var(--ink-soft);
+}
+
+.update-log {
+	max-height: 240px;
+	margin: 0;
+	padding: 8px;
+	overflow: auto;
+	border-radius: 8px;
+	background: #26231f;
+	color: #efe6d6;
+	font: 400 11px / 1.45 var(--font-mono);
+	white-space: pre-wrap;
+}
+
+.update-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.update-actions button,
+.update-banner button {
+	padding: 6px 12px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	background: transparent;
+	font: 600 12px var(--font-ui);
+}
+
+.update-actions .update-primary,
+.update-banner .update-banner-apply {
+	border-color: #2f7d55;
+	background: #2f7d55;
+	color: #fff;
+}
+
+.update-banner {
+	position: fixed;
+	top: 84px;
+	left: 50%;
+	z-index: 700;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	max-width: min(720px, calc(100vw - 40px));
+	padding: 10px 12px 10px 16px;
+	transform: translateX(-50%);
+	border: 1px solid #ece3d3;
+	border-radius: 12px;
+	background: var(--panel);
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 14px 32px #6b553a33;
+	font: 400 13px var(--font-ui);
+}
+
+.update-banner > span {
+	flex: 1;
+}

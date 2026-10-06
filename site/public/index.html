@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dunder · an office for your AI coding agents</title>
+<meta name="description" content="Dunder is a 3D office where your AI coding agents work. Hire them, give them desks, watch them ship. One line to install on Linux.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Dunder · an office for your AI coding agents">
+<meta property="og:description" content="Limitless agents in a paperless world. Hire AI coding agents, give them desks, watch them ship.">
+<meta property="og:image" content="https://dunder.yougotserved.dev/screenshot.png">
+<meta property="og:url" content="https://dunder.yougotserved.dev/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#f3ecdf">
+<style>
+:root{
+	--paper:#fffdf8;--cream:#f3ecdf;--sand:#e9dcc6;--line:#e2d5bf;--ink:#2b2621;--muted:#6a5e52;
+	--green:#2f7a4d;--green-soft:#e3efe5;--wood:#c8925a;--blue:#2f5fd0;
+	--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--cream);color:var(--ink);
+	font:17px/1.6 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+	background-image:radial-gradient(circle at 15% -10%,#fbf3e4 0,transparent 45%),radial-gradient(circle at 100% 0,#efe2cb 0,transparent 40%)}
+a{color:var(--green);text-decoration-thickness:1.5px;text-underline-offset:3px}
+code,kbd,pre{font-family:var(--mono)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.brand{display:flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none}
+.brand img{width:38px;height:38px}
+.brand b{font-size:20px;letter-spacing:-.01em}
+.brand span{font:12px var(--mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.gh{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:var(--paper);
+	border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:15px;text-decoration:none}
+.gh:hover{border-color:var(--ink)}
+.hero{text-align:center;padding:48px 0 24px}
+.eyebrow{display:inline-block;font:12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--green);
+	background:var(--green-soft);padding:6px 12px;border-radius:999px;margin-bottom:22px}
+h1{font-size:clamp(38px,6vw,64px);line-height:1.05;letter-spacing:-.035em;margin:0 auto 18px;max-width:14ch}
+.lede{font-size:20px;color:var(--muted);max-width:40ch;margin:0 auto 10px}
+.wink{font-style:italic;color:var(--wood);margin:0 0 34px}
+.install{max-width:760px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:20px;
+	padding:22px;box-shadow:0 26px 60px -36px rgba(80,55,20,.45);text-align:left}
+.label{font:12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.cmd{display:flex;align-items:center;gap:12px;background:var(--ink);color:#f7efe2;border-radius:12px;
+	padding:16px 18px;font:15px/1.5 var(--mono);overflow-x:auto;white-space:nowrap;user-select:all}
+.cmd::before{content:"$";color:#9ad1ac;user-select:none}
+.cmd.alt{background:var(--cream);color:var(--ink);border:1px dashed #cdbd9f}
+.cmd.alt::before{color:var(--green)}
+.hint{font-size:14px;color:var(--muted);margin:10px 2px 18px}
+.hint:last-child{margin-bottom:0}
+.hint code{font-size:13px;background:var(--cream);padding:1px 6px;border-radius:6px}
+.shot{margin:56px auto 0;max-width:1040px;padding:12px;background:#3a332c;border-radius:22px;
+	box-shadow:0 40px 80px -40px rgba(60,40,15,.6)}
+.shot img{display:block;width:100%;height:auto;border-radius:12px}
+.shot figcaption{color:#d9ccb8;font-size:14px;text-align:center;padding:12px 8px 4px}
+section{padding:72px 0 8px}
+h2{font-size:32px;letter-spacing:-.02em;margin:0 0 8px}
+.sub{color:var(--muted);margin:0 0 28px;max-width:60ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;font-size:15px;color:var(--muted)}
+.card .tag{float:right;font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+	border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:12px}
+ol.steps li{counter-increment:s;background:var(--paper);border:1px solid var(--line);border-radius:14px;
+	padding:14px 18px 14px 58px;position:relative;font-size:16px}
+ol.steps li::before{content:counter(s);position:absolute;left:16px;top:13px;width:28px;height:28px;border-radius:9px;
+	display:grid;place-items:center;background:var(--green);color:#fff;font:600 14px var(--mono)}
+.downloads{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;font-weight:600;
+	text-decoration:none;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.note{margin:28px 0 0;display:inline-block;background:#fff6c9;color:#5a4a12;padding:14px 18px;border-radius:4px;
+	transform:rotate(-1.2deg);box-shadow:0 10px 20px -14px rgba(90,70,10,.6);font-size:15px}
+footer{margin-top:80px;border-top:1px solid var(--line);padding:28px 0 48px;color:var(--muted);font-size:14px;
+	display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
+footer .who{color:var(--ink);font-weight:700}
+@media (max-width:640px){body{font-size:16px}.hero{padding-top:24px}.cmd{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+	<header>
+		<a class="brand" href="/"><img src="/favicon.svg" alt=""><b>Dunder</b><span>dunder.ai</span></a>
+		<a class="gh" href="https://github.com/Kadajett/dunder">GitHub &rarr;</a>
+	</header>
+
+	<main>
+		<div class="hero">
+			<div class="eyebrow">dunder.ai &middot; an office for your AI agents</div>
+			<h1>Your coding agents finally have an office.</h1>
+			<p class="lede">Hire AI coding agents, give them desks, and watch them ship &mdash; in a cozy 3D office backed by real terminals.</p>
+			<p class="wink">Limitless agents in a paperless world.</p>
+
+			<div class="install">
+				<p class="label">Install on Linux (x86_64)</p>
+				<div class="cmd">curl -fsSL https://dunder.yougotserved.dev/install.sh | sh</div>
+				<p class="hint">Unattended? Add <code>sh -s -- --yes</code>. No sudo, and it asks before installing anything. <a href="/install.sh">Read the script</a> first &mdash; we would.</p>
+				<p class="label">Already on Node.js 22+?</p>
+				<div class="cmd alt">npx dunder-ai@latest</div>
+				<p class="hint">Same setup, minus the Node.js check.</p>
+			</div>
+		</div>
+
+		<figure class="shot">
+			<img src="/screenshot.png" width="1600" height="1000" alt="The Dunder office: agents at their desks, a sales pit, a mailroom, a library for company memory, and a Chief of Staff online in the corner.">
+			<figcaption>The office floor: agents at their desks, the Trust Inbox up top, your Chief of Staff in the corner.</figcaption>
+		</figure>
+
+		<section>
+			<h2>What it installs</h2>
+			<p class="sub">Everything lives in your home directory. Pieces you already have are left alone; anything missing is installed only after you say yes.</p>
+			<div class="grid">
+				<div class="card"><span class="tag">app</span><h3>Dunder</h3><p>The desktop app as an AppImage in <code>~/.local/share/dunder</code>, a <code>dunder</code> launcher in <code>~/.local/bin</code>, and a desktop entry.</p></div>
+				<div class="card"><span class="tag">terminals</span><h3>herdr</h3><p>The terminal multiplexer the office runs on. Every agent works in a real pane of the <code>office</code> session.</p></div>
+				<div class="card"><span class="tag">agents</span><h3>omp</h3><p>The coding agent your staff are made of. Claude Code and Codex are welcome on the floor too.</p></div>
+				<div class="card"><span class="tag">memory</span><h3>bd (beads)</h3><p>A git-backed issue tracker the team uses for tasks and long-term memory.</p></div>
+				<div class="card"><span class="tag">if missing</span><h3>Node.js</h3><p>Only when you don't have 22 or newer: a private copy in <code>~/.local/share/dunder/node</code>, checksum-verified against nodejs.org.</p></div>
+			</div>
+		</section>
+
+		<section>
+			<h2>What happens when you run it</h2>
+			<p class="sub">Five steps, nothing hidden, nothing installed without asking.</p>
+			<ol class="steps">
+				<li>Checks you're on Linux x86_64 and have Node.js 22+ (installing a private copy if not).</li>
+				<li>Runs <code>npx dunder-ai@latest setup</code>, which checks for git, curl, herdr, omp and bd.</li>
+				<li>Shows you the plan and asks before installing anything that's missing.</li>
+				<li>Downloads the latest Dunder release, verifies it, and adds the launcher.</li>
+				<li>Run <code>dunder</code>. Your first hires are already waiting at reception.</li>
+			</ol>
+			<p class="note">Bears. Beets. Background agents.</p>
+		</section>
+
+		<section>
+			<h2>Rather grab it yourself?</h2>
+			<p class="sub">Direct downloads always point at the newest release on GitHub.</p>
+			<div class="downloads">
+				<a class="btn primary" href="/download/latest/linux-x64">Download AppImage (x86_64)</a>
+				<a class="btn" href="https://github.com/Kadajett/dunder/releases/latest">All releases &amp; .deb</a>
+				<a class="btn" href="/latest.json">latest.json</a>
+			</div>
+		</section>
+	</main>
+
+	<footer>
+		<span><span class="who">Dunder</span> &middot; dunder.ai &middot; made in Indiana. Hoosier represent.</span>
+		<span>Open source on <a href="https://github.com/Kadajett/dunder">GitHub</a>. Not affiliated with any regional paper company in Scranton, PA.</span>
+	</footer>
+</div>
+</body>
+</html>

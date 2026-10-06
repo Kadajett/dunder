@@ -24,12 +24,12 @@ describe("company store", () => {
 		await saveCompany(nested, acme);
 		await saveCompany(nested, office);
 		expect(await loadCompanies(nested)).toEqual([office, acme]);
-		expect((await readdir(nested)).sort()).toEqual(["acme.json", "herdr-office.json"]);
+		expect((await readdir(nested)).sort()).toEqual(["acme.json", "dunder-mifflin.json"]);
 	});
 
 	it("seeds today's office on first run and makes it current", async () => {
 		const opened = await openCompanies(dir, NOW);
-		expect(opened).toEqual({ companies: [firstCompany(NOW)], currentId: "herdr-office" });
+		expect(opened).toEqual({ companies: [firstCompany(NOW)], currentId: "dunder-mifflin" });
 		expect(await openCompanies(dir, LATER)).toEqual(opened);
 	});
 
@@ -43,9 +43,9 @@ describe("company store", () => {
 	it("falls back to the oldest company when current.json names a missing one", async () => {
 		await saveCompany(dir, firstCompany(NOW));
 		await saveCurrentId(dir, "gone");
-		expect((await openCompanies(dir, LATER)).currentId).toBe("herdr-office");
+		expect((await openCompanies(dir, LATER)).currentId).toBe("dunder-mifflin");
 		expect(JSON.parse(await readFile(join(dir, "current.json"), "utf8"))).toEqual({
-			id: "herdr-office",
+			id: "dunder-mifflin",
 		});
 	});
 
@@ -56,7 +56,7 @@ describe("company store", () => {
 		// A company whose id disagrees with its file name is invalid too.
 		await writeFile(join(dir, "other.json"), JSON.stringify(valid));
 		const opened = await openCompanies(dir, NOW);
-		expect(opened.companies.map((company) => company.id)).toEqual(["herdr-office"]);
+		expect(opened.companies.map((company) => company.id)).toEqual(["dunder-mifflin"]);
 		const stamp = "invalid-2026-10-06T12-00-00.000Z";
 		expect(await readFile(join(dir, `broken.json.${stamp}`), "utf8")).toBe('{"version":99}');
 		expect(await readFile(join(dir, `current.json.${stamp}`), "utf8")).toBe("not json");

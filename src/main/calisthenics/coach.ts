@@ -1,4 +1,7 @@
 import type { AgentStatus } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
+
+const log = createLogger("calisthenics");
 
 /** omp's manual compaction slash command; herdr's prompt submits it like typed input. */
 export const COMPACT_COMMAND = "/compact";
@@ -77,7 +80,7 @@ async function compact(
 		await deps.prompt(agent, COMPACT_COMMAND);
 	} catch (error) {
 		expectation.cancel();
-		console.warn(`[calisthenics] ${agent}: /compact not sent:`, error);
+		log.warn("/compact not sent", { agent, error });
 		return undefined;
 	}
 	return expectation.done;
@@ -102,7 +105,7 @@ export async function coachAgent(
 	try {
 		await deps.prompt(agent, REFLECTION_PROMPT);
 	} catch (error) {
-		console.warn(`[calisthenics] ${agent}: reflection prompt not sent:`, error);
+		log.warn("reflection prompt not sent", { agent, error });
 		return { result: "failed", compacted };
 	}
 	return { result: "prompted", compacted };

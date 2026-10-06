@@ -130,10 +130,10 @@ describe("office-say mailbox path", () => {
 		["the office-say CLI", mailboxPath],
 		["the app", officeMailboxPath],
 	])("%s honours XDG_STATE_HOME and falls back to ~/.local/state", (_who, path) => {
-		expect(path({ XDG_STATE_HOME: "/s" }, "/home/j")).toBe("/s/herdr-office/mailbox.ndjson");
-		expect(path({}, "/home/j")).toBe("/home/j/.local/state/herdr-office/mailbox.ndjson");
+		expect(path({ XDG_STATE_HOME: "/s" }, "/home/j")).toBe("/s/dunder/mailbox.ndjson");
+		expect(path({}, "/home/j")).toBe("/home/j/.local/state/dunder/mailbox.ndjson");
 		expect(path({ XDG_STATE_HOME: "" }, "/home/j")).toBe(
-			"/home/j/.local/state/herdr-office/mailbox.ndjson",
+			"/home/j/.local/state/dunder/mailbox.ndjson",
 		);
 	});
 });

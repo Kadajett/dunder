@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import {
 	deliveryText,
 	exceedsPairLimit,
@@ -11,6 +12,8 @@ import { z } from "zod";
 import { type HerdrApi, HerdrApiError } from "../herdr/api-client";
 import { type Pending, planDeliveries } from "./delivery-plan";
 import { type MailboxTail, tailMailbox } from "./mailbox";
+
+const log = createLogger("switchboard");
 
 const stateSchema = z.object({ offset: z.number().int().nonnegative() });
 const RECENT_LIMIT = 50;
@@ -58,7 +61,7 @@ export class Switchboard {
 				void writeFile(this.#deps.statePath, JSON.stringify({ offset }));
 				void this.pump();
 			},
-			onError: (error) => console.warn(`switchboard: mailbox read failed: ${error.message}`),
+			onError: (error) => log.child("mailbox").warn("read failed", error),
 		});
 		this.#timer = setInterval(() => void this.pump(), 5_000);
 	}

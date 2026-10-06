@@ -1,0 +1,17 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dunder-site",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+	"minify": true,
+	"account_id": "0eed3a2b30da22403053702da618f805",
+	"workers_dev": false,
+	"preview_urls": false,
+	"routes": [{ "pattern": "dunder.yougotserved.dev", "custom_domain": true }],
+	// Static files (landing page, screenshot, icon) are served before the worker runs.
+	"assets": { "directory": "./public", "html_handling": "auto-trailing-slash" },
+	// Lets src/index.ts inline the repo-root install.sh as a string.
+	"rules": [{ "type": "Text", "globs": ["**/*.sh"], "fallthrough": false }],
+	"vars": { "GITHUB_REPO": "Kadajett/dunder" },
+	"observability": { "enabled": true }
+}

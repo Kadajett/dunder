@@ -1,3 +1,4 @@
+import type { AppUpdateApi } from "./app-update";
 import type { CalisthenicsApi } from "./calisthenics";
 import type { ChiefApi } from "./chief";
 import type { CompaniesApi } from "./company/company";
@@ -72,6 +73,11 @@ export const IPC = {
 	workforceHire: "workforce:hire",
 	workforceFire: "workforce:fire",
 	workforceRestart: "workforce:restart",
+	/** Stable-mode updates: status (invoke), changes (main → renderer), apply and cancel (invoke). */
+	updateStatus: "update:status",
+	updateChanged: "update:changed",
+	updateApply: "update:apply",
+	updateCancel: "update:cancel",
 } as const;
 
 export type BridgeStatus =
@@ -111,4 +117,5 @@ export interface OfficeApi {
 	readonly stats: OfficeStatsApi;
 	readonly companies: CompaniesApi;
 	readonly workforce: WorkforceApi;
+	readonly update: AppUpdateApi;
 }

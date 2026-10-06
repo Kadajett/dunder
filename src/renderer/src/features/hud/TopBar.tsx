@@ -7,6 +7,7 @@ import { HudClock } from "./HudClock";
 import { InboxGlyph, PanelIcon } from "./icons";
 import { useTrustInbox } from "./inbox-store";
 import { StatTiles } from "./StatTiles";
+import { UpdatePill } from "./UpdatePill";
 import { type HudPanel, useHud, type ViewMode } from "./view-store";
 
 export interface TopBarProps {
@@ -102,6 +103,7 @@ export function TopBar({ model, snapshot }: TopBarProps) {
 			<NavPills />
 			<StatTiles model={model} />
 			<span className="hud-spacer" />
+			<UpdatePill />
 			<TrustInboxButton snapshot={snapshot} />
 			<HudClock />
 			<EditButton />

@@ -5,16 +5,6 @@ import { COMPANY_VERSION, type Company, type CompanySummary } from "./company";
 /** Longest slug before a de-duplication suffix (ids cap at 48 characters). */
 const SLUG_MAX = 40;
 
-/** `HERDR OFFICE` → `Herdr Office`. */
-function titleCase(text: string): string {
-	return text
-		.toLowerCase()
-		.replace(
-			/(^|[\s-])(\p{L})/gu,
-			(_match, gap: string, letter: string) => gap + letter.toUpperCase(),
-		);
-}
-
 /** `Keller Talent!` → `keller-talent`; never empty. */
 export function slugify(name: string): string {
 	const slug = name
@@ -57,11 +47,10 @@ export function seedCompany(id: string, name: string, subtitle: string, now: Dat
 	};
 }
 
-/** First run: today's office, named after its wall sign. */
+/** First run: a fresh install opens at the Scranton branch; existing companies keep their names. */
 export function firstCompany(now: Date): Company {
-	const { title, subtitle } = DEFAULT_LAYOUT.room.sign;
-	const name = titleCase(title);
-	return seedCompany(slugify(name), name, subtitle, now);
+	const name = "Dunder Mifflin";
+	return seedCompany(slugify(name), name, "Scranton branch · runs on Dunder", now);
 }
 
 export function summarize(company: Company): CompanySummary {

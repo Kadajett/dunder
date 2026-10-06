@@ -1,10 +1,13 @@
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import type { AgentModel, SetModelResult } from "@shared/models";
 import { SessionTail } from "../omp/session-tail";
 import type { OfficeCli } from "../workforce/spawner";
 import type { ModelCatalog } from "./catalog";
 import { applyModelLines, NO_SESSION_MODEL, type SessionModel } from "./session-model";
 import { checkModelRequest, deliveryFor, modelSpec, switchCommand } from "./switch-plan";
+
+const log = createLogger("models");
 
 const POLL_MS = 1_000;
 /** A sent switch that leaves no model_change by then failed inside omp (e.g. no API key). */
@@ -133,7 +136,7 @@ export class ModelService {
 				if (request?.baseline === undefined) continue;
 				if (model.modelChanges > request.baseline) this.#requests.delete(name);
 				else if (Date.now() - request.sentAt > LAND_TIMEOUT_MS) {
-					console.warn(`[models] ${name} never switched to ${request.model}`);
+					log.warn("model switch never landed", { agent: name, model: request.model });
 					this.#requests.delete(name);
 				}
 			}
@@ -166,7 +169,7 @@ export class ModelService {
 			if (request.baseline !== undefined) continue;
 			const result = await this.#deliver(name);
 			if (result.state === "rejected") {
-				console.warn(`[models] queued switch for ${name} dropped: ${result.reason}`);
+				log.warn("queued model switch dropped", { agent: name, reason: result.reason });
 			}
 		}
 		this.#emit();

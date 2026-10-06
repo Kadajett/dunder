@@ -8,11 +8,14 @@ import {
 } from "@shared/chief";
 import type { RosterAgent } from "@shared/company/roster";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import { SessionTail } from "../omp/session-tail";
 import type { OfficeCli } from "../workforce/spawner";
 import { loadChiefHistory, saveChiefHistory } from "./history-store";
 import { type ChiefReply, extractReplies, INITIAL_REPLY_STATE, type ReplyState } from "./replies";
 import { chiefPrompt, planChiefSend } from "./send-plan";
+
+const log = createLogger("chief");
 
 const POLL_MS = 1_000;
 /** Longest chat message the history file accepts (`chiefMessageSchema`). */
@@ -144,7 +147,7 @@ export class ChiefService {
 			this.#replyState = state;
 			this.#acceptReplies(basename(tail.path), replies);
 		} catch (error) {
-			console.warn("[chief] could not read the chief's session log:", error);
+			log.warn("could not read the chief's session log", { error });
 		} finally {
 			this.#polling = false;
 		}
@@ -228,7 +231,7 @@ export class ChiefService {
 
 	#persist(): void {
 		saveChiefHistory(this.#deps.historyPath, this.#messages).catch((error: unknown) =>
-			console.warn("[chief] could not save the chat:", error),
+			log.warn("could not save the chat", { error }),
 		);
 	}
 }

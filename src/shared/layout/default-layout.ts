@@ -21,7 +21,7 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 			{ wall: "left", offset: 17.6, width: 2.6, height: 1.1, sill: 2.4 },
 			{ wall: "right", offset: 21.5, width: 3.4, height: 1.8, sill: 1.4 },
 		],
-		sign: { title: "HERDR OFFICE", subtitle: "AI-NATIVE COMPANY · RUNS ON HERDR", offset: 13.2 },
+		sign: { title: "DUNDER MIFFLIN", subtitle: "SCRANTON BRANCH · RUNS ON DUNDER", offset: 13.2 },
 	},
 	zones: [
 		{

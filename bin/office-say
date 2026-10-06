@@ -1,3 +1,3 @@
 #!/bin/sh
-# Talk to a colleague in the herdr office: office-say <agent-name> "<message>"
+# Talk to a colleague in the office: office-say <agent-name> "<message>"
 exec node "$(dirname "$(readlink -f "$0")")/../src/cli/office-say.mts" "$@"

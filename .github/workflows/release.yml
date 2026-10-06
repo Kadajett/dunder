@@ -1,0 +1,160 @@
+name: Release
+
+# Every push to main runs the checks; when package.json carries a version without a `v<version>`
+# tag yet, it also builds Dunder, creates the GitHub release, publishes `dunder-ai` to npm and
+# deploys dunder.yougotserved.dev. Run it manually to rebuild and re-publish the current version.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/ci.yml
+
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - id: plan
+        name: Is this version released yet?
+        run: node scripts/release/plan.mts ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+
+  build:
+    name: Build and create the GitHub release
+    needs: [checks, plan]
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the AppImage and deb
+        run: npm run dist
+
+      - name: Stage assets and latest.json
+        run: node scripts/release/stage-assets.mts release release-assets
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+            echo "::notice::Re-uploaded the assets of the existing release $TAG"
+            exit 0
+          fi
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" release-assets/* $prerelease \
+            --title "Dunder $VERSION" --generate-notes --target "$GITHUB_SHA"
+
+  npm:
+    name: Publish dunder-ai to npm
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Skip without NPM_TOKEN
+        if: env.NPM_TOKEN == ''
+        run: echo "::notice title=npm publish skipped::The NPM_TOKEN secret is not set; dunder-ai@$VERSION was not published. See docs/RELEASING.md."
+
+      - if: env.NPM_TOKEN != ''
+        uses: actions/checkout@v4
+
+      - if: env.NPM_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - if: env.NPM_TOKEN != ''
+        run: npm ci --ignore-scripts
+
+      - name: Set the installer version to the app version
+        if: env.NPM_TOKEN != ''
+        run: node scripts/release/sync-installer-version.mts
+
+      - if: env.NPM_TOKEN != ''
+        run: npm run installer:build
+
+      - name: Publish with provenance
+        if: env.NPM_TOKEN != ''
+        working-directory: packages/installer
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if npm view "dunder-ai@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice::dunder-ai@$VERSION is already on npm"
+            exit 0
+          fi
+          dist_tag="latest"
+          case "$VERSION" in *-*) dist_tag="next" ;; esac
+          npm publish --provenance --access public --tag "$dist_tag"
+
+  site:
+    name: Deploy dunder.yougotserved.dev
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Skip without Cloudflare credentials
+        if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == ''
+        run: echo "::notice title=Site deploy skipped::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set; the site was not deployed. See docs/RELEASING.md."
+
+      - if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        uses: actions/checkout@v4
+
+      - if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        run: npm run site:deploy

@@ -14,7 +14,7 @@ export function officeMailboxPath(
 	home: string,
 ): string {
 	const state = env["XDG_STATE_HOME"] || join(home, ".local", "state");
-	return join(state, "herdr-office", "mailbox.ndjson");
+	return join(state, "dunder", "mailbox.ndjson");
 }
 
 export interface SwitchboardService {

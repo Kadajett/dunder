@@ -14,7 +14,7 @@ export function mailboxPath(
 	home: string,
 ): string {
 	const state = env["XDG_STATE_HOME"] || join(home, ".local", "state");
-	return join(state, "herdr-office", "mailbox.ndjson");
+	return join(state, "dunder", "mailbox.ndjson");
 }
 
 const NAME = /^[a-z][a-z0-9_-]{0,31}$/;

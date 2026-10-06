@@ -1,6 +1,11 @@
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { type BridgeStatus, IPC } from "@shared/ipc";
+import { createLogger } from "@shared/log/logger";
 import { app, BrowserWindow, Menu } from "electron";
+import { migrateLegacyDirs } from "./app-dirs";
+import { createAppUpdater } from "./app-update/create";
+import { registerAppUpdateIpc } from "./app-update/ipc";
 import { createCalisthenics } from "./calisthenics/service";
 import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
@@ -10,6 +15,7 @@ import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
 import { registerIpc } from "./ipc";
+import { configureMainLogging } from "./logging";
 import { registerModelsIpc } from "./models/ipc";
 import { createModels } from "./models/service";
 import { CostTracker } from "./office-stats/cost-tracker";
@@ -25,6 +31,15 @@ import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
 import { registerWorkforceIpc } from "./workforce/ipc";
 import { createStaffing, createWorkforce } from "./workforce/service";
+
+configureMainLogging(process.env, !app.isPackaged);
+// Before anything reads userData or the state dir: carry a herdr office install over.
+migrateLegacyDirs({
+	appData: app.getPath("appData"),
+	userData: app.getPath("userData"),
+	env: process.env,
+	home: homedir(),
+});
 
 /** Resolves once the office server is up; screens size themselves from its layout. */
 const officeApi = Promise.withResolvers<HerdrApi>();
@@ -70,6 +85,16 @@ const companies = createCompanies(
 	{ userData: app.getPath("userData"), appRoot: app.getAppPath() },
 	(company) => broadcast(IPC.companiesChanged, company),
 );
+/** Stable mode: notices new commits, rebuilds and relaunches only when asked. */
+const appUpdate = createAppUpdater({
+	root: app.getAppPath(),
+	userData: app.getPath("userData"),
+	emit: (update) => broadcast(IPC.updateChanged, update),
+	shutdown: () => {
+		stopServices();
+		return stopScreens();
+	},
+});
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -97,6 +122,7 @@ async function startBridge(): Promise<void> {
 				models.service.update(snapshot);
 				chief.update(snapshot);
 				aiCost.update(snapshot);
+				appUpdate.updateSnapshot(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -114,7 +140,7 @@ function createWindow(): void {
 		height: 1000,
 		minWidth: 960,
 		minHeight: 640,
-		title: "herdr office",
+		title: "Dunder",
 		backgroundColor: "#efe6d6",
 		show: false,
 		webPreferences: {
@@ -146,6 +172,7 @@ app.whenReady().then(() => {
 	registerChiefIpc(chief);
 	registerCompaniesIpc(companies);
 	registerWorkforceIpc(staffing, app.getAppPath());
+	registerAppUpdateIpc(appUpdate);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -155,16 +182,20 @@ app.whenReady().then(() => {
 	void startBridge();
 	weather.start();
 	calisthenics.start();
-	workforce.start().catch((error: unknown) => console.warn("[workforce] not started:", error));
+	workforce
+		.start()
+		.catch((error: unknown) => createLogger("workforce").warn("not started", { error }));
 	models.service.start();
 	chief.start();
 	aiCost.start();
+	void appUpdate.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
 });
 
-app.on("window-all-closed", () => {
+/** Stop every in-process service (on quit, and before an update relaunches the app). */
+function stopServices(): void {
 	bridge?.stop();
 	weather.stop();
 	calisthenics.stop();
@@ -173,18 +204,27 @@ app.on("window-all-closed", () => {
 	models.service.stop();
 	chief.stop();
 	aiCost.stop();
+	appUpdate.stop();
+}
+
+app.on("window-all-closed", () => {
+	stopServices();
 	app.quit();
 });
 
 let screensStopped = false;
-app.on("will-quit", (event) => {
-	if (screensStopped) return;
-	// Hold the quit until every herdr child has released its pane and exited.
-	event.preventDefault();
+/** Wait (bounded) until every herdr child has released its pane and exited. */
+function stopScreens(): Promise<void> {
 	const timeout = Promise.withResolvers<void>();
 	setTimeout(timeout.resolve, SHUTDOWN_TIMEOUT_MS);
-	void Promise.race([screens.shutdown(), timeout.promise]).finally(() => {
+	return Promise.race([screens.shutdown(), timeout.promise]).finally(() => {
 		screensStopped = true;
-		app.quit();
 	});
+}
+
+app.on("will-quit", (event) => {
+	if (screensStopped) return;
+	// Hold the quit until the screens are released.
+	event.preventDefault();
+	void stopScreens().finally(() => app.quit());
 });

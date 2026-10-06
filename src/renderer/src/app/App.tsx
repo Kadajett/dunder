@@ -52,7 +52,7 @@ export function App() {
 			<HireDialog snapshot={snapshot} />
 			{status.state === "connected" ? null : (
 				<div className="bridge-banner" data-state={status.state}>
-					herdr office session: {status.state === "error" ? status.message : status.state}
+					herdr session “office”: {status.state === "error" ? status.message : status.state}
 				</div>
 			)}
 		</div>

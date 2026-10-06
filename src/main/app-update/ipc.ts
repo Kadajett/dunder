@@ -1,0 +1,15 @@
+import { IPC } from "@shared/ipc";
+import { ipcMain } from "electron";
+import { z } from "zod";
+import type { AppUpdater } from "./service";
+
+const reasonSchema = z.string().max(500).optional();
+
+/** `window.office.update` handlers. Renderer payloads are untrusted. */
+export function registerAppUpdateIpc(updater: AppUpdater): void {
+	ipcMain.handle(IPC.updateStatus, () => updater.status());
+	ipcMain.handle(IPC.updateApply, (_event, reason: unknown) =>
+		updater.apply(reasonSchema.safeParse(reason).data),
+	);
+	ipcMain.handle(IPC.updateCancel, () => updater.cancel());
+}

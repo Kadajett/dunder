@@ -1,7 +1,10 @@
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { createLogger } from "@shared/log/logger";
 import type { CostToday } from "@shared/office-stats";
 import { SessionTail } from "../omp/session-tail";
 import { addToDays, costOnDay, dayKey, parseCostLine } from "./cost-entries";
+
+const log = createLogger("office-stats");
 
 const POLL_MS = 5_000;
 
@@ -64,7 +67,7 @@ export class CostTracker {
 		try {
 			for (const { tail, days } of this.#sessions.values()) {
 				const lines = await tail.lines().catch((error: unknown) => {
-					console.warn(`[office-stats] cannot read ${tail.path}:`, error);
+					log.warn("cannot read session log", { path: tail.path, error });
 					return [];
 				});
 				addToDays(

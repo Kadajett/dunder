@@ -1,0 +1,71 @@
+import { z } from "zod";
+import type { Unsubscribe } from "./screens";
+
+/**
+ * Stable mode: Jeremy's app runs a production build and only rolls forward
+ * when someone asks — from the HUD, or an agent running `office-update`.
+ */
+
+export interface UpdateCommit {
+	readonly sha: string;
+	readonly subject: string;
+}
+
+/** An agent asked for the app to roll forward; it applies at `applyAt` unless Jeremy cancels. */
+export interface UpdateCountdown {
+	/** Agent name, or "someone" when the request came from outside an agent pane. */
+	readonly by: string;
+	readonly reason: string;
+	/** Epoch milliseconds. */
+	readonly applyAt: number;
+}
+
+interface Behind {
+	/** The checkout's HEAD, which a rebuild would run. */
+	readonly head: string;
+	/** Newest first, capped at `MAX_LISTED_COMMITS`. */
+	readonly commits: readonly UpdateCommit[];
+	/** Commits between the running build and HEAD (0 when HEAD moved sideways or back). */
+	readonly behind: number;
+	readonly countdown?: UpdateCountdown;
+}
+
+export type UpdateStatus =
+	/** Running under the dev server (or a build without git identity): nothing to update. */
+	| { readonly state: "dev" }
+	/** The running build is HEAD. */
+	| { readonly state: "idle"; readonly head: string }
+	| ({ readonly state: "available" } & Behind)
+	| { readonly state: "building"; readonly logTail: string }
+	/** The last build failed; the old build keeps running. */
+	| ({ readonly state: "failed"; readonly error: string; readonly logTail: string } & Behind);
+
+/** A status an update can be applied from. */
+export type ApplicableStatus = Extract<UpdateStatus, { state: "available" | "failed" }>;
+
+export const MAX_LISTED_COMMITS = 20;
+/** How long an agent-requested update waits for Jeremy to cancel it. */
+export const UPDATE_COUNTDOWN_MS = 15_000;
+/** Requests older than this (e.g. made while the app was closed) are ignored. */
+export const UPDATE_REQUEST_MAX_AGE_MS = 10 * 60 * 1000;
+
+/** One line of the update-requests file, appended by `office-update`. */
+export const updateRequestLineSchema = z.strictObject({
+	v: z.literal(1),
+	id: z.string().min(8).max(64),
+	/** herdr pane of the requester (`HERDR_PANE_ID`), mapped to its agent by the app. */
+	fromPane: z.string().max(64).optional(),
+	reason: z.string().max(500),
+	requestedAt: z.iso.datetime(),
+});
+export type UpdateRequestLine = z.infer<typeof updateRequestLineSchema>;
+
+/** `window.office.update`. */
+export interface AppUpdateApi {
+	status(): Promise<UpdateStatus>;
+	onStatus(listener: (status: UpdateStatus) => void): Unsubscribe;
+	/** Rebuild and relaunch on HEAD; no-op unless an update is available or failed. */
+	apply(reason?: string): Promise<void>;
+	/** Cancel an agent-requested countdown. */
+	cancel(): Promise<void>;
+}

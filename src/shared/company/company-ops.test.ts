@@ -32,12 +32,12 @@ describe("company ids", () => {
 });
 
 describe("company seeding", () => {
-	it("names the first company after today's wall sign", () => {
+	it("opens a fresh install at Dunder Mifflin, Scranton branch", () => {
 		const company = firstCompany(NOW);
 		expect(company).toMatchObject({
-			id: "herdr-office",
-			name: "Herdr Office",
-			subtitle: DEFAULT_LAYOUT.room.sign.subtitle,
+			id: "dunder-mifflin",
+			name: "Dunder Mifflin",
+			subtitle: "Scranton branch · runs on Dunder",
 			createdAt: NOW.toISOString(),
 			updatedAt: NOW.toISOString(),
 		});
@@ -65,6 +65,5 @@ describe("wall sign", () => {
 			offset: DEFAULT_LAYOUT.room.sign.offset,
 		});
 		expect({ ...layout, room: DEFAULT_LAYOUT.room }).toEqual(DEFAULT_LAYOUT);
-		expect(DEFAULT_LAYOUT.room.sign.title).toBe("HERDR OFFICE");
 	});
 });

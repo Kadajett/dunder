@@ -48,9 +48,9 @@ afterEach(async () => {
 
 describe("companies service", () => {
 	it("renames the company, repaints the sign and survives a restart", async () => {
-		await open().rename("herdr-office", "  Keller Talent ", "AI-native recruiting");
+		await open().rename("dunder-mifflin", "  Keller Talent ", "AI-native recruiting");
 		const current = await open().current();
-		expect(current).toMatchObject({ id: "herdr-office", name: "Keller Talent" });
+		expect(current).toMatchObject({ id: "dunder-mifflin", name: "Keller Talent" });
 		expect(current.layout.room.sign).toMatchObject({
 			title: "KELLER TALENT",
 			subtitle: "AI-NATIVE RECRUITING",
@@ -67,11 +67,11 @@ describe("companies service", () => {
 		expect([acme.id, twin.id]).toEqual(["acme", "acme-2"]);
 		expect((await companies.current()).id).toBe("acme-2");
 		expect(twin.layout.desks).toEqual(DEFAULT_LAYOUT.desks);
-		await companies.switchTo("herdr-office");
+		await companies.switchTo("dunder-mifflin");
 		const restarted = await open().current();
 		expect(restarted.layout.desks).toEqual(edited.desks);
 		expect((await companies.list()).map((company) => company.id)).toEqual([
-			"herdr-office",
+			"dunder-mifflin",
 			"acme",
 			"acme-2",
 		]);
@@ -80,7 +80,7 @@ describe("companies service", () => {
 	it("rejects invalid layouts and names without changing anything", async () => {
 		const companies = open();
 		await expect(companies.saveLayout({ version: 2 })).rejects.toThrow();
-		await expect(companies.rename("herdr-office", "   ", "")).rejects.toThrow();
+		await expect(companies.rename("dunder-mifflin", "   ", "")).rejects.toThrow();
 		await expect(companies.switchTo("nope")).rejects.toThrow('no company "nope"');
 		expect((await companies.current()).layout).toEqual(DEFAULT_LAYOUT);
 		expect(emitted).toEqual([]);
@@ -91,7 +91,7 @@ describe("companies service", () => {
 		const room = { ...DEFAULT_LAYOUT.room, sign: { title: "X", subtitle: "Y", offset: 3 } };
 		await companies.saveLayout({ ...DEFAULT_LAYOUT, room });
 		expect((await companies.current()).layout.room.sign).toEqual({
-			title: "HERDR OFFICE",
+			title: "DUNDER MIFFLIN",
 			subtitle: DEFAULT_LAYOUT.room.sign.subtitle,
 			offset: 3,
 		});
