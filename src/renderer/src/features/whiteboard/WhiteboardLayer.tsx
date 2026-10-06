@@ -4,6 +4,7 @@ import type { WhiteboardBoard } from "@shared/whiteboard";
 import { getAssetUrlsByImport } from "@tldraw/assets/imports.vite";
 import { useCallback, useEffect, useState } from "react";
 import { type Editor, Tldraw } from "tldraw";
+import { editorNeedsLicense, TLDRAW_LICENSE_KEY } from "./tldraw-license";
 import { useBoardSync } from "./useBoardSync";
 import { useWhiteboard } from "./whiteboard-store";
 
@@ -32,6 +33,7 @@ function BoardEditor(props: {
 		<Tldraw
 			{...(board.snapshot ? { snapshot: board.snapshot } : {})}
 			assetUrls={ASSET_URLS}
+			{...(TLDRAW_LICENSE_KEY ? { licenseKey: TLDRAW_LICENSE_KEY } : {})}
 			onMount={(mounted) => {
 				mounted.user.updateUserPreferences({ name: "Jeremy" });
 				setEditor(mounted);
@@ -70,6 +72,23 @@ function useBoard(): readonly [LoadState, (board: WhiteboardBoard) => void] {
 	return [state, reload];
 }
 
+/** Instead of an editor tldraw would blank after 5 s: what is missing, and what still works. */
+function LicenseNotice() {
+	return (
+		<div className="whiteboard-status whiteboard-license">
+			<strong>The whiteboard editor needs a tldraw license key in the installed app.</strong>
+			<p>
+				Without one, tldraw stops drawing a few seconds after it opens. Agents can still post with
+				office-board, and the board on the break-room wall still shows everything.
+			</p>
+			<p>
+				Put the key in <code>~/.config/dunder/tldraw-license-key</code> (or set{" "}
+				<code>TLDRAW_LICENSE_KEY</code>) and update Dunder; the build bakes it in.
+			</p>
+		</div>
+	);
+}
+
 /**
  * The office whiteboard in tldraw, over the whole window. Leaving is the Back
  * button, never Esc: tldraw uses Esc to drop the selection or the current tool.
@@ -96,18 +115,33 @@ export function WhiteboardLayer() {
 				</div>
 			</header>
 			<div className="whiteboard-canvas">
-				{state.kind === "ready" ? (
-					<BoardEditor
-						key={`${state.board.companyId}:${state.generation}`}
-						board={state.board}
-						onReload={reload}
-					/>
+				{editorNeedsLicense(TLDRAW_LICENSE_KEY, window.location, import.meta.env.PROD) ? (
+					<LicenseNotice />
 				) : (
-					<p className="whiteboard-status">
-						{state.kind === "failed" ? `The whiteboard did not load: ${state.reason}` : "Loading…"}
-					</p>
+					<BoardArea state={state} onReload={reload} />
 				)}
 			</div>
 		</div>
+	);
+}
+
+function BoardArea(props: {
+	readonly state: LoadState;
+	readonly onReload: (board: WhiteboardBoard) => void;
+}) {
+	const { state } = props;
+	if (state.kind === "ready") {
+		return (
+			<BoardEditor
+				key={`${state.board.companyId}:${state.generation}`}
+				board={state.board}
+				onReload={props.onReload}
+			/>
+		);
+	}
+	return (
+		<p className="whiteboard-status">
+			{state.kind === "failed" ? `The whiteboard did not load: ${state.reason}` : "Loading…"}
+		</p>
 	);
 }

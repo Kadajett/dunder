@@ -1,9 +1,27 @@
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 
 const shared = { "@shared": resolve(__dirname, "src/shared") };
+
+/**
+ * tldraw's license key for the renderer (see whiteboard/tldraw-license.ts):
+ * `TLDRAW_LICENSE_KEY`, else `<XDG config>/dunder/tldraw-license-key`, else none.
+ * Keys are public by design (validated in the browser), so baking one in is fine.
+ */
+function tldrawLicenseKey(): string {
+	const fromEnv = process.env["TLDRAW_LICENSE_KEY"]?.trim();
+	if (fromEnv) return fromEnv;
+	const config = process.env["XDG_CONFIG_HOME"] || join(homedir(), ".config");
+	try {
+		return readFileSync(join(config, "dunder", "tldraw-license-key"), "utf8").trim();
+	} catch {
+		return "";
+	}
+}
 
 /**
  * `__OFFICE_BUILD__` in main: the commit a production build was made from
@@ -34,6 +52,7 @@ export default defineConfig(({ command }) => ({
 	renderer: {
 		resolve: { alias: { ...shared, "@renderer": resolve(__dirname, "src/renderer/src") } },
 		plugins: [react()],
+		define: { "import.meta.env.VITE_TLDRAW_LICENSE_KEY": JSON.stringify(tldrawLicenseKey()) },
 		// Its `?url` asset imports only resolve through Vite itself, not the dev pre-bundler.
 		optimizeDeps: { exclude: ["@tldraw/assets"] },
 	},
