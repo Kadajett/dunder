@@ -21,6 +21,9 @@ const DECOR_FOOTPRINT: Record<DecorKind, readonly [number, number]> = {
 	"wall-tv": [0, 0],
 	"wall-placard": [0, 0],
 	whiteboard: [0, 0],
+	// Rails' outer edge (2.58 × 1.46 m) at the station scale.
+	"pool-table": [3.23, 1.83],
+	"cue-rack": [0, 0],
 };
 
 /** Desk body footprint in desk-local space (the chair area stays walkable). */

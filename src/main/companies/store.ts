@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Company, companyIdSchema, companySchema } from "@shared/company/company";
 import { firstCompany } from "@shared/company/company-ops";
-import { migrateLayout } from "@shared/layout/default-layout";
+import { migrateLayout } from "@shared/layout/migrate-layout";
 import { z } from "zod";
 
 /**
