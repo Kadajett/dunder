@@ -44,6 +44,26 @@ function HairBack({ style, color }: { readonly style: HairStyle; readonly color:
 			return <ellipse cx={CX + R + 2} cy={CY - 2} rx={4.5} ry={8} fill={color} />;
 		case "bun":
 			return <circle cx={CX} cy={CY - R - 4} r={6} fill={color} />;
+		case "pigtails":
+			return (
+				<g fill={color}>
+					<ellipse cx={CX - R - 4} cy={CY + 1} rx={4} ry={7} />
+					<ellipse cx={CX + R + 4} cy={CY + 1} rx={4} ry={7} />
+				</g>
+			);
+		case "braids":
+			return (
+				<g fill={color}>
+					<rect x={CX - R - 1} y={CY - 4} width={5} height={24} rx={2.5} />
+					<rect x={CX + R - 4} y={CY - 4} width={5} height={24} rx={2.5} />
+				</g>
+			);
+		case "sideSwept":
+			return <rect x={CX + R - 5} y={CY - 10} width={7} height={22} rx={3} fill={color} />;
+		case "bowl":
+			return (
+				<rect x={CX - R - 2} y={CY - 13} width={(R + 2) * 2} height={17} rx={8} fill={color} />
+			);
 		default:
 			return null;
 	}
@@ -53,11 +73,53 @@ function HairBack({ style, color }: { readonly style: HairStyle; readonly color:
 function HairFront({ style, color }: { readonly style: HairStyle; readonly color: string }) {
 	const top = CY - R;
 	const fringe = `M${CX - R} ${CY} Q${CX - R} ${top - 1} ${CX} ${top - 1} Q${CX + R} ${top - 1} ${CX + R} ${CY}`;
+	const buzz = (
+		<path d={`${fringe} Q${CX} ${CY - 11} ${CX - R} ${CY}Z`} fill={color} opacity={0.7} />
+	);
 	switch (style) {
 		case "bald":
 			return null;
 		case "buzz":
-			return <path d={`${fringe} Q${CX} ${CY - 11} ${CX - R} ${CY}Z`} fill={color} opacity={0.7} />;
+			return buzz;
+		case "flatTop":
+			return (
+				<>
+					{buzz}
+					<rect x={CX - R + 2} y={top - 9} width={(R - 2) * 2} height={13} rx={1} fill={color} />
+				</>
+			);
+		case "pompadour":
+			return (
+				<>
+					{buzz}
+					<ellipse cx={CX + 2} cy={top - 2} rx={12} ry={6} fill={color} />
+				</>
+			);
+		case "undercut":
+			return (
+				<>
+					{buzz}
+					<path
+						d={`M${CX - R + 3} ${top + 3} L${CX - R + 3} ${top - 4} L${CX + R - 3} ${top - 4} L${CX + R - 3} ${CY - 7} L${CX - 4} ${top + 4}Z`}
+						fill={color}
+					/>
+				</>
+			);
+		case "twists":
+			return (
+				<>
+					{buzz}
+					<g fill={color}>
+						{[-10, -5, 0, 5, 10].map((dx) => (
+							<rect key={dx} x={CX + dx - 2} y={top - 7} width={4} height={10} rx={2} />
+						))}
+					</g>
+				</>
+			);
+		case "bowl":
+			return (
+				<rect x={CX - R - 1} y={top - 3} width={(R + 1) * 2} height={14} rx={7} fill={color} />
+			);
 		case "mohawk":
 			return <rect x={CX - 3} y={top - 7} width={6} height={13} rx={3} fill={color} />;
 		case "spiky":

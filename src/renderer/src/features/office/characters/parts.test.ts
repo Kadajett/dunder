@@ -13,6 +13,7 @@ import {
 } from "@shared/avatar/style";
 import { describe, expect, it } from "vitest";
 import type { Cuboid } from "./Block";
+import { HAIR_VARIANTS } from "./hair";
 import { armPart, facePart, headPart, upperPart } from "./parts";
 
 /** Faces of two colours closer than this, facing the same way, can z-fight. */
@@ -123,18 +124,16 @@ const outfits = outfitStyles.flatMap((style) =>
 	),
 );
 
+/** Each hairstyle under each headwear it may wear; glasses and hair variants are swept inside. */
 const heads = hairStyles.flatMap((hair) => {
 	const hats = hatlessHairStyles.includes(hair) ? [undefined] : [undefined, ...headwearStyles];
-	return hats.flatMap((hat) =>
-		[undefined, ...glassesStyles].map((glasses): AvatarStyle => {
-			const style: AvatarStyle = { ...base, hair: { ...base.hair, style: hair } };
-			delete style.glasses;
-			delete style.headwear;
-			if (glasses) style.glasses = glasses;
-			if (hat) style.headwear = { style: hat, color: base.outfit.color };
-			return style;
-		}),
-	);
+	return hats.map((hat): AvatarStyle => {
+		const style: AvatarStyle = { ...base, hair: { ...base.hair, style: hair } };
+		delete style.glasses;
+		delete style.headwear;
+		if (hat) style.headwear = { style: hat, color: base.outfit.color };
+		return style;
+	});
 });
 
 const faces = eyeStyles.flatMap((eyes) =>
@@ -154,11 +153,14 @@ const outfitCases = outfits.map(
 	(style) => [`${style.outfit.style} ${style.outfit.color}/${style.outfit.accent}`, style] as const,
 );
 
-const headCases = [...heads, ...faces].map((style) => {
-	const { hair, headwear, glasses, eyes, brows, mouth } = style;
-	const parts = [hair.style, headwear?.style, glasses, `${eyes}/${brows}/${mouth}`];
-	return [parts.filter(Boolean).join(" "), style] as const;
+const faceCases = faces.map((style) => {
+	const { glasses, eyes, brows, mouth } = style;
+	return [[`${eyes}/${brows}/${mouth}`, glasses].filter(Boolean).join(" "), style] as const;
 });
+
+const headCases = heads.map(
+	(style) => [[style.hair.style, style.headwear?.style ?? "no hat"].join(" "), style] as const,
+);
 
 describe("character parts leave depth room between colours", () => {
 	it.each(outfitCases)("%s arms", (_, style) => {
@@ -169,7 +171,18 @@ describe("character parts leave depth room between colours", () => {
 		expect(flushFaces(upperPart(style))).toEqual([]);
 	});
 
-	it.each(headCases)("%s head", (_, style) => {
+	it.each(faceCases)("%s face", (_, style) => {
 		expect(flushFaces([...headPart(style), ...facePart(style)])).toEqual([]);
+	});
+
+	it.each(headCases)("%s hair, every variant and glasses", (_, style) => {
+		const clashes = HAIR_VARIANTS.flatMap((variant) =>
+			[undefined, ...glassesStyles].flatMap((glasses) => {
+				const worn: AvatarStyle = glasses ? { ...style, glasses } : style;
+				const found = flushFaces([...headPart(worn, variant), ...facePart(worn)]);
+				return found.map((clash) => `${JSON.stringify(variant)} ${glasses ?? ""}: ${clash}`);
+			}),
+		);
+		expect(clashes).toEqual([]);
 	});
 });

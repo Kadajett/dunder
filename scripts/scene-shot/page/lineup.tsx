@@ -87,6 +87,34 @@ const outfits: Member[] = outfitStyles.map((outfit, index) => {
 	return { label: `${outfit} · ${headwear ?? "no hat"}`, style };
 });
 
+/** Natural colours that read apart on the floor, for the hairstyle rows. */
+const HAIR_SHOW_COLORS = ["#3d2b20", "#93592c", "#c99a55", "#221c18", "#b4482c"] as const;
+
+/** Every hairstyle bare-headed (no hat, no glasses), so silhouettes compare directly. */
+const hairdos: Member[] = hairStyles.map((hair, index) => {
+	const base = avatarStyleFor(`hair-${index}`);
+	const color = HAIR_SHOW_COLORS[index % HAIR_SHOW_COLORS.length] ?? base.hair.color;
+	const style: AvatarStyle = { ...base, hair: { style: hair, color } };
+	delete style.headwear;
+	delete style.glasses;
+	return { label: hair, style };
+});
+
+/** One cut on six people: the per-character touches (part side, crown streak, fringe tuft). */
+const sameCut: Member[] = Array.from({ length: 6 }, (_, index) => {
+	const base = avatarStyleFor(`same-cut-${index}`);
+	const style: AvatarStyle = { ...base, hair: { style: "short", color: "#93592c" } };
+	delete style.headwear;
+	delete style.glasses;
+	return { label: `short #${index + 1}`, style };
+});
+
+function rows(members: readonly Member[], size: number): Member[][] {
+	return Array.from({ length: Math.ceil(members.length / size) }, (_, row) =>
+		members.slice(row * size, row * size + size),
+	);
+}
+
 /** Pixels per metre in the office overview at the scene shot's 1600×1000 viewport. */
 const OVERVIEW_ZOOM = fitOrthographic(
 	roomPoints(DEFAULT_LAYOUT.room),
@@ -175,9 +203,18 @@ function Page() {
 			<Lineup members={crew} zoom={OVERVIEW_ZOOM} labels={false} />
 			<h2>Crew close-up (4×)</h2>
 			<Lineup members={crew} zoom={CLOSE_UP_ZOOM} labels />
+			<h2>Every hairstyle at office overview zoom</h2>
+			<Lineup members={hairdos} zoom={OVERVIEW_ZOOM} labels={false} />
+			<h2>Every hairstyle (4×)</h2>
+			{rows(hairdos, 7).map((row) => (
+				<Lineup key={row[0]?.label} members={row} zoom={CLOSE_UP_ZOOM} labels />
+			))}
+			<h2>One cut, six people: part side, crown streak and fringe tuft vary per character (4×)</h2>
+			<Lineup members={sameCut} zoom={CLOSE_UP_ZOOM} labels />
 			<h2>Every hairstyle, eye, brow, mouth, glasses and headwear (4×)</h2>
-			<Lineup members={variants.slice(0, 6)} zoom={CLOSE_UP_ZOOM} labels />
-			<Lineup members={variants.slice(6)} zoom={CLOSE_UP_ZOOM} labels />
+			{rows(variants, 7).map((row) => (
+				<Lineup key={row[0]?.label} members={row} zoom={CLOSE_UP_ZOOM} labels />
+			))}
 			<h2>Every outfit and headwear (4×)</h2>
 			<Lineup members={outfits.slice(0, 5)} zoom={CLOSE_UP_ZOOM} labels />
 			<Lineup members={outfits.slice(5)} zoom={CLOSE_UP_ZOOM} labels />

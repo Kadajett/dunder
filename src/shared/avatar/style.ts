@@ -28,6 +28,14 @@ export const hairStyles = [
 	"curly",
 	"sidePart",
 	"mohawk",
+	"undercut",
+	"sideSwept",
+	"pigtails",
+	"braids",
+	"bowl",
+	"flatTop",
+	"pompadour",
+	"twists",
 ] as const;
 export type HairStyle = (typeof hairStyles)[number];
 
@@ -129,8 +137,18 @@ export type GlassesStyle = (typeof glassesStyles)[number];
 export const headwearStyles = ["cap", "beanie", "headphones", "bandana"] as const;
 export type HeadwearStyle = (typeof headwearStyles)[number];
 
-/** Hairstyles too voluminous to sit under a hat or headphones. */
-export const hatlessHairStyles: readonly HairStyle[] = ["afro", "bun", "spiky", "mohawk", "curly"];
+/** Hairstyles too voluminous (or too shaped) to sit under a hat or headphones. */
+export const hatlessHairStyles: readonly HairStyle[] = [
+	"afro",
+	"bun",
+	"spiky",
+	"mohawk",
+	"curly",
+	"bowl",
+	"flatTop",
+	"pompadour",
+	"twists",
+];
 
 export interface AvatarStyle {
 	skin: SkinTone;
