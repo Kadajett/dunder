@@ -38,6 +38,14 @@ const SHOTS: readonly Shot[] = [
 		height: 600,
 		scale: 1,
 	},
+	// The capture grows to the page's height; the width fits eight characters in close-up.
+	{
+		page: "lineup.html",
+		out: "docs/screenshots/characters-lineup.png",
+		width: 1560,
+		height: 800,
+		scale: 1.4,
+	},
 ];
 
 const targetSchema = z.object({ targetId: z.string() });

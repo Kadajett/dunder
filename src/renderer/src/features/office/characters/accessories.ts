@@ -2,10 +2,11 @@ import type { GlassesStyle, HeadwearStyle } from "@shared/avatar/style";
 import { type Cuboid, mirrored } from "./Block";
 import { EYE, FACE_Z } from "./face";
 
+/** Thin, light frames: the eyes stay the focus, the glasses read as an outline around them. */
 const FRAME: Record<GlassesStyle, { color: string; width: number; height: number; bar: number }> = {
-	round: { color: "#b8893b", width: 0.1, height: 0.09, bar: 0.012 },
-	square: { color: "#3a2c25", width: 0.12, height: 0.08, bar: 0.018 },
-	shades: { color: "#24242a", width: 0.12, height: 0.075, bar: 0 },
+	round: { color: "#c79a46", width: 0.098, height: 0.088, bar: 0.012 },
+	square: { color: "#5c4a40", width: 0.11, height: 0.08, bar: 0.014 },
+	shades: { color: "#2b3140", width: 0.108, height: 0.064, bar: 0 },
 };
 
 const LENS_Z = FACE_Z + 0.025;
@@ -26,12 +27,14 @@ function lens(style: GlassesStyle, side: 1 | -1): Cuboid[] {
 
 /** Glasses in head space: lenses over the eyes, a bridge, and arms back to the ears. */
 export function glassesBlocks(style: GlassesStyle): Cuboid[] {
-	const { color } = FRAME[style];
+	const { color, width } = FRAME[style];
+	// The bridge spans the gap between the lenses' inner edges, overlapping each a little.
+	const bridge = 2 * (EYE.x - width / 2) + 0.012;
 	return [
 		...lens(style, 1),
 		...lens(style, -1),
-		{ color, at: [0, EYE.y + 0.02, LENS_Z], size: [0.07, 0.016, 0.016] },
-		...mirrored(color, [0.227, EYE.y + 0.02, 0.11], [0.016, 0.016, 0.22]),
+		{ color, at: [0, EYE.y + 0.015, LENS_Z], size: [bridge, 0.014, 0.014] },
+		...mirrored(color, [0.227, EYE.y + 0.02, 0.11], [0.014, 0.014, 0.22]),
 	];
 }
 
