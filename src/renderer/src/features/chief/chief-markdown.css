@@ -1,0 +1,121 @@
+/* Markdown inside a Chief of Staff reply bubble (.chief-msg__bubble). */
+.chief-md {
+	/* The bubble keeps newlines for plain text; Markdown lays out its own blocks. */
+	white-space: normal;
+}
+
+.chief-md > :first-child {
+	margin-top: 0;
+}
+
+.chief-md > :last-child {
+	margin-bottom: 0;
+}
+
+.chief-md p,
+.chief-md ul,
+.chief-md ol,
+.chief-md pre,
+.chief-md table,
+.chief-md blockquote {
+	margin: 0 0 8px;
+}
+
+.chief-md h1,
+.chief-md h2,
+.chief-md h3,
+.chief-md h4,
+.chief-md h5,
+.chief-md h6 {
+	margin: 10px 0 4px;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.chief-md h1 {
+	font-size: 15px;
+}
+
+.chief-md h2 {
+	font-size: 14px;
+}
+
+.chief-md ul,
+.chief-md ol {
+	padding-left: 18px;
+}
+
+.chief-md li + li {
+	margin-top: 2px;
+}
+
+.chief-md li > ul,
+.chief-md li > ol {
+	margin: 2px 0 0;
+}
+
+.chief-md code {
+	padding: 1px 4px;
+	border-radius: 4px;
+	background: #ebe2d1;
+	font-family: var(--font-mono);
+	font-size: 11.5px;
+}
+
+.chief-md pre {
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--ink);
+	color: #f6efe2;
+	white-space: pre;
+	overflow-x: auto;
+}
+
+.chief-md pre code {
+	padding: 0;
+	background: none;
+	color: inherit;
+}
+
+.chief-md table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	border-collapse: collapse;
+	font-size: 12px;
+}
+
+.chief-md th,
+.chief-md td {
+	padding: 3px 8px;
+	border: 1px solid var(--panel-edge);
+	text-align: left;
+	vertical-align: top;
+}
+
+.chief-md th {
+	background: #efe5d3;
+	font-weight: 600;
+}
+
+.chief-md blockquote {
+	padding-left: 10px;
+	border-left: 3px solid var(--panel-edge);
+	color: var(--ink-soft);
+}
+
+.chief-md a {
+	color: #2f6f9f;
+	text-decoration: underline;
+}
+
+.chief-md hr {
+	margin: 8px 0;
+	border: 0;
+	border-top: 1px solid var(--panel-edge);
+}
+
+.chief-md__img {
+	color: var(--ink-soft);
+}
