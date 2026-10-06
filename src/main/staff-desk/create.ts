@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { StaffOutcome } from "@shared/staff";
@@ -34,6 +34,7 @@ export function createStaffDesk(options: StaffDeskOptions): StaffDesk {
 			await mkdir(briefDir, { recursive: true });
 			await writeFile(join(briefDir, `${name}.md`), `${brief}\n`, "utf8");
 		},
+		removeBrief: (name) => rm(join(briefDir, `${name}.md`), { force: true }),
 		defaults: { room: DEFAULT_ROOM, cwd: options.appRoot },
 		requestsPath: officeStaffRequestsPath(process.env, homedir()),
 		resultsPath: officeStaffResultsPath(process.env, homedir()),
