@@ -1,3 +1,6 @@
+// The DOM labels' display weight: zone titles, name tags and bubble captions set
+// heavy tracked capitals, like the reference (main.tsx loads Inter 400/600/700).
+import "@fontsource/inter/800.css";
 // troika (drei <Text>) reads woff/ttf, not woff2, and must never fetch fonts from a CDN.
 import interBold from "@fontsource/inter/files/inter-latin-800-normal.woff?url";
 import monoRegular from "@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff?url";

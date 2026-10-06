@@ -2,15 +2,23 @@ import type { Layout } from "@shared/layout/schema";
 import type { LiveAgent } from "../model/live-agents";
 import { ZoneCard } from "./Labels";
 
-/** Zones bound to a herdr workspace show live head counts instead of a tagline. */
-function zoneSubtitle(
-	zone: Layout["zones"][number],
-	agents: readonly LiveAgent[],
-): string | undefined {
-	if (!zone.workspaceLabel) return zone.subtitle;
+interface ZoneLine {
+	readonly subtitle: string | undefined;
+	readonly highlight?: string;
+}
+
+/**
+ * Zones bound to a herdr workspace show live head counts instead of a tagline,
+ * with the working count highlighted while anyone is working.
+ */
+function zoneLine(zone: Layout["zones"][number], agents: readonly LiveAgent[]): ZoneLine {
+	if (!zone.workspaceLabel) return { subtitle: zone.subtitle };
 	const members = agents.filter((agent) => agent.workspaceLabel === zone.workspaceLabel);
 	const working = members.filter((agent) => agent.status === "working").length;
-	return `${members.length} agent${members.length === 1 ? "" : "s"} · ${working} working`;
+	const headcount = `${members.length} agent${members.length === 1 ? "" : "s"}`;
+	return working > 0
+		? { subtitle: headcount, highlight: `${working} working` }
+		: { subtitle: `${headcount} · 0 working` };
 }
 
 export function ZoneCards(props: {
@@ -28,7 +36,7 @@ export function ZoneCards(props: {
 						key={zone.id}
 						position={[at.x, zone.labelHeight, at.z]}
 						title={zone.title}
-						subtitle={zoneSubtitle(zone, agents)}
+						{...zoneLine(zone, agents)}
 						tone={zone.workspaceLabel ? "dark" : "light"}
 					/>
 				);
