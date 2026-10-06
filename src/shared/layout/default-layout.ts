@@ -24,65 +24,29 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 		],
 		sign: { title: "DUNDER MIFFLIN", subtitle: "SCRANTON BRANCH · RUNS ON DUNDER", offset: 13.2 },
 	},
+	// Zones are rugs and desk groups; the office shows no label for them (office-72z).
 	zones: [
 		{
 			id: "sales",
 			title: "#SALES",
-			subtitle: "growth · client love",
 			workspaceLabel: "sales",
 			rug: { center: { x: -6.6, z: 3.4 }, width: 7.6, depth: 7.4, color: "#b9a58a" },
-			labelAt: { x: -8.6, z: 6.6 },
 		},
 		{
 			id: "delivery",
 			title: "#DELIVERY",
-			subtitle: "watch them coordinate — live",
 			workspaceLabel: "delivery",
 			rug: { center: { x: 2.6, z: -4.4 }, width: 9.6, depth: 6.6, color: "#a9b48f" },
-			labelAt: { x: 0.2, z: -7.2 },
 		},
 		{
 			id: "you",
 			title: "YOUR DESK",
-			subtitle: "what needs you lands here",
 			rug: { center: { x: 7.6, z: 2.4 }, width: 5.4, depth: 4.8, color: "#9fb69a" },
-			labelAt: { x: 7.6, z: 1.2 },
-			labelHeight: 2.6,
-			labelMode: "hover",
 		},
 		{
 			id: "break-room",
 			title: "BREAK ROOM",
-			subtitle: "the bell rings here",
 			rug: { center: { x: -10.2, z: 6.4 }, width: 5, depth: 5.6, color: "#c9a7a0" },
-			labelAt: { x: -10.6, z: 4.2 },
-		},
-		{
-			id: "clients",
-			title: "CLIENTS — OPEN THE CRM",
-			subtitle: "a panel, not a desk",
-			labelAt: { x: -10.6, z: -3.2 },
-		},
-		{
-			id: "mailroom",
-			title: "MAILROOM",
-			subtitle: "agent mail",
-			labelAt: { x: -4.4, z: -8.6 },
-			labelHeight: 2.8,
-		},
-		{
-			id: "library",
-			title: "LIBRARY — COMPANY BRAIN",
-			subtitle: "shared memories",
-			labelAt: { x: 5.6, z: -8.4 },
-			labelHeight: 2.9,
-		},
-		{
-			id: "reception",
-			title: "RECEPTION — HIRING",
-			subtitle: "hire an agent",
-			labelAt: { x: 5.4, z: 7.8 },
-			labelMode: "hover",
 		},
 	],
 	// Few stations, mostly filled, as in the reference: a staggered sales pod, a
@@ -223,36 +187,25 @@ function migrateRoom(room: Layout["room"]): Layout["room"] {
 	return { ...room, floorColor, wallHeight };
 }
 
-/** Default zones whose card became a hover caption (office-bkh), by id. */
-const HOVER_ZONES = new Map(
-	DEFAULT_LAYOUT.zones.filter((zone) => zone.labelMode === "hover").map((zone) => [zone.id, zone]),
-);
-
 /**
- * A zone saved before label modes existed (no `labelMode`) that still carries
- * its default title and subtitle takes the default's hover caption.
+ * Zones without a rug or desks (the former CLIENTS, MAILROOM, LIBRARY and
+ * RECEPTION) existed only for their floating label. With labels gone they are
+ * invisible and cannot be picked in edit mode, so they are dropped.
  */
-function migrateZone(zone: Zone): Zone {
-	const fresh = HOVER_ZONES.get(zone.id);
-	const untouched =
-		fresh !== undefined &&
-		zone.labelMode === undefined &&
-		zone.title === fresh.title &&
-		zone.subtitle === fresh.subtitle;
-	return untouched ? { ...zone, labelMode: "hover" } : zone;
+function labelOnlyZones(layout: Layout): ReadonlySet<Zone> {
+	const seated = new Set(layout.desks.flatMap((desk) => desk.zoneId ?? []));
+	return new Set(layout.zones.filter((zone) => !zone.rug && !seated.has(zone.id)));
 }
 
 /**
  * Bring a saved layout up to date with changed defaults. Companies copy the
  * default layout when created, so a value still on its former default was
  * never chosen by anyone: it moves to the current default on its own (floor
- * colour, wall height, and the hover captions of the "you" and "reception"
- * zones). Any other value is kept.
+ * colour, wall height). Any other value is kept.
  */
 export function migrateLayout(layout: Layout): Layout {
 	const room = migrateRoom(layout.room);
-	const zones = layout.zones.map(migrateZone);
-	const zonesChanged = zones.some((zone, index) => zone !== layout.zones[index]);
-	if (room === layout.room && !zonesChanged) return layout;
-	return { ...layout, room, zones };
+	const dropped = labelOnlyZones(layout);
+	if (room === layout.room && dropped.size === 0) return layout;
+	return { ...layout, room, zones: layout.zones.filter((zone) => !dropped.has(zone)) };
 }

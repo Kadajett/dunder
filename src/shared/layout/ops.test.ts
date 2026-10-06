@@ -56,17 +56,11 @@ describe("moveItem", () => {
 		expect(itemPosition(next, { kind: "decor", id: "tv" })).toEqual({ x: 13, z: -10 });
 	});
 
-	it("keeps a moved zone's whole rug in the room and carries its label along", () => {
+	it("keeps a moved zone's whole rug in the room", () => {
 		const zone = { kind: "zone", id: "sales" } as const;
-		const before = layout.zones.find((z) => z.id === "sales");
 		const next = moveItem(layout, zone, { x: -99, z: 0 });
 		const after = next.zones.find((z) => z.id === "sales");
-		expect(after?.rug?.center.x).toBeGreaterThanOrEqual(-13 + (before?.rug?.width ?? 0) / 2);
-		if (before?.labelAt && after?.labelAt && before.rug && after.rug) {
-			expect(after.labelAt.x - before.labelAt.x).toBeCloseTo(
-				after.rug.center.x - before.rug.center.x,
-			);
-		}
+		expect(after?.rug?.center.x).toBeGreaterThanOrEqual(-13 + (after?.rug?.width ?? 0) / 2);
 		valid(next);
 	});
 
@@ -113,12 +107,13 @@ describe("deleteItem", () => {
 });
 
 describe("updates", () => {
-	it("edits a zone's text, binds a workspace and clears fields set to empty", () => {
-		const next = updateZone(layout, "sales", { title: "OPS", subtitle: "", workspaceLabel: "ops" });
-		const zone = next.zones.find((z) => z.id === "sales");
+	it("edits a zone's title, binds a workspace and clears fields set to empty", () => {
+		const named = updateZone(layout, "sales", { title: "OPS", workspaceLabel: "ops" });
+		const zone = named.zones.find((z) => z.id === "sales");
 		expect(zone?.title).toBe("OPS");
 		expect(zone?.workspaceLabel).toBe("ops");
-		expect(zone).not.toHaveProperty("subtitle");
+		const next = updateZone(named, "sales", { workspaceLabel: "" });
+		expect(next.zones.find((z) => z.id === "sales")).not.toHaveProperty("workspaceLabel");
 		valid(next);
 	});
 

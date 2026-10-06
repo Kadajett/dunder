@@ -81,7 +81,6 @@ export function addZone(layout: Layout, at: Vec2 = ORIGIN): Layout {
 		id: freshId(layout, "zone"),
 		title: "NEW ZONE",
 		rug: { center: snapInRoom(layout, at, 2, 1.5), width: 4, depth: 3, color: "#d9c7a5" },
-		labelHeight: 2.2,
 	};
 	return { ...layout, zones: [...layout.zones, zone] };
 }
@@ -98,7 +97,7 @@ export function addLabel(layout: Layout, at: Vec2 = ORIGIN): Layout {
 	return { ...layout, callouts: [...layout.callouts, callout] };
 }
 
-/** Where an item stands on the floor: its position, or a zone's rug centre (else label spot). */
+/** Where an item stands on the floor: its position, or a zone's rug centre. */
 export function itemPosition(layout: Layout, ref: ItemRef): Vec2 | undefined {
 	switch (ref.kind) {
 		case "desk":
@@ -107,25 +106,18 @@ export function itemPosition(layout: Layout, ref: ItemRef): Vec2 | undefined {
 			return layout.decor.find((item) => item.id === ref.id)?.position;
 		case "callout":
 			return layout.callouts.find((item) => item.id === ref.id)?.position;
-		case "zone": {
-			const zone = layout.zones.find((item) => item.id === ref.id);
-			return zone?.rug?.center ?? zone?.labelAt;
-		}
+		case "zone":
+			return layout.zones.find((item) => item.id === ref.id)?.rug?.center;
 	}
 }
 
 function moveZone(layout: Layout, zone: Zone, to: Vec2): Zone {
-	if (!zone.rug) return zone.labelAt ? { ...zone, labelAt: snapInRoom(layout, to) } : zone;
+	if (!zone.rug) return zone;
 	const center = snapInRoom(layout, to, zone.rug.width / 2, zone.rug.depth / 2);
-	const dx = center.x - zone.rug.center.x;
-	const dz = center.z - zone.rug.center.z;
-	const moved: Zone = { ...zone, rug: { ...zone.rug, center } };
-	return zone.labelAt
-		? { ...moved, labelAt: { x: zone.labelAt.x + dx, z: zone.labelAt.z + dz } }
-		: moved;
+	return { ...zone, rug: { ...zone.rug, center } };
 }
 
-/** Move an item to `to`, snapped to the grid and clamped inside the room (a zone moves its rug and label). */
+/** Move an item to `to`, snapped to the grid and clamped inside the room (a zone moves its rug). */
 export function moveItem(layout: Layout, ref: ItemRef, to: Vec2): Layout {
 	const position = snapInRoom(layout, to);
 	const at = <T extends { readonly id: string }>(item: T) => item.id === ref.id;
