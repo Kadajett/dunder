@@ -28,10 +28,19 @@ function main(argv: readonly string[]): number {
 		process.stderr.write("office-update: reason is longer than 500 characters\n");
 		return 2;
 	}
+	// The app knows the requester only by its pane. Without it Jeremy's countdown
+	// says "someone" asked, so refuse rather than request anonymously.
+	const fromPane = process.env["HERDR_PANE_ID"];
+	if (!fromPane) {
+		process.stderr.write(
+			"office-update: HERDR_PANE_ID is not set, so Jeremy would not see who asked for the update. Nothing was requested. Run office-update from your bash tool in your office pane (omp's eval tool does not pass HERDR_PANE_ID).\n",
+		);
+		return 1;
+	}
 	const line = {
 		v: 1,
 		id: randomUUID(),
-		fromPane: process.env["HERDR_PANE_ID"],
+		fromPane,
 		reason,
 		requestedAt: new Date().toISOString(),
 	};

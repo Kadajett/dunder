@@ -45,6 +45,8 @@ export class AppUpdater {
 	readonly #deps: AppUpdaterDeps;
 	#status: UpdateStatus;
 	#snapshot: SessionSnapshot | undefined;
+	/** Requests read before the first snapshot: the requester's name comes from it. */
+	#early: string[] = [];
 	#checking: Promise<void> | undefined;
 	#poll: NodeJS.Timeout | undefined;
 	#countdown: NodeJS.Timeout | undefined;
@@ -61,6 +63,11 @@ export class AppUpdater {
 
 	updateSnapshot(snapshot: SessionSnapshot): void {
 		this.#snapshot = snapshot;
+		if (this.#early.length === 0) return;
+		const early = this.#early;
+		this.#early = [];
+		log.info("handling update requests read before the first snapshot", { lines: early.length });
+		void this.receive(early);
 	}
 
 	async start(): Promise<void> {
@@ -108,6 +115,10 @@ export class AppUpdater {
 
 	/** New lines from the requests file: the newest fresh request starts a countdown. */
 	async receive(lines: readonly string[]): Promise<void> {
+		if (!this.#snapshot) {
+			this.#early.push(...lines);
+			return;
+		}
 		const request = freshRequests(lines, this.#now()).at(-1);
 		if (!request || this.#status.state === "dev") return;
 		// The agent usually asks right after merging: look before deciding there is nothing new.

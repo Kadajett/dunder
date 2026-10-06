@@ -35,7 +35,7 @@ function office(): SessionSnapshot {
 	});
 }
 
-function setup(check: UpdateCheck = NEW) {
+function setup(check: UpdateCheck = NEW, { snapshot = true } = {}) {
 	const build = Promise.withResolvers<BuildResult>();
 	const emitted: UpdateStatus[] = [];
 	const deps = {
@@ -49,7 +49,7 @@ function setup(check: UpdateCheck = NEW) {
 		now: () => Date.now(),
 	};
 	const updater = new AppUpdater(deps);
-	updater.updateSnapshot(office());
+	if (snapshot) updater.updateSnapshot(office());
 	const request = (fields: Record<string, unknown> = {}) =>
 		JSON.stringify({
 			v: 1,
@@ -63,6 +63,21 @@ function setup(check: UpdateCheck = NEW) {
 }
 
 describe("AppUpdater", () => {
+	it("names the requester of a request read before the first snapshot", async () => {
+		const { updater, deps, request } = setup(NEW, { snapshot: false });
+		await updater.receive([request()]);
+		expect(deps.check).not.toHaveBeenCalled();
+		expect(updater.status().state).toBe("idle");
+		updater.updateSnapshot(office());
+		await vi.waitFor(() =>
+			expect(updater.status()).toMatchObject({
+				state: "available",
+				countdown: { by: "max", reason: "new TV channels" },
+			}),
+		);
+		updater.cancel();
+	});
+
 	it("applies an agent's request after the countdown, then relaunches", async () => {
 		vi.useFakeTimers();
 		const { updater, deps, build, request } = setup();
