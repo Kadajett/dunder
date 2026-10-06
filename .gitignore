@@ -13,6 +13,7 @@ out-prev/
 dist/
 *.log
 .vite/
-release/
-release-assets/
+# electron-builder output and staged release assets (root only: scripts/release/ is source)
+/release/
+/release-assets/
 .wrangler/
