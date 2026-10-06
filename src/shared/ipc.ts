@@ -54,10 +54,11 @@ export const IPC = {
 	chiefHistory: "chief:history",
 	chiefSend: "chief:send",
 	chiefMessage: "chief:message",
-	/** HUD stats: today's AI cost (invoke + main → renderer), company memories and mark-seen (invoke). */
+	/** HUD stats: today's AI cost (invoke + main → renderer), company memories and seen inbox work (invoke). */
 	statsCostToday: "stats:cost-today",
 	statsCostTodayChanged: "stats:cost-today-changed",
 	statsMemories: "stats:memories",
+	statsSeenDone: "stats:seen-done",
 	statsMarkSeen: "stats:mark-seen",
 	statsRemember: "stats:remember",
 	statsForget: "stats:forget",

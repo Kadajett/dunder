@@ -23,6 +23,7 @@ import { registerModelsIpc } from "./models/ipc";
 import { createModels } from "./models/service";
 import { CostTracker } from "./office-stats/cost-tracker";
 import { registerOfficeStatsIpc } from "./office-stats/ipc";
+import { createSeenDoneStore } from "./office-stats/seen-done";
 import { createStaffDesk } from "./staff-desk/create";
 import { createSwitchboardService } from "./switchboard/service";
 import { ObservePool } from "./terminal/observe-pool";
@@ -211,6 +212,7 @@ app.whenReady().then(() => {
 		cost: aiCost,
 		appRoot: app.getAppPath(),
 		roster: () => workforce.roster(),
+		seen: createSeenDoneStore(join(app.getPath("userData"), "inbox-seen.json")),
 	});
 	createWindow();
 	void startBridge();

@@ -1,6 +1,6 @@
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import type { OfficeModel } from "../../office/model/office-model";
-import { markSeen, useSeenError, useTrustInbox } from "../inbox-store";
+import { markSeen, useTrustInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
 import { openAgentScreen } from "./open-agent";
 
@@ -11,7 +11,6 @@ const KIND_LINE = {
 
 function InboxCard({ item, model }: { readonly item: TrustItem; readonly model: OfficeModel }) {
 	const { agent } = item;
-	const error = useSeenError(agent.name);
 	const seat = model.seated.find((seated) => seated.agent.paneId === agent.paneId);
 	return (
 		<article className="hud-card" data-kind={item.kind}>
@@ -31,19 +30,18 @@ function InboxCard({ item, model }: { readonly item: TrustItem; readonly model: 
 					title={seat ? undefined : "This agent has no desk in the office layout"}
 					onClick={() => {
 						if (!seat) return;
-						if (item.kind === "done") void markSeen(agent);
+						if (item.kind === "done") markSeen(agent);
 						openAgentScreen(seat);
 					}}
 				>
 					Open screen
 				</button>
 				{item.kind === "done" ? (
-					<button type="button" className="secondary" onClick={() => void markSeen(agent)}>
+					<button type="button" className="secondary" onClick={() => markSeen(agent)}>
 						Mark seen
 					</button>
 				) : null}
 			</div>
-			{error ? <p className="hud-card-error">Not marked seen: {error}</p> : null}
 		</article>
 	);
 }
