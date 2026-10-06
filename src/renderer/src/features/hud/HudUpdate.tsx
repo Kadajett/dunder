@@ -1,6 +1,6 @@
 import "./hud-update.css";
 import type { ApplicableStatus, UpdateCountdown, UpdateStatus } from "@shared/app-update";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 /** The stable-mode update status, live from main ("dev" while the preload predates the API). */
 export function useUpdateStatus(): UpdateStatus {
@@ -111,6 +111,27 @@ type Applicable<State extends ApplicableStatus["state"]> = Extract<
 	{ state: State }
 >;
 
+/** The failed build's log behind a menu item, so arrow-key navigation reaches it (a `<details>` would not be). */
+function BuildLog({ log }: { readonly log: string }) {
+	const [open, setOpen] = useState(false);
+	const id = useId();
+	return (
+		<div className="update-log">
+			<button
+				type="button"
+				role="menuitem"
+				className="update-log-toggle"
+				aria-expanded={open}
+				aria-controls={id}
+				onClick={() => setOpen((value) => !value)}
+			>
+				{open ? "Hide build log" : "Show build log"}
+			</button>
+			{open ? <pre id={id}>{log || "(no output)"}</pre> : null}
+		</div>
+	);
+}
+
 function Available({
 	status,
 	onDone,
@@ -150,10 +171,7 @@ function Failed({
 			<p className="update-note">
 				Build failed: {status.error}. The previous build is still running.
 			</p>
-			<details className="update-log">
-				<summary>Build log</summary>
-				<pre>{status.logTail || "(no output)"}</pre>
-			</details>
+			<BuildLog log={status.logTail} />
 			<ApplyButton label="Retry" reason="retry from the HUD" onDone={onDone} />
 		</>
 	);

@@ -102,9 +102,11 @@
 	position: relative;
 }
 
+/* Above the positioned bar chips (z-index auto), so a click on another chip only closes the open menu. */
 .hud-menu-backdrop {
 	position: fixed;
 	inset: 0;
+	z-index: 1;
 	border: 0;
 	background: transparent;
 	cursor: default;
@@ -112,6 +114,7 @@
 
 .hud-menu {
 	position: absolute;
+	z-index: 2;
 	top: calc(100% + 8px);
 	left: 0;
 	min-width: 260px;

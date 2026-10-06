@@ -69,8 +69,19 @@
 	color: var(--ink-soft);
 }
 
-.update-log summary {
+.update-log-toggle {
+	padding: 2px 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
 	cursor: pointer;
+}
+
+.update-log-toggle:focus-visible {
+	outline: 2px solid var(--ink-soft);
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
 .update-log pre {

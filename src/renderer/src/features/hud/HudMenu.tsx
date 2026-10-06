@@ -82,6 +82,8 @@ function MenuPopup({ update, onClose }: MenuPopupProps) {
 		menu.current?.querySelector<HTMLElement>(ITEMS)?.focus();
 	}, []);
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+		// Keys pressed in the open menu are the menu's: Esc must not also deselect an edit-mode item, nor R rotate it.
+		event.stopPropagation();
 		if (event.key === "Escape" || event.key === "Tab") {
 			event.preventDefault();
 			onClose();
@@ -113,6 +115,8 @@ function MenuPopup({ update, onClose }: MenuPopupProps) {
 				ref={menu}
 				className="hud-menu hud-menu-right"
 				role="menu"
+				// Focusable so a click on the menu's text keeps focus inside it, and Esc still closes it.
+				tabIndex={-1}
 				aria-label="Office"
 				onKeyDown={onKeyDown}
 			>
