@@ -12,7 +12,7 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 		width: 26,
 		depth: 20,
 		wallHeight: 4.2,
-		floorColor: "#cfa979",
+		floorColor: "#c8b28b",
 		wallColor: "#f1e5cc",
 		windows: [
 			{ wall: "left", offset: 3.2, width: 3.2, height: 1.1, sill: 2.4 },

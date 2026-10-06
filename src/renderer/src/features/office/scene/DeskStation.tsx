@@ -3,11 +3,10 @@ import type { ThreeEvent } from "@react-three/fiber";
 import type { AgentStatus } from "@shared/herdr/schema";
 import type { Desk } from "@shared/layout/schema";
 import { useState } from "react";
+import { PALETTE } from "../decor/palette";
 import { Monitor } from "./Monitor";
 import { DEG, SEAT_Z, STATION_SCALE } from "./station";
 
-const DESKTOP = "#a98058";
-const DESKTOP_HOVER = "#c9a173";
 const HOVER_GLOW = "#f2c66d";
 
 function Chair({ color }: { readonly color: string }) {
@@ -43,7 +42,7 @@ function DeskBody({ hovered }: { readonly hovered: boolean }) {
 			<mesh position={[0, 0.73, 0]} castShadow receiveShadow>
 				<boxGeometry args={[1.5, 0.07, 0.82]} />
 				<meshStandardMaterial
-					color={hovered ? DESKTOP_HOVER : DESKTOP}
+					color={hovered ? PALETTE.deskTopHover : PALETTE.deskTop}
 					emissive={hovered ? HOVER_GLOW : "#000000"}
 					emissiveIntensity={hovered ? 0.18 : 0}
 					flatShading
@@ -52,12 +51,12 @@ function DeskBody({ hovered }: { readonly hovered: boolean }) {
 			{[-0.69, 0.69].map((x) => (
 				<mesh key={x} position={[x, 0.35, 0]} castShadow receiveShadow>
 					<boxGeometry args={[0.07, 0.7, 0.74]} />
-					<meshStandardMaterial color="#8a6644" flatShading />
+					<meshStandardMaterial color={PALETTE.deskSide} flatShading />
 				</mesh>
 			))}
 			<mesh position={[0, 0.5, -0.33]} castShadow>
 				<boxGeometry args={[1.32, 0.36, 0.04]} />
-				<meshStandardMaterial color="#8a6644" flatShading />
+				<meshStandardMaterial color={PALETTE.deskSide} flatShading />
 			</mesh>
 			<mesh position={[0, 0.78, 0.18]} castShadow>
 				<boxGeometry args={[0.46, 0.025, 0.15]} />
