@@ -3,6 +3,7 @@ import type { ThreeEvent } from "@react-three/fiber";
 import type { AgentStatus } from "@shared/herdr/schema";
 import { useState } from "react";
 import { useScreenTexture } from "../../screens/useScreenTexture";
+import { DYNAMIC } from "./StaticBatch";
 import { MONITOR, SCREEN } from "./station";
 
 const IDLE_SCREEN: Record<AgentStatus | "empty", string> = {
@@ -54,7 +55,7 @@ export function Monitor({ status, paneId, live, onOpen }: MonitorProps) {
 				<boxGeometry args={[0.06, 0.26, 0.05]} />
 				<meshStandardMaterial color={BODY} flatShading />
 			</mesh>
-			<mesh position={[0, SCREEN.y, 0]} castShadow>
+			<mesh position={[0, SCREEN.y, 0]} castShadow userData={DYNAMIC}>
 				<boxGeometry args={[0.74, 0.46, 0.06]} />
 				<meshStandardMaterial
 					color={hovered ? HOVER_BEZEL : BODY}
@@ -63,7 +64,7 @@ export function Monitor({ status, paneId, live, onOpen }: MonitorProps) {
 					flatShading
 				/>
 			</mesh>
-			<mesh position={[0, SCREEN.y, SCREEN.z]}>
+			<mesh position={[0, SCREEN.y, SCREEN.z]} userData={DYNAMIC}>
 				<planeGeometry args={[SCREEN.width, SCREEN.height]} />
 				{texture && live ? (
 					<meshBasicMaterial map={texture} toneMapped={false} />

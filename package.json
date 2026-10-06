@@ -25,7 +25,8 @@
 		"site:build": "npm --prefix site ci --no-audit --no-fund && npm --prefix site run build",
 		"site:deploy": "npm --prefix site ci --no-audit --no-fund && npm --prefix site run deploy",
 		"release:bump": "node scripts/release/bump.mts",
-		"scene:shot": "node scripts/scene-shot/shot.mts"
+		"scene:shot": "node scripts/scene-shot/shot.mts",
+		"scene:profile": "vite --config scripts/scene-shot/vite.config.ts --port 5179 --strictPort --logLevel info"
 	},
 	"dependencies": {
 		"zod": "^4.6.5"

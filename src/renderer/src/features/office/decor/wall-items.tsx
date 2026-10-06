@@ -6,6 +6,7 @@ import { ringBell } from "../../calisthenics/workout-store";
 import { useCostToday } from "../../hud/live-data";
 import { FONTS } from "../fonts";
 import { Clickable } from "../interaction/Clickable";
+import { DYNAMIC } from "../scene/StaticBatch";
 import { PALETTE } from "./palette";
 import { Ball, Block, Cylinder } from "./parts";
 import type { DecorProps } from "./props";
@@ -52,7 +53,7 @@ export function WallBell({ label }: DecorProps) {
 				position={[0, 0.24, hangZ / 2]}
 				color={PALETTE.bellMustard}
 			/>
-			<group ref={bell} position={[0, 0.24, hangZ]}>
+			<group ref={bell} position={[0, 0.24, hangZ]} userData={DYNAMIC}>
 				<group position={[0, -0.2, 0]}>
 					<Cylinder
 						radiusTop={0.012}
@@ -173,7 +174,7 @@ function useWallTime(): Date {
 function Hand(props: { readonly turns: number; readonly length: number; readonly z: number }) {
 	const width = props.length > 0.2 ? 0.018 : 0.028;
 	return (
-		<group rotation={[0, 0, -props.turns * TAU]} position={[0, 0, props.z]}>
+		<group rotation={[0, 0, -props.turns * TAU]} position={[0, 0, props.z]} userData={DYNAMIC}>
 			<Block
 				size={[width, props.length, 0.008]}
 				position={[0, props.length / 2 - 0.03, 0]}

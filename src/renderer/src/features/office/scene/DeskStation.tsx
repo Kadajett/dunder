@@ -5,6 +5,7 @@ import type { Desk } from "@shared/layout/schema";
 import { useState } from "react";
 import { PALETTE } from "../decor/palette";
 import { Monitor } from "./Monitor";
+import { DYNAMIC } from "./StaticBatch";
 import { DEG, SEAT_Z, STATION_SCALE } from "./station";
 
 const HOVER_GLOW = "#f2c66d";
@@ -39,7 +40,7 @@ function Chair({ color }: { readonly color: string }) {
 function DeskBody({ hovered }: { readonly hovered: boolean }) {
 	return (
 		<group>
-			<mesh position={[0, 0.73, 0]} castShadow receiveShadow>
+			<mesh position={[0, 0.73, 0]} castShadow receiveShadow userData={DYNAMIC}>
 				<boxGeometry args={[1.5, 0.07, 0.82]} />
 				<meshStandardMaterial
 					color={hovered ? PALETTE.deskTopHover : PALETTE.deskTop}
