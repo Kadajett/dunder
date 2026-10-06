@@ -1,12 +1,13 @@
 import { b64Vecs, type TLPageId, type TLShape, type VecModel } from "@tldraw/tlschema";
-import { plainText } from "./rich-text";
+import { plainText } from "./whiteboard-text";
 
 /**
  * Where shapes sit on the board, estimated without a DOM. The editor measures
  * text with the browser; main only needs to know roughly where things are
- * (to place agents' posts in free space) and how tall a long note gets.
- * Estimates err large: a post one cell further away beats one on top of
- * another shape. Parent rotation is ignored.
+ * (to place agents' posts in free space) and how tall a long note gets, and
+ * the 3D board in the room only how to frame the drawing. Estimates err
+ * large: a post one cell further away beats one on top of another shape.
+ * Parent rotation is ignored.
  */
 
 export interface Box {
@@ -131,8 +132,16 @@ function rotated(box: Box, rotation: number): Box {
 	return pointsBox(corners) ?? box;
 }
 
-/** The page-space box of every shape on `page` (children of frames and groups offset by their parents). */
-export function pageBoxes(shapes: readonly TLShape[], page: TLPageId): Box[] {
+/** A shape on the page: where its origin sits (frames and groups offset their children) and the box it covers. */
+export interface PlacedShape {
+	readonly shape: TLShape;
+	readonly x: number;
+	readonly y: number;
+	readonly box: Box;
+}
+
+/** Every shape on `page` that has an extent of its own, with its page position and box. */
+export function placeShapes(shapes: readonly TLShape[], page: TLPageId): PlacedShape[] {
 	const byId = new Map<string, TLShape>(shapes.map((shape) => [shape.id, shape]));
 	/** Page position of the shape's origin, undefined when it sits on another page. */
 	const origin = (shape: TLShape): { x: number; y: number } | undefined => {
@@ -145,8 +154,13 @@ export function pageBoxes(shapes: readonly TLShape[], page: TLPageId): Box[] {
 		const at = origin(shape);
 		if (!local || !at) return [];
 		const box = rotated(local, shape.rotation);
-		return [{ ...box, x: box.x + at.x, y: box.y + at.y }];
+		return [{ shape, ...at, box: { ...box, x: box.x + at.x, y: box.y + at.y } }];
 	});
+}
+
+/** The page-space box of every shape on `page`. */
+export function pageBoxes(shapes: readonly TLShape[], page: TLPageId): Box[] {
+	return placeShapes(shapes, page).map((placed) => placed.box);
 }
 
 /** Agent posts without a position fill a grid, five to a row, from the top left. */

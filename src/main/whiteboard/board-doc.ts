@@ -4,6 +4,8 @@ import {
 	type NoteColor,
 	type WhiteboardSnapshot,
 } from "@shared/whiteboard";
+import { freeSpot, noteGrowY, pageBoxes, postSize } from "@shared/whiteboard-geometry";
+import { plainText } from "@shared/whiteboard-text";
 import { atom } from "@tldraw/state";
 import { Store } from "@tldraw/store";
 import {
@@ -17,8 +19,6 @@ import {
 	toRichText,
 } from "@tldraw/tlschema";
 import { getIndexAbove, sortByIndex, ZERO_INDEX_KEY } from "@tldraw/utils";
-import { freeSpot, noteGrowY, pageBoxes, postSize } from "./board-geometry";
-import { plainText } from "./rich-text";
 
 /**
  * The board's tldraw document, headless in the main process. Only

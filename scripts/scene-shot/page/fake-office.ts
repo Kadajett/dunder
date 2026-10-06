@@ -1,6 +1,7 @@
 import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
 import type { OfficeApi } from "@shared/ipc";
 import { type MailQueue, previewOf, type QueuedNote } from "@shared/mail-queue";
+import { fakeWhiteboard } from "./fake-board";
 
 /**
  * A stand-in for the preload's `window.office`, so the real scene renders in a
@@ -136,6 +137,8 @@ const fakeOffice = {
 		seenDone: async () => ({}),
 		markSeen: async () => undefined,
 	},
+	// A brainstorm in progress, so the shots show the board in the break room drawn on.
+	whiteboard: fakeWhiteboard,
 } satisfies Pick<
 	OfficeApi,
 	| "getSnapshot"
@@ -150,6 +153,7 @@ const fakeOffice = {
 	| "switchboard"
 	| "mailQueue"
 	| "stats"
+	| "whiteboard"
 >;
 
 Object.defineProperty(window, "office", { value: fakeOffice });

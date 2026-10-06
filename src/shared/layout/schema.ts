@@ -28,6 +28,7 @@ export const decorKinds = [
 	"printer",
 	"wall-tv",
 	"wall-placard",
+	"whiteboard",
 ] as const;
 export type DecorKind = (typeof decorKinds)[number];
 

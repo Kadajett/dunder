@@ -24,6 +24,8 @@ const WALL_ELEVATION: Partial<Record<DecorKind, number>> = {
 	"wall-clock": 3,
 	"wall-tv": 2.9,
 	"wall-placard": 2.8,
+	// Low enough to clear the window sills (2.4 m), with the marker tray at hand height.
+	whiteboard: 1.45,
 };
 
 /** `prefix-N` with the smallest N not used by any item of the layout. */

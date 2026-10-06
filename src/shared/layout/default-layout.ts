@@ -1,7 +1,25 @@
-import { type Callout, type Desk, type Layout, layoutSchema, type Zone } from "./schema";
+import {
+	type Callout,
+	type Decor,
+	type Desk,
+	type Layout,
+	layoutSchema,
+	type Zone,
+} from "./schema";
 
 /** Marker of the one-time move of the sales floor toward the TV (office-miz). */
 const SALES_NEAR_TV = "sales-near-tv";
+/** Marker of the one-time hanging of the whiteboard (office-hgr.3). */
+const WHITEBOARD_1 = "whiteboard-1";
+
+/** On the left wall over the break-room sofa, clear of the window sills; its front faces into the room (+x). */
+const WHITEBOARD: Decor = {
+	id: "whiteboard",
+	kind: "whiteboard",
+	position: { x: -13, z: 6.4 },
+	rotation: 90,
+	elevation: 1.45,
+};
 
 /** The sales floor's rug, a little narrower than before so it stays clear of the clients lounge. */
 const SALES_RUG = { center: { x: -6.2, z: -0.6 }, width: 6.8, depth: 7.4, color: "#b9a58a" };
@@ -164,10 +182,11 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 		{ id: "plant-6", kind: "tall-plant", position: { x: -6.2, z: -9.3 } },
 		{ id: "plant-7", kind: "tall-plant", position: { x: 12.2, z: -9.2 } },
 		{ id: "plant-8", kind: "plant", position: { x: -12.2, z: -8.8 } },
+		WHITEBOARD,
 	],
 	callouts: [],
 	// The default is already in the state every one-time migration produces.
-	migrations: [SALES_NEAR_TV],
+	migrations: [SALES_NEAR_TV, WHITEBOARD_1],
 });
 
 /** The default floor before it was matched to the reference (office-vl9.6). */
@@ -278,6 +297,22 @@ function salesNearTv(layout: Layout): Layout {
 }
 
 /**
+ * office-hgr.3, once per layout: hang the whiteboard by the couches unless the
+ * layout already has one. Once done, a board Jeremy deletes stays deleted.
+ */
+function hangWhiteboard(layout: Layout): Layout {
+	if (layout.migrations.includes(WHITEBOARD_1)) return layout;
+	const hasBoard = layout.decor.some((item) => item.kind === "whiteboard");
+	const idTaken = layout.decor.some((item) => item.id === WHITEBOARD.id);
+	const board = idTaken ? { ...WHITEBOARD, id: `${WHITEBOARD.id}-room` } : WHITEBOARD;
+	return {
+		...layout,
+		decor: hasBoard ? layout.decor : [...layout.decor, board],
+		migrations: [...layout.migrations, WHITEBOARD_1],
+	};
+}
+
+/**
  * Bring a saved layout up to date with changed defaults. Companies copy the
  * default layout when created, so a value still on its former default was
  * never chosen by anyone: it moves to the current default on its own (floor
@@ -291,5 +326,5 @@ export function migrateLayout(layout: Layout): Layout {
 		room === layout.room && dropped.size === 0
 			? layout
 			: { ...layout, room, zones: layout.zones.filter((zone) => !dropped.has(zone)) };
-	return salesNearTv(current);
+	return hangWhiteboard(salesNearTv(current));
 }

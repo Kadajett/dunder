@@ -20,6 +20,7 @@ const DECOR_FOOTPRINT: Record<DecorKind, readonly [number, number]> = {
 	"wall-clock": [0, 0],
 	"wall-tv": [0, 0],
 	"wall-placard": [0, 0],
+	whiteboard: [0, 0],
 };
 
 /** Desk body footprint in desk-local space (the chair area stays walkable). */

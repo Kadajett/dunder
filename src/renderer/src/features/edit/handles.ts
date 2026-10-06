@@ -33,6 +33,7 @@ const DECOR_SIZE: Record<DecorKind, Vec3> = {
 	printer: [0.9, 1, 0.7],
 	"wall-tv": [2.2, 1.3, 0.15],
 	"wall-placard": [1.5, 0.9, 0.1],
+	whiteboard: [2.3, 1.3, 0.14],
 };
 
 const WALL_KINDS: Partial<Record<DecorKind, true>> = {
@@ -40,6 +41,7 @@ const WALL_KINDS: Partial<Record<DecorKind, true>> = {
 	"wall-clock": true,
 	"wall-tv": true,
 	"wall-placard": true,
+	whiteboard: true,
 };
 
 /** Every editable item, in draw order. */
