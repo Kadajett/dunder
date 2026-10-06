@@ -16,7 +16,8 @@ export type MenuPanel = Exclude<HudPanel, "inbox">;
 export type MenuAction =
 	| { readonly kind: "panel"; readonly panel: MenuPanel }
 	| { readonly kind: "view"; readonly view: ViewMode }
-	| { readonly kind: "edit" };
+	| { readonly kind: "edit" }
+	| { readonly kind: "whiteboard" };
 
 export interface MenuEntry {
 	readonly label: string;
@@ -60,12 +61,17 @@ export function menuSections(state: MenuState): readonly MenuSection[] {
 	return [
 		{
 			heading: "Panels",
-			entries: PANELS.map(({ panel, label }) => ({
-				label,
-				role: "menuitemcheckbox",
-				checked: state.panel === panel,
-				action: { kind: "panel", panel },
-			})),
+			entries: [
+				...PANELS.map(
+					({ panel, label }): MenuEntry => ({
+						label,
+						role: "menuitemcheckbox",
+						checked: state.panel === panel,
+						action: { kind: "panel", panel },
+					}),
+				),
+				{ label: "Whiteboard", role: "menuitem", action: { kind: "whiteboard" } },
+			],
 		},
 		{
 			heading: "View",

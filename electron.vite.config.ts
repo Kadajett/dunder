@@ -34,5 +34,7 @@ export default defineConfig(({ command }) => ({
 	renderer: {
 		resolve: { alias: { ...shared, "@renderer": resolve(__dirname, "src/renderer/src") } },
 		plugins: [react()],
+		// Its `?url` asset imports only resolve through Vite itself, not the dev pre-bundler.
+		optimizeDeps: { exclude: ["@tldraw/assets"] },
 	},
 }));

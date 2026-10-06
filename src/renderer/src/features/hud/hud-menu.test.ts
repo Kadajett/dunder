@@ -10,11 +10,12 @@ const checked = (state: MenuState) =>
 		.map((entry) => entry.label);
 
 describe("menuSections", () => {
-	it("holds every former top-bar action except the inbox, which keeps its own button", () => {
+	it("holds every former top-bar action except the inbox, plus the whiteboard", () => {
 		expect(entries(BASE).map((entry) => entry.action)).toEqual([
 			{ kind: "panel", panel: "clients" },
 			{ kind: "panel", panel: "brain" },
 			{ kind: "panel", panel: "team" },
+			{ kind: "whiteboard" },
 			{ kind: "view", view: "office" },
 			{ kind: "view", view: "classic" },
 			{ kind: "edit" },

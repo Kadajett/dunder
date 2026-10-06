@@ -15,6 +15,8 @@ export default defineConfig({
 			"@renderer": resolve(repo, "src/renderer/src"),
 		},
 	},
+	// As in the app's renderer config: tldraw's `?url` asset imports must not be pre-bundled.
+	optimizeDeps: { exclude: ["@tldraw/assets"] },
 	// node_modules may be a symlink (git worktrees share one); its real path must be servable too.
 	server: {
 		host: "127.0.0.1",
