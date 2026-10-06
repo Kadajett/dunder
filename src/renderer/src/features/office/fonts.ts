@@ -1,5 +1,6 @@
-// The DOM labels' display weight: zone titles, name tags and bubble captions set
-// heavy tracked capitals, like the reference (main.tsx loads Inter 400/600/700).
+// Inter 800 (main.tsx loads only 400/600/700): zone titles, world-card
+// titles and bubble captions in the DOM, and the floor name rings' canvas, all set
+// heavy tracked capitals like the reference.
 import "@fontsource/inter/800.css";
 // troika (drei <Text>) reads woff/ttf, not woff2, and must never fetch fonts from a CDN.
 import interBold from "@fontsource/inter/files/inter-latin-800-normal.woff?url";

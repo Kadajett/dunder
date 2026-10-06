@@ -15,8 +15,19 @@ export const RING_OUTER = 1;
  */
 const BAND_RADIUS = 190;
 const BAND_WIDTH = 120;
-/** World radius of the band's inner edge: the ring mesh's hole. */
+/** World radius of the band's inner edge: the painted mesh's hole. */
 export const RING_INNER = ((BAND_RADIUS - BAND_WIDTH / 2) / (RING_CANVAS / 2)) * RING_OUTER;
+
+const PX_TO_WORLD = RING_OUTER / (RING_CANVAS / 2);
+/** World radii of the dark name pill, which takes the pointer like the old tag did. */
+export const PILL_INNER = (BAND_RADIUS - BAND_WIDTH / 2) * PX_TO_WORLD;
+export const PILL_OUTER = (BAND_RADIUS + BAND_WIDTH / 2) * PX_TO_WORLD;
+/** World radii of the thin ring's hit area: a little wider than the painted line, so it can be pointed at. */
+export const LINE_HIT_INNER = (BAND_RADIUS - 12) * PX_TO_WORLD;
+export const LINE_HIT_OUTER = (BAND_RADIUS + 12) * PX_TO_WORLD;
+/** The pill runs this far (radians) past the name at each end, plus its round cap. */
+const PILL_PAD = BAND_WIDTH / 4 / BAND_RADIUS;
+const PILL_CAP = BAND_WIDTH / 2 / BAND_RADIUS;
 
 const FONT_PX = 66;
 const TRACKING = 0.12;
@@ -92,8 +103,12 @@ export class NameRingCanvas {
 		this.#ctx = ctx;
 	}
 
-	/** A status dot and the spaced capital name on the near arc, over a curved dark band. */
-	paint(look: RingLook): void {
+	/**
+	 * A status dot and the spaced capital name on the near arc, over a curved
+	 * dark pill. Returns the pill's half-angle (radians either side of the near
+	 * point, caps included), for its hit area.
+	 */
+	paint(look: RingLook): number {
 		const ctx = this.#ctx;
 		ctx.clearRect(0, 0, RING_CANVAS, RING_CANVAS);
 		ctx.font = RING_FONT;
@@ -122,6 +137,7 @@ export class NameRingCanvas {
 				ctx.fillText(letter, (-tracking / 2) * scale, 0);
 			});
 		});
+		return halfSweep + PILL_PAD + PILL_CAP;
 	}
 
 	#band(halfSweep: number, highlighted: boolean): void {
@@ -133,14 +149,13 @@ export class NameRingCanvas {
 		ctx.strokeStyle = highlighted ? HIGHLIGHT : `${INK}8c`;
 		ctx.stroke();
 		// The dark curved pill the name sits in, like the reference's tags.
-		const pad = BAND_WIDTH / 4 / BAND_RADIUS;
 		ctx.beginPath();
 		ctx.arc(
 			CENTRE,
 			CENTRE,
 			BAND_RADIUS,
-			Math.PI / 2 - halfSweep - pad,
-			Math.PI / 2 + halfSweep + pad,
+			Math.PI / 2 - halfSweep - PILL_PAD,
+			Math.PI / 2 + halfSweep + PILL_PAD,
 		);
 		ctx.lineCap = "round";
 		if (highlighted) {
