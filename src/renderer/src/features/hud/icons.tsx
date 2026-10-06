@@ -1,4 +1,4 @@
-import type { HudPanel } from "./view-store";
+import type { MenuPanel } from "./hud-menu";
 
 const STROKE = {
 	fill: "none",
@@ -8,20 +8,14 @@ const STROKE = {
 	strokeLinejoin: "round",
 } as const;
 
-/** Small line icons for the nav pills, one per panel. */
-export function PanelIcon({ panel }: { readonly panel: HudPanel }) {
+/** Small line icons for the menu's panel entries. */
+export function PanelIcon({ panel }: { readonly panel: MenuPanel }) {
 	return (
-		<svg className="hud-icon" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+		<svg className="hud-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
 			{panel === "clients" ? (
 				<>
 					<rect x="2.5" y="2.5" width="11" height="11" rx="1.5" {...STROKE} />
 					<path d="M2.5 7h11M7 7v6.5" {...STROKE} />
-				</>
-			) : null}
-			{panel === "inbox" ? (
-				<>
-					<rect x="2" y="3.5" width="12" height="9" rx="1.5" {...STROKE} />
-					<path d="m2.5 4.5 5.5 4 5.5-4" {...STROKE} />
 				</>
 			) : null}
 			{panel === "brain" ? (
@@ -40,11 +34,21 @@ export function PanelIcon({ panel }: { readonly panel: HudPanel }) {
 	);
 }
 
-/** The Trust Inbox glyph: a stack of lines on the blue button. */
+/** The Trust Inbox: an envelope. */
 export function InboxGlyph() {
 	return (
-		<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-			<path d="M3.5 5h9M3.5 8h9M3.5 11h6" {...STROKE} strokeWidth={1.8} />
+		<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+			<rect x="2" y="3.5" width="12" height="9" rx="1.5" {...STROKE} />
+			<path d="m2.5 4.5 5.5 4 5.5-4" {...STROKE} />
+		</svg>
+	);
+}
+
+/** The top-bar menu: three lines. */
+export function MenuGlyph() {
+	return (
+		<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+			<path d="M3 4.5h10M3 8h10M3 11.5h10" {...STROKE} />
 		</svg>
 	);
 }

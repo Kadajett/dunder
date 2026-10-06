@@ -32,7 +32,7 @@ function PanelBody({ panel, model, snapshot }: HudPanelsProps & { readonly panel
 	}
 }
 
-/** The side panel the top bar's nav opened, sliding in on the right. */
+/** The side panel opened from the top bar (its inbox button or menu), sliding in on the right. */
 export function HudPanels({ model, snapshot }: HudPanelsProps) {
 	const panel = useHud((state) => state.panel);
 	const closePanel = useHud((state) => state.closePanel);

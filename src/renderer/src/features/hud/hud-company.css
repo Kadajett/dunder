@@ -1,4 +1,4 @@
-/* HUD company switcher chip and its companies menu. */
+/* HUD company switcher chip and its companies list (menu shell: hud.css). */
 .hud-company {
 	position: relative;
 }
@@ -6,20 +6,21 @@
 .hud-company-chip {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	padding: 8px 12px 8px 9px;
+	gap: 9px;
+	height: 40px;
+	padding: 0 12px 0 7px;
 	text-align: left;
 }
 
 .hud-logo {
 	display: grid;
 	place-items: center;
-	width: 30px;
-	height: 30px;
-	border-radius: 8px;
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
 	background: #2f7d55;
 	color: #fff;
-	font: 700 15px var(--font-ui);
+	font: 700 13px var(--font-ui);
 	flex: none;
 }
 
@@ -30,67 +31,21 @@
 	font-size: 12px;
 }
 
-.hud-company-text {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-}
-
-.hud-company-text strong {
+.hud-company-name {
 	font: 700 14px var(--font-ui);
 	letter-spacing: -0.01em;
-}
-
-.hud-company-text small {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	font: 700 9.5px var(--font-mono);
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
-	color: var(--ink-soft);
 	white-space: nowrap;
 }
 
-.hud-company-text small .status-dot {
+.hud-company-chip .status-dot {
 	width: 6px;
 	height: 6px;
 	box-shadow: none;
 }
 
 .hud-caret {
-	margin-left: 6px;
 	color: var(--ink-soft);
 	font-size: 11px;
-}
-
-.hud-menu-backdrop {
-	position: fixed;
-	inset: 0;
-	border: 0;
-	background: transparent;
-	cursor: default;
-}
-
-.hud-menu {
-	position: absolute;
-	top: calc(100% + 8px);
-	left: 0;
-	min-width: 260px;
-	padding: 8px;
-	border-radius: 12px;
-	background: #fffdf8;
-	box-shadow:
-		0 1px 0 #e5dccb,
-		0 14px 32px #6b553a33;
-}
-
-.hud-menu-heading {
-	margin: 4px 8px 6px;
-	font: 700 10px var(--font-mono);
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
-	color: var(--ink-soft);
 }
 
 .hud-menu-item {
@@ -120,47 +75,15 @@
 	color: var(--ink-soft);
 }
 
-.hud-check {
-	color: #2f7d55;
-	font-weight: 700;
-}
-
-.hud-menu-divider {
-	height: 1px;
-	margin: 8px 4px;
-	background: var(--panel-edge);
-}
-
-.hud-menu-action {
-	display: block;
-	width: 100%;
-	padding: 7px 8px;
-	border: 0;
-	border-radius: 8px;
-	background: transparent;
-	color: var(--ink);
-	font: 600 12.5px var(--font-ui);
-	text-align: left;
-	cursor: pointer;
-}
-
-.hud-menu-action:hover,
-.hud-menu-item[aria-checked="false"]:hover {
-	background: #efe6d6;
-}
-
 .hud-menu-item[aria-checked="false"] {
 	background: transparent;
 	cursor: pointer;
 }
 
-.hud-menu-item + .hud-menu-item {
-	margin-top: 4px;
+.hud-menu-item[aria-checked="false"]:hover {
+	background: #efe6d6;
 }
 
-/* Narrow windows: drop the session caption. */
-@media (max-width: 1180px) {
-	.hud-company-text small {
-		display: none;
-	}
+.hud-menu-item + .hud-menu-item {
+	margin-top: 4px;
 }

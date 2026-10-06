@@ -1,4 +1,4 @@
-/* HUD clock and live stat tiles. Clock rules come first: they are less specific than the tile states. */
+/* HUD clock (top bar) and the live stat tiles (Team panel). Clock rules come first: they are less specific than the tile states. */
 .hud-clock {
 	display: flex;
 	flex-direction: column;
@@ -23,10 +23,12 @@
 .hud-tiles {
 	display: flex;
 	gap: 10px;
+	margin-bottom: 12px;
 }
 
 .hud-tile {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
 	gap: 4px;
 	min-width: 72px;
