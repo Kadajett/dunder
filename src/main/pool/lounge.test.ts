@@ -7,6 +7,7 @@ import {
 	type Lounge,
 	leaveJeremy,
 	newLounge,
+	nextChangeAt,
 	observe,
 	type Presence,
 	seated,
@@ -57,11 +58,14 @@ describe("idle mode: forming games", () => {
 		[5, [2, 2], 1],
 		[6, [3, 3], 0],
 		[8, [3, 3], 2],
-	])("seats %i idle agents as %j with %i queued", (count, sizes, queued) => {
+	])("seats %i idle agents as %j with %i queued, and keeps it that way", (count, sizes, queued) => {
 		const names = ["a", "b", "c", "d", "e", "f", "g", "h"].slice(0, count);
-		const lounge = idleFor(names);
-		expect(sideSizes(lounge)).toEqual(sizes);
-		expect(lounge.queue).toHaveLength(queued);
+		const formed = idleFor(names);
+		const later = observe(formed, free(...names), ELIGIBLE_AFTER_MS + 30_000);
+		for (const lounge of [formed, later]) {
+			expect(sideSizes(lounge)).toEqual(sizes);
+			expect(lounge.queue).toHaveLength(queued);
+		}
 	});
 
 	it("turns practice into a game when a second agent becomes eligible", () => {
@@ -72,13 +76,22 @@ describe("idle mode: forming games", () => {
 		expect(seated(lounge).sort()).toEqual(["ben", "nora"]);
 	});
 
-	it("seats a newcomer on the smaller side mid-game, and queues it when both sides have three", () => {
+	it("seats newcomers mid-game only in pairs or into a short side; the rest queue", () => {
 		let lounge = idleFor(["a", "b", "c"]);
 		const [waiting] = lounge.queue;
-		expect(waiting).toBeDefined();
 		lounge = observe(lounge, free("a", "b", "c", "d"), ELIGIBLE_AFTER_MS + 1_000);
 		lounge = observe(lounge, free("a", "b", "c", "d"), 2 * ELIGIBLE_AFTER_MS + 1_000);
 		expect(sideSizes(lounge)).toEqual([2, 2]);
+		expect(seated(lounge)).toContain(waiting);
+
+		const three = idleFor(["a", "b", "c", "d", "e"]);
+		const [queued] = three.queue;
+		const leaver = three.game?.sides[1]?.players[0] ?? "";
+		const stay = ["a", "b", "c", "d", "e"].filter((name) => name !== leaver);
+		const refilled = observe(three, [...free(...stay), ...busy(leaver)], ELIGIBLE_AFTER_MS + 1_000);
+		expect(sideSizes(refilled)).toEqual([2, 2]);
+		expect(seated(refilled)).toContain(queued);
+
 		const full = idleFor(["a", "b", "c", "d", "e", "f"]);
 		const later = observe(
 			observe(full, free("a", "b", "c", "d", "e", "f", "g"), 61_000),
@@ -87,6 +100,21 @@ describe("idle mode: forming games", () => {
 		);
 		expect(sideSizes(later)).toEqual([3, 3]);
 		expect(later.queue).toEqual(["g"]);
+	});
+
+	it("knows when the clock next matters: an agent's minute, the end of the winner pause", () => {
+		const lounge = observe(newLounge(1), free("theo"), 1_000);
+		expect(nextChangeAt(lounge, 2_000)).toBe(1_000 + ELIGIBLE_AFTER_MS);
+		const practising = observe(lounge, free("theo"), 1_000 + ELIGIBLE_AFTER_MS);
+		expect(nextChangeAt(practising, 1_000 + ELIGIBLE_AFTER_MS)).toBeNull();
+		const game = idleFor(["a", "b"]).game;
+		if (!game) throw new Error("no game");
+		const ended = withGame(
+			idleFor(["a", "b"]),
+			{ ...game, result: { winner: 0, reason: "test" } },
+			70_000,
+		);
+		expect(nextChangeAt(ended, 70_000)).toBe(70_000 + WINNER_PAUSE_MS);
 	});
 });
 

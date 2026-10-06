@@ -2,7 +2,7 @@ import { agent, snapshot } from "@shared/herdr/fixtures/snapshot";
 import type { AgentStatus } from "@shared/herdr/schema";
 import { JEREMY, type PoolFrame, type PoolView } from "@shared/pool";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ELIGIBLE_AFTER_MS } from "./lounge";
+import { ELIGIBLE_AFTER_MS, WINNER_PAUSE_MS } from "./lounge";
 import { PoolService, WALK_MS } from "./service";
 
 function office(statuses: Readonly<Record<string, AgentStatus>>) {
@@ -79,6 +79,39 @@ describe("PoolService", () => {
 			label: "mika wins",
 		});
 		service.stop();
+	});
+
+	it("shows the winner for the full pause after the balls stop, even when the game ended mid-roll", () => {
+		const { service, frames } = harness();
+		service.start();
+		service.updateSnapshot(office({ theo: "idle", mika: "idle" }));
+		vi.advanceTimersByTime(ELIGIBLE_AFTER_MS + WALK_MS);
+		expect(service.view().moving).toBe(true);
+		const breaker = service.view().shooter ?? "";
+		const other = breaker === "theo" ? "mika" : "theo";
+		// The breaker is prompted while the break rolls: the other side wins once the balls stop.
+		service.updateSnapshot(office({ [breaker]: "working", [other]: "idle" }));
+		while (service.view().moving) vi.advanceTimersByTime(100);
+		// Long enough that a pause counted from the strike would visibly end early.
+		expect(frames.at(-1)?.t ?? 0).toBeGreaterThan(1);
+		expect(service.view()).toMatchObject({ stage: "finished", label: `${other} wins` });
+		vi.advanceTimersByTime(WINNER_PAUSE_MS - 200);
+		expect(service.view().stage).toBe("finished");
+		vi.advanceTimersByTime(200);
+		expect(service.view()).toMatchObject({ stage: "playing", mode: "practice", shooter: other });
+		service.stop();
+	});
+
+	it("keeps no clock running while nobody is around", () => {
+		const { service } = harness();
+		service.start();
+		expect(vi.getTimerCount()).toBe(0);
+		service.updateSnapshot(office({ theo: "working" }));
+		expect(vi.getTimerCount()).toBe(0);
+		service.updateSnapshot(office({ theo: "idle" }));
+		expect(vi.getTimerCount()).toBe(1);
+		service.stop();
+		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it("waits for Jeremy's shot while he's in table view, and plays it on autopilot when he isn't", () => {

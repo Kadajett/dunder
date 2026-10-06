@@ -15,6 +15,7 @@ import {
 	type Lounge,
 	leaveJeremy,
 	newLounge,
+	nextChangeAt,
 	observe,
 	type Presence,
 	withGame,
@@ -30,8 +31,6 @@ export const WALK_MS = 8_000;
 /** The AI thinks 2-4 s (seeded) before each shot, so it reads like play. */
 const THINK_MS = 2_000;
 const FRAME_MS = 1_000 / 30;
-/** Eligibility is time-based (60 s idle), so the table re-checks the clock this often. */
-const TICK_MS = 1_000;
 
 export interface PoolDeps {
 	readonly seed: number;
@@ -49,6 +48,8 @@ interface Flight {
 	next: Lounge;
 	readonly frames: readonly PoolFrame[];
 	readonly startedAt: number;
+	/** When the last frame plays: the table's clock while the balls roll. */
+	readonly landsAt: number;
 }
 
 /**
@@ -66,6 +67,7 @@ export class PoolService {
 	#turn: { readonly game: PoolGame; readonly timer: NodeJS.Timeout } | undefined;
 	#tick: NodeJS.Timeout | undefined;
 	#lastView = "";
+	#started = false;
 
 	constructor(deps: PoolDeps) {
 		this.#deps = deps;
@@ -74,15 +76,13 @@ export class PoolService {
 	}
 
 	start(): void {
-		this.#tick ??= setInterval(
-			() => this.#apply((lounge) => observe(lounge, this.#presences, this.#now())),
-			TICK_MS,
-		);
+		this.#started = true;
 		this.#changed();
 	}
 
 	stop(): void {
-		clearInterval(this.#tick);
+		this.#started = false;
+		clearTimeout(this.#tick);
 		clearInterval(this.#playback);
 		if (this.#turn) clearTimeout(this.#turn.timer);
 		this.#tick = undefined;
@@ -107,17 +107,17 @@ export class PoolService {
 					]
 				: [],
 		);
-		this.#apply((lounge) => observe(lounge, this.#presences, this.#now()));
+		this.#apply((lounge, now) => observe(lounge, this.#presences, now));
 	}
 
 	join(): PoolActionResult {
-		this.#apply((lounge) => joinJeremy(lounge, this.#now()));
+		this.#apply((lounge, now) => joinJeremy(lounge, now));
 		return { ok: true };
 	}
 
 	leave(): PoolActionResult {
 		if (!this.#lounge.jeremy.joined) return { ok: false, reason: "you're not at the table" };
-		this.#apply((lounge) => leaveJeremy(lounge, this.#now()));
+		this.#apply((lounge, now) => leaveJeremy(lounge, now));
 		return { ok: true };
 	}
 
@@ -136,10 +136,16 @@ export class PoolService {
 		return { ok: true };
 	}
 
-	/** Change the table (and the table the rolling shot will leave), then publish and plan the next shot. */
-	#apply(change: (lounge: Lounge) => Lounge): void {
-		this.#lounge = change(this.#lounge);
-		if (this.#flight) this.#flight.next = change(this.#flight.next);
+	/**
+	 * Change the table (and the table the rolling shot will leave), then publish
+	 * and plan. While balls roll the table's clock stands at the moment they stop,
+	 * so a game that ends meanwhile shows its winner for the full pause after that.
+	 */
+	#apply(change: (lounge: Lounge, now: number) => Lounge): void {
+		const flight = this.#flight;
+		const now = flight ? Math.max(this.#now(), flight.landsAt) : this.#now();
+		this.#lounge = change(this.#lounge, now);
+		if (flight) flight.next = change(flight.next, now);
 		this.#changed();
 	}
 
@@ -154,6 +160,20 @@ export class PoolService {
 				.catch((error: unknown) => log.warn("cannot save the pool digest", { error }));
 		}
 		this.#plan();
+		this.#wake();
+	}
+
+	/** Re-check the table when the clock alone changes it next (eligibility, winner pause). */
+	#wake(): void {
+		clearTimeout(this.#tick);
+		this.#tick = undefined;
+		const now = this.#now();
+		const at = this.#started ? nextChangeAt(this.#lounge, now) : null;
+		if (at === null) return;
+		this.#tick = setTimeout(
+			() => this.#apply((lounge, time) => observe(lounge, this.#presences, time)),
+			at - now,
+		);
 	}
 
 	/** Schedule the AI's shot (an agent's, or Jeremy's on autopilot while he's out of table view). */
@@ -180,10 +200,12 @@ export class PoolService {
 	#strike(game: PoolGame, input: PoolShotInput): void {
 		const taken = takeShot(game, input, { frames: true });
 		const now = this.#now();
+		const landsAt = now + (taken.simulation.frames.length - 1) * FRAME_MS;
 		this.#flight = {
-			next: withGame(this.#lounge, taken.game, now),
+			next: withGame(this.#lounge, taken.game, landsAt),
 			frames: taken.simulation.frames,
 			startedAt: now,
+			landsAt,
 		};
 		this.#changed();
 		this.#playback = setInterval(() => this.#play(), FRAME_MS);
@@ -201,6 +223,6 @@ export class PoolService {
 		this.#playback = undefined;
 		this.#flight = null;
 		this.#lounge = flight.next;
-		this.#apply((lounge) => arrange(lounge, this.#now()));
+		this.#apply((lounge, now) => arrange(lounge, now));
 	}
 }

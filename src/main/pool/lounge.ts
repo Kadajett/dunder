@@ -162,22 +162,42 @@ function smallerSide(game: PoolGame): number {
 	return (a ?? 0) <= (b ?? 0) ? 0 : 1;
 }
 
-/** Mid-game, the smaller side takes newcomers (queued first) up to three; the rest queue. */
+/**
+ * Mid-game newcomers (queued first) keep the sides even, up to three a side:
+ * one fills a side that is short, two take a seat each; whoever is left queues.
+ */
 function seatNewcomers(lounge: Lounge, game: PoolGame, now: number): Lounge {
 	const ready = eligible(lounge, now);
-	const order = [
+	let waiting = [
 		...lounge.queue.filter((name) => ready.includes(name)),
 		...ready.filter((name) => !lounge.queue.includes(name)),
 	];
 	let seatedGame = game;
-	const queue: string[] = [];
-	for (const name of order) {
-		const side = smallerSide(seatedGame);
-		if ((seatedGame.sides[side]?.players.length ?? 0) < MAX_SIDE)
-			seatedGame = addPlayer(seatedGame, side, name);
-		else queue.push(name);
+	for (;;) {
+		const [a = 0, b = 0] = seatedGame.sides.map((side) => side.players.length);
+		const [first, second] = waiting;
+		if (Math.min(a, b) >= MAX_SIDE || first === undefined) break;
+		if (a !== b) seatedGame = addPlayer(seatedGame, smallerSide(seatedGame), first);
+		else if (second !== undefined)
+			seatedGame = addPlayer(addPlayer(seatedGame, 0, first), 1, second);
+		else break;
+		waiting = waiting.slice(a !== b ? 1 : 2);
 	}
-	return { ...lounge, game: seatedGame, queue };
+	return { ...lounge, game: seatedGame, queue: waiting };
+}
+
+/** When the clock alone can next change the table (an agent's minute is up, the winner pause ends), or null. */
+export function nextChangeAt(lounge: Lounge, now: number): number | null {
+	const sitting = seated(lounge);
+	const due = [
+		...(lounge.stage === "finished" && lounge.finishedAt !== null
+			? [lounge.finishedAt + WINNER_PAUSE_MS]
+			: []),
+		...[...lounge.freeSince]
+			.filter(([name]) => !sitting.includes(name))
+			.map(([, since]) => since + ELIGIBLE_AFTER_MS),
+	].filter((at) => at > now);
+	return due.length > 0 ? Math.min(...due) : null;
 }
 
 /** Bring the table up to date with the clock: re-form after the winner pause, seat or queue newcomers. */
