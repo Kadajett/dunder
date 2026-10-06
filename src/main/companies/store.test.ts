@@ -205,3 +205,45 @@ describe("sales floor move toward the TV (office-miz)", () => {
 		expect(layout?.callouts).toEqual([ACCESS]);
 	});
 });
+
+describe("whiteboard by the couches (office-hgr.3)", () => {
+	type Layout = Company["layout"];
+
+	async function load(layout: Layout): Promise<Layout> {
+		const company = { ...seedCompany("acme", "Acme", "", NOW), layout };
+		await writeFile(join(dir, "acme.json"), JSON.stringify(company));
+		const [loaded] = await loadCompanies(dir);
+		if (!loaded) throw new Error("company did not load");
+		return loaded.layout;
+	}
+
+	const withoutBoard = (layout: Layout): Layout => ({
+		...layout,
+		decor: layout.decor.filter((item) => item.kind !== "whiteboard"),
+	});
+	const boards = (layout: Layout) =>
+		layout.decor.filter((item) => item.kind === "whiteboard").map((item) => item.id);
+	/** Saved after office-miz, before the whiteboard existed. */
+	const savedBeforeBoard = (): Layout =>
+		withoutBoard({ ...seedCompany("acme", "Acme", "", NOW).layout, migrations: ["sales-near-tv"] });
+
+	it("hangs the board in a layout saved before it, once: a board deleted afterwards stays gone", async () => {
+		const hung = await load(savedBeforeBoard());
+		expect(boards(hung)).toEqual(["whiteboard"]);
+		expect(hung.migrations).toEqual(DEFAULT_LAYOUT.migrations);
+		expect(boards(await load(withoutBoard(hung)))).toEqual([]);
+	});
+
+	it("adds no second board to a layout that has one", async () => {
+		const own = {
+			id: "my-board",
+			kind: "whiteboard",
+			position: { x: 0, z: -10 },
+			rotation: 0,
+			elevation: 1.5,
+		} as const;
+		const saved = savedBeforeBoard();
+		const layout = await load({ ...saved, decor: [...saved.decor, own] });
+		expect(boards(layout)).toEqual(["my-board"]);
+	});
+});

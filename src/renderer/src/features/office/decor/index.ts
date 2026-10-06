@@ -1,5 +1,6 @@
 import type { DecorKind } from "@shared/layout/schema";
 import type { ComponentType } from "react";
+import { WallWhiteboard } from "../../whiteboard/WallWhiteboard";
 import { WallTv } from "../tv/WallTv";
 import { FloorLamp, Printer, ServerRack, WaterCooler } from "./equipment";
 import { Plant, TallPlant } from "./plants";
@@ -13,7 +14,7 @@ export type { DecorProps } from "./props";
 
 /**
  * Component for every decor kind. Floor kinds stand on y = 0 centred on their footprint;
- * wall kinds (wall-bell, wall-clock, wall-tv, wall-placard) have their back plane at z = 0 and are
+ * wall kinds (wall-bell, wall-clock, wall-tv, wall-placard, whiteboard) have their back plane at z = 0 and are
  * centred on the origin. Fronts face local +z.
  */
 export const DECOR: Record<DecorKind, ComponentType<DecorProps>> = {
@@ -34,4 +35,5 @@ export const DECOR: Record<DecorKind, ComponentType<DecorProps>> = {
 	printer: Printer,
 	"wall-tv": WallTv,
 	"wall-placard": WallPlacard,
+	whiteboard: WallWhiteboard,
 };
