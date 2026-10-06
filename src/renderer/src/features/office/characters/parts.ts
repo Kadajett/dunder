@@ -1,8 +1,8 @@
-import type { AvatarStyle } from "@shared/avatar/style";
+import { type AvatarStyle, hashSeed } from "@shared/avatar/style";
 import { glassesBlocks, headwearBlocks } from "./accessories";
 import type { Cuboid } from "./Block";
 import { type FaceStyle, faceDecals, headBlocks } from "./face";
-import { hairBlocks } from "./hair";
+import { type HairVariant, hairBlocks, hairVariantFor } from "./hair";
 import { outfitBlocks, sleeveFor } from "./outfits";
 import { ARM_REACH, ARM_WIDTH, CLOTH_GAP, NECK_Y, TORSO } from "./rig";
 
@@ -72,11 +72,33 @@ function faceStyleOf(style: AvatarStyle): FaceStyle {
 	};
 }
 
+/**
+ * The hair touches a look gets, from the look itself: the same agent always
+ * gets the same, and two agents with one cut rarely match. Built from fields,
+ * not JSON, so key order (hire form vs saved roster) never changes it.
+ */
+function hairVariantOf(style: AvatarStyle): HairVariant {
+	const { skin, hair, outfit, pants, shoes, eyes, brows, mouth } = style;
+	const key = [
+		skin,
+		hair.style,
+		hair.color,
+		outfit.style,
+		outfit.color,
+		pants,
+		shoes,
+		eyes,
+		brows,
+		mouth,
+	];
+	return hairVariantFor(hashSeed(key.join("|")));
+}
+
 /** Everything on the head that has volume: skull, brows, hair, glasses and headwear. */
-export function headPart(style: AvatarStyle): Cuboid[] {
+export function headPart(style: AvatarStyle, variant = hairVariantOf(style)): Cuboid[] {
 	return [
 		...headBlocks(faceStyleOf(style)),
-		...hairBlocks(style.hair.style, style.hair.color),
+		...hairBlocks(style.hair.style, style.hair.color, variant),
 		...(style.glasses ? glassesBlocks(style.glasses) : []),
 		...(style.headwear ? headwearBlocks(style.headwear.style, style.headwear.color) : []),
 	];
