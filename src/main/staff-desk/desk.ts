@@ -31,6 +31,8 @@ export interface StaffDeskDeps {
 	modelOf(name: string): string | undefined;
 	/** Store a hire's extra brief where the workforce reads it at spawn. */
 	writeBrief(name: string, brief: string): Promise<void>;
+	/** Drop the brief of a hire that did not happen, so a later hire of the name starts clean. */
+	removeBrief(name: string): Promise<void>;
 	/** Room and project directory for hires that do not name them. */
 	readonly defaults: { readonly room: string; readonly cwd: string };
 	readonly requestsPath: string;
@@ -98,20 +100,24 @@ export class StaffDesk {
 
 	updateSnapshot(snapshot: SessionSnapshot): void {
 		this.#snapshot = snapshot;
-		if (this.#early.length === 0 || !this.#deps.roster()) return;
-		const early = this.#early;
-		this.#early = [];
-		log.info("handling staff requests read before the office was known", { lines: early.length });
-		this.receive(early);
+		if (this.#early.length > 0) this.receive([]);
 	}
 
-	/** New lines from the requests file; queued behind any request still running. */
+	/**
+	 * New lines from the requests file; queued behind any request still running.
+	 * Lines read before the office (snapshot + roster) was known go first, in order.
+	 */
 	receive(lines: readonly string[]): void {
 		if (!this.#snapshot || !this.#deps.roster()) {
 			this.#early.push(...lines);
 			return;
 		}
-		const { requests, invalid } = parseStaffRequests(lines, this.#now());
+		const early = this.#early;
+		this.#early = [];
+		if (early.length > 0) {
+			log.info("handling staff requests read before the office was known", { lines: early.length });
+		}
+		const { requests, invalid } = parseStaffRequests([...early, ...lines], this.#now());
 		for (const { id, error } of invalid) void this.#answer(id, { ok: false, message: error });
 		for (const line of requests) {
 			this.#work = this.#work.then(() => this.#handle(line));
@@ -187,17 +193,21 @@ export class StaffDesk {
 		const { name, role, model, brief } = request;
 		// Names are never reused: never overwrite the brief of someone already on the roster.
 		const roster = this.#deps.roster();
-		if (brief && roster && !findByName(roster, name)) await this.#deps.writeBrief(name, brief);
+		const wroteBrief = brief !== undefined && roster !== undefined && !findByName(roster, name);
+		if (wroteBrief) await this.#deps.writeBrief(name, brief);
 		const room = request.room ?? this.#deps.defaults.room;
-		const result = await this.#deps.staffing.hire({
-			name,
-			role,
-			harness: request.harness ?? "omp",
-			...(model && { model }),
-			workspaceLabel: room,
-			cwd: request.cwd ?? this.#deps.defaults.cwd,
-			style: avatarStyleFor(name),
-		});
+		const result = await this.#deps.staffing
+			.hire({
+				name,
+				role,
+				harness: request.harness ?? "omp",
+				...(model && { model }),
+				workspaceLabel: room,
+				cwd: request.cwd ?? this.#deps.defaults.cwd,
+				style: avatarStyleFor(name),
+			})
+			.catch((error: unknown) => ({ ok: false as const, error: String(error) }));
+		if (!result.ok && wroteBrief) await this.#deps.removeBrief(name);
 		return done(
 			result,
 			`hired ${name} as ${role}${model ? ` on ${model}` : ""} in the ${room} room; starting now`,

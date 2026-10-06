@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { avatarStyleFor } from "@shared/avatar/style";
 import { type Roster, rosterSchema } from "@shared/company/roster";
+import type { WorkforceResult } from "@shared/company/workforce";
 import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
 import type { StaffAction, StaffOutcome } from "@shared/staff";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -59,17 +60,19 @@ function setup() {
 	const dir = mkdtempSync(join(tmpdir(), "staff-desk-"));
 	dirs.push(dir);
 	const outcomes: StaffOutcome[] = [];
+	let current: Roster | undefined = roster;
 	const staffing = {
-		hire: vi.fn(async (_request: unknown) => ({ ok: true }) as const),
+		hire: vi.fn(async (_request: unknown): Promise<WorkforceResult> => ({ ok: true })),
 		fire: vi.fn(async (_name: string) => ({ ok: true }) as const),
 		restart: vi.fn(async (_name: string) => ({ ok: true }) as const),
 	};
 	const deps = {
 		staffing,
 		setModel: vi.fn(async () => ({ state: "applied" }) as const),
-		roster: () => roster,
+		roster: (): Roster | undefined => current,
 		modelOf: () => undefined,
 		writeBrief: vi.fn(async (_name: string, _brief: string) => undefined),
+		removeBrief: vi.fn(async (_name: string) => undefined),
 		defaults: { room: "delivery", cwd: "/app" },
 		requestsPath: join(dir, "requests.ndjson"),
 		resultsPath: join(dir, "results.ndjson"),
@@ -90,7 +93,17 @@ function setup() {
 			.trim()
 			.split("\n")
 			.map((text) => JSON.parse(text) as { id: string; ok: boolean; message: string });
-	return { desk, deps, staffing, outcomes, line, results };
+	return {
+		desk,
+		deps,
+		staffing,
+		outcomes,
+		line,
+		results,
+		setRoster: (next: Roster | undefined) => {
+			current = next;
+		},
+	};
 }
 
 describe("StaffDesk", () => {
@@ -108,6 +121,7 @@ describe("StaffDesk", () => {
 		]);
 		await desk.settled();
 		expect(deps.writeBrief).toHaveBeenCalledWith("raina", "Loves Zelda.");
+		expect(deps.removeBrief).not.toHaveBeenCalled();
 		expect(staffing.hire).toHaveBeenCalledWith({
 			name: "raina",
 			role: "product-manager",
@@ -183,5 +197,49 @@ describe("StaffDesk", () => {
 		expect(invalid?.message).toMatch(/^name: /);
 		expect(list?.message).toMatch(/NAME\s+ROLE\s+HARNESS\s+MODEL\s+ROOM\s+STATUS/);
 		expect(list?.message).toMatch(/jonas\s+generalist\s+omp\s+default\s+hq\s+idle/);
+	});
+
+	it("drops the brief of a hire that failed, so a later hire of the name starts clean", async () => {
+		const { desk, deps, staffing, line, results } = setup();
+		staffing.hire.mockResolvedValueOnce({ ok: false, error: "model: omp has no model x/y" });
+		desk.updateSnapshot(office);
+		desk.receive([
+			line({ action: "hire", name: "raina", role: "pm", model: "x/y", brief: "Loves Zelda." }),
+		]);
+		await desk.settled();
+		expect(deps.writeBrief).toHaveBeenCalledWith("raina", "Loves Zelda.");
+		expect(deps.removeBrief).toHaveBeenCalledWith("raina");
+		expect(results()).toEqual([expect.objectContaining({ ok: false })]);
+	});
+
+	it("handles requests held at startup before newer ones once snapshot and roster are known", async () => {
+		const { desk, staffing, line, setRoster } = setup();
+		setRoster(undefined);
+		desk.updateSnapshot(office);
+		desk.receive([line({ action: "restart", name: "jonas" })]);
+		await desk.settled();
+		expect(staffing.restart).not.toHaveBeenCalled();
+		// The roster loads after the snapshot; the next thing to arrive is a newer request.
+		setRoster(roster);
+		desk.receive([line({ action: "fire", name: "jonas" })]);
+		await desk.settled();
+		const [restartOrder] = staffing.restart.mock.invocationCallOrder;
+		const [fireOrder] = staffing.fire.mock.invocationCallOrder;
+		expect(restartOrder).toBeDefined();
+		expect(restartOrder).toBeLessThan(fireOrder ?? 0);
+	});
+
+	it("keeps the chief from restarting themself mid-turn", async () => {
+		const { desk, staffing, line, results } = setup();
+		desk.updateSnapshot(office);
+		desk.receive([line({ action: "restart", name: "max" })]);
+		await desk.settled();
+		expect(staffing.restart).not.toHaveBeenCalled();
+		expect(results()).toEqual([
+			expect.objectContaining({
+				ok: false,
+				message: expect.stringContaining("cannot restart yourself"),
+			}),
+		]);
 	});
 });
