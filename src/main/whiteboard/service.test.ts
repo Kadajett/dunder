@@ -6,7 +6,7 @@ import type { WhiteboardChange } from "@shared/whiteboard";
 import type { TLShape } from "@tldraw/tlschema";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { boardSnapshot, digestItems, openBoard } from "./board-doc";
-import { WhiteboardService } from "./service";
+import { type WhiteboardDeps, WhiteboardService } from "./service";
 
 const agent = (pane: string, name: string) => ({
 	pane_id: pane,
@@ -44,7 +44,7 @@ let dir = "";
 let company = "acme";
 let changes: WhiteboardChange[] = [];
 
-function service(): WhiteboardService {
+function service(overrides: Partial<WhiteboardDeps> = {}): WhiteboardService {
 	return new WhiteboardService({
 		dir: join(dir, "whiteboards"),
 		digestPath: join(dir, "board.json"),
@@ -52,6 +52,7 @@ function service(): WhiteboardService {
 		chiefName: () => "max",
 		emit: (change) => changes.push(change),
 		now: () => new Date("2026-10-06T12:00:00.000Z"),
+		...overrides,
 	});
 }
 
@@ -101,6 +102,24 @@ describe("whiteboard service", () => {
 		const { snapshot } = await board.get();
 		expect(shapesOf(snapshot).map((shape) => [shape.type, shape.meta["author"]])).toEqual([
 			["text", "nora"],
+		]);
+	});
+
+	it("applies the rest of a batch when one request fails", async () => {
+		let lookups = 0;
+		const board = service({
+			currentCompanyId: async () => {
+				lookups += 1;
+				if (lookups === 1) throw new Error("companies unreadable");
+				return company;
+			},
+		});
+		board.updateSnapshot(OFFICE);
+		await expect(
+			board.receive([request({ text: "lost" }), request({ text: "kept" })]),
+		).resolves.toBeUndefined();
+		expect(digestItems(openBoard((await board.get()).snapshot))).toEqual([
+			{ kind: "note", author: "nora", text: "kept" },
 		]);
 	});
 

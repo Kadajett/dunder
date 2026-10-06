@@ -17,6 +17,8 @@ import {
 	toRichText,
 } from "@tldraw/tlschema";
 import { getIndexAbove, sortByIndex, ZERO_INDEX_KEY } from "@tldraw/utils";
+import { freeSpot, noteGrowY, pageBoxes, postSize } from "./board-geometry";
+import { plainText } from "./rich-text";
 
 /**
  * The board's tldraw document, headless in the main process. Only
@@ -75,17 +77,6 @@ function firstPage(store: TLStore): TLPageId {
 	return page.id;
 }
 
-/** Agent posts without a position fill a grid, five to a row, from the top left. */
-const GRID = { columns: 5, step: 240, origin: 80 } as const;
-
-function freeSpot(store: TLStore): { readonly x: number; readonly y: number } {
-	const posted = shapes(store).filter((shape) => typeof shape.meta["author"] === "string").length;
-	return {
-		x: GRID.origin + (posted % GRID.columns) * GRID.step,
-		y: GRID.origin + Math.floor(posted / GRID.columns) * GRID.step,
-	};
-}
-
 export interface AgentPost {
 	readonly kind: "note" | "text";
 	readonly author: string;
@@ -118,7 +109,7 @@ function postProps(post: AgentPost): TLShape["props"] {
 		align: "middle",
 		verticalAlign: "middle",
 		labelColor: "black",
-		growY: 0,
+		growY: noteGrowY(post.text),
 		fontSizeAdjustment: 1,
 		url: "",
 		scale: 1,
@@ -134,7 +125,10 @@ export function addPost(store: TLStore, post: AgentPost): TLShape {
 		.map((shape) => shape.index)
 		.sort()
 		.at(-1);
-	const spot = post.x !== undefined && post.y !== undefined ? post : freeSpot(store);
+	const spot =
+		post.x !== undefined && post.y !== undefined
+			? post
+			: freeSpot(pageBoxes(shapes(store), parentId), postSize(post.kind, post.text));
 	const record = schema.types.shape.create({
 		id: createShapeId(),
 		type: post.kind,
@@ -167,15 +161,6 @@ export function keepPosts(store: TLStore, posts: readonly TLShape[]): number {
 	const missing = posts.filter((shape) => !store.has(shape.id));
 	store.put(missing);
 	return missing.length;
-}
-
-/** Plain text of a tldraw rich text document (TipTap JSON): paragraphs on their own lines. */
-function plainText(node: unknown): string {
-	if (typeof node !== "object" || node === null) return "";
-	if ("text" in node && typeof node.text === "string") return node.text;
-	const content = "content" in node && Array.isArray(node.content) ? node.content : [];
-	const parts = content.map(plainText);
-	return "type" in node && node.type === "doc" ? parts.join("\n") : parts.join("");
 }
 
 /** Notes and text on the board, top-left first, for `office-board read`. */

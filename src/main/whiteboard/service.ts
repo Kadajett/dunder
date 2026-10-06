@@ -110,10 +110,14 @@ export class WhiteboardService {
 		if (this.#early.length === 0) return;
 		const early = this.#early;
 		this.#early = [];
-		void this.receive(early);
+		this.receive(early).catch((error: unknown) => log.warn("board requests failed", { error }));
 	}
 
-	/** New lines from the board-requests file. */
+	/**
+	 * New lines from the board-requests file. Each request stands alone: one
+	 * that fails (a disk error, a company that will not load) is logged and
+	 * dropped, and the rest still apply.
+	 */
 	receive(lines: readonly string[]): Promise<void> {
 		if (!this.#snapshot) {
 			this.#early.push(...lines);
@@ -121,7 +125,11 @@ export class WhiteboardService {
 		}
 		const requests = parseBoardRequests(lines);
 		return this.#serial(async () => {
-			for (const request of requests) await this.#apply(request);
+			for (const request of requests) {
+				await this.#apply(request).catch((error: unknown) =>
+					log.warn("board request failed", { op: request.op, fromPane: request.fromPane, error }),
+				);
+			}
 		});
 	}
 

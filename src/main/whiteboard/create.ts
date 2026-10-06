@@ -47,8 +47,12 @@ export function createWhiteboard(options: WhiteboardOptions): Whiteboard {
 				path: officeBoardRequestsPath(process.env, homedir()),
 				offset,
 				onLines: (lines, next) => {
-					void writeFile(statePath, JSON.stringify({ offset: next }));
-					void service.receive(lines);
+					writeFile(statePath, JSON.stringify({ offset: next })).catch((error: unknown) =>
+						log.warn("cannot save the board requests offset", { error }),
+					);
+					service
+						.receive(lines)
+						.catch((error: unknown) => log.warn("board requests failed", { error }));
 				},
 				// A broken requests file only costs agents' notes; Jeremy's editor still works.
 				onError: (error) => log.warn("cannot read board requests", { error }),

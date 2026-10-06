@@ -100,7 +100,9 @@ const companies = createCompanies(
 	{ userData: app.getPath("userData"), appRoot: app.getAppPath() },
 	(company) => {
 		broadcast(IPC.companiesChanged, company);
-		void whiteboard.service.companyChanged(company.id);
+		whiteboard.service
+			.companyChanged(company.id)
+			.catch((error: unknown) => createLogger("whiteboard").warn("board switch failed", { error }));
 	},
 );
 /** The shared whiteboard: Jeremy's tldraw editor plus agents' `office-board` notes. */

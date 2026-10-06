@@ -33,7 +33,6 @@
 		"@tldraw/store": "5.5.2",
 		"@tldraw/tlschema": "5.5.2",
 		"@tldraw/utils": "5.5.2",
-		"tldraw": "5.5.2",
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
