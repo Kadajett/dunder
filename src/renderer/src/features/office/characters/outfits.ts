@@ -1,6 +1,6 @@
 import type { AvatarStyle, OutfitStyle } from "@shared/avatar/style";
 import { type Cuboid, mirrored, type Vec3 } from "./Block";
-import { TORSO } from "./rig";
+import { CLOTH_GAP, TORSO } from "./rig";
 
 type Outfit = AvatarStyle["outfit"];
 type Point = [number, number];
@@ -70,11 +70,11 @@ const patch = (color: string, [x, y]: Point, [w, h]: Point, lift = 0): Cuboid =>
 	size: [w, h, PATCH],
 });
 
-/** A band hugging the whole torso, `height` tall. */
+/** A band hugging the whole torso, `height` tall, standing `CLOTH_GAP` proud of it. */
 const band = (color: string, y: number, height: number): Cuboid => ({
 	color,
 	at: [0, y, 0],
-	size: [TORSO.width + 0.008, height, TORSO.depth + 0.008],
+	size: [TORSO.width + 2 * CLOTH_GAP, height, TORSO.depth + 2 * CLOTH_GAP],
 });
 
 const collar = (color: string, size: Vec3 = [0.17, 0.03, 0.15]): Cuboid => ({
@@ -112,7 +112,8 @@ const DETAILS: Record<OutfitStyle, (outfit: Outfit) => Cuboid[]> = {
 	],
 	sweater: ({ accent }) => [collar(accent), band(accent, -0.02, 0.03), band(accent, 0.04, 0.03)],
 	overalls: ({ color }) => [
-		band(color, -0.13, 0.14),
+		// The bib's waistband runs past the hem rather than ending flush with it.
+		band(color, -0.13 - CLOTH_GAP / 2, 0.14 + CLOTH_GAP),
 		patch(color, [0, 0], [0.24, 0.16]),
 		patch(color, [0.08, 0.13], [0.04, 0.14]),
 		patch(color, [-0.08, 0.13], [0.04, 0.14]),
@@ -131,12 +132,15 @@ const DETAILS: Record<OutfitStyle, (outfit: Outfit) => Cuboid[]> = {
 	],
 	cardigan: ({ color, accent }) => [
 		collar(accent),
-		band(color, -0.005, TORSO.height - 0.01),
-		patch(accent, [0, -0.005], [0.1, TORSO.height - 0.01], PATCH / 2),
-		...buttons(SHIRT_WHITE, 0.065, [0.06, 0, -0.06], PATCH * 1.5),
+		// Worn over the shirt: the whole torso, hem and shoulders included.
+		band(color, 0, TORSO.height + 2 * CLOTH_GAP),
+		// The open front shows the shirt; buttons sit on the cardigan beside it.
+		patch(accent, [0, 0], [0.1, TORSO.height], PATCH / 2),
+		...buttons(SHIRT_WHITE, 0.065, [0.06, 0, -0.06]),
 	],
 	jacket: ({ color, accent }) => [
-		collar(color, [0.22, 0.06, 0.18]),
+		// Stops below the neck's top so the two never share a face.
+		collar(color, [0.22, 0.05, 0.18]),
 		patch(accent, [0, 0], [0.016, 0.36]),
 		patch(accent, [0.09, -0.07], [0.07, 0.02]),
 		patch(accent, [-0.09, -0.07], [0.07, 0.02]),

@@ -16,6 +16,8 @@ import {
 	hatlessHairStyles,
 	headwearStyles,
 	mouthStyles,
+	outfitPalettesFor,
+	outfitStyles,
 	skinTones,
 } from "@shared/avatar/style";
 import { DEFAULT_LAYOUT } from "@shared/layout/default-layout";
@@ -63,6 +65,26 @@ const variants: Member[] = hairStyles.map((hair, index) => {
 	const style = variant(hair, index);
 	const extras = [style.glasses, style.headwear?.style].filter(Boolean).join(" ");
 	return { label: `${hair} · ${style.eyes}/${style.mouth} ${extras}`, style };
+});
+
+/** Hairstyles that can sit under any headwear, for the outfit row. */
+const HAT_HAIR = ["short", "bob", "long", "ponytail", "sidePart"] as const;
+
+/** One character per outfit, cycling hat-friendly hair and every headwear (or none). */
+const outfits: Member[] = outfitStyles.map((outfit, index) => {
+	const base = avatarStyleFor(`outfit-${index}`);
+	const palettes = outfitPalettesFor(outfit);
+	const palette = palettes[index % palettes.length] ?? base.outfit;
+	const headwear = [undefined, ...headwearStyles][index % (headwearStyles.length + 1)];
+	const style: AvatarStyle = {
+		...base,
+		skin: skinTones[(index * 3) % skinTones.length] ?? base.skin,
+		hair: { ...base.hair, style: HAT_HAIR[index % HAT_HAIR.length] ?? "short" },
+		outfit: { style: outfit, color: palette.color, accent: palette.accent },
+	};
+	delete style.headwear;
+	if (headwear) style.headwear = { style: headwear, color: palette.accent };
+	return { label: `${outfit} · ${headwear ?? "no hat"}`, style };
 });
 
 /** Pixels per metre in the office overview at the scene shot's 1600×1000 viewport. */
@@ -156,6 +178,9 @@ function Page() {
 			<h2>Every hairstyle, eye, brow, mouth, glasses and headwear (4×)</h2>
 			<Lineup members={variants.slice(0, 6)} zoom={CLOSE_UP_ZOOM} labels />
 			<Lineup members={variants.slice(6)} zoom={CLOSE_UP_ZOOM} labels />
+			<h2>Every outfit and headwear (4×)</h2>
+			<Lineup members={outfits.slice(0, 5)} zoom={CLOSE_UP_ZOOM} labels />
+			<Lineup members={outfits.slice(5)} zoom={CLOSE_UP_ZOOM} labels />
 		</main>
 	);
 }

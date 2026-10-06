@@ -22,6 +22,12 @@ export const SHOULDER_X = TORSO.width / 2 + ARM_WIDTH / 2 + 0.005;
 export const SHOULDER_Y = 0.37;
 /** Shoulder pivot to hand centre. */
 export const ARM_REACH = 0.4;
+/**
+ * How far cloth (and anything worn) stands proud of what it covers, on every
+ * side and at every end it doesn't stop short of: depth-buffer room so two
+ * colours never share a plane. `parts.test.ts` holds every rigid part to it.
+ */
+export const CLOTH_GAP = 0.006;
 
 /** Forward lean of the upper body while seated at a desk. */
 export const SEATED_LEAN = 0.15;
