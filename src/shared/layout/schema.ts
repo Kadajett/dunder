@@ -114,5 +114,11 @@ export const layoutSchema = z.object({
 	desks: z.array(deskSchema),
 	decor: z.array(decorSchema),
 	callouts: z.array(calloutSchema),
+	/**
+	 * One-time migrations already applied (see `migrateLayout`), so a change the
+	 * user undid after it ran is never re-applied. Layouts saved before the
+	 * first marked migration load with none.
+	 */
+	migrations: z.array(z.string()).default([]),
 });
 export type Layout = z.infer<typeof layoutSchema>;

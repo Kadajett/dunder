@@ -127,3 +127,81 @@ describe("company store", () => {
 		expect(loaded?.layout.zones).toEqual([sales, { id: "annex", title: "ANNEX" }]);
 	});
 });
+
+describe("sales floor move toward the TV (office-miz)", () => {
+	const FORMER_DESKS: Record<string, { x: number; z: number }> = {
+		"sales-1": { x: -8.3, z: 2 },
+		"sales-2": { x: -5.2, z: 2 },
+		"sales-3": { x: -6.8, z: 5.2 },
+	};
+	const ACCESS = {
+		id: "access",
+		title: "ACCESS",
+		subtitle: "herdr · office session",
+		position: { x: 11.6, z: -5.4 },
+		height: 2.6,
+		tone: "light",
+	} as const;
+
+	type SavedLayout = Omit<Company["layout"], "migrations"> & { migrations?: string[] };
+
+	/** A layout as saved before office-miz: old sales spots, the ACCESS callout, no markers. */
+	function formerLayout(): SavedLayout {
+		const { migrations: _, ...layout } = seedCompany("acme", "Acme", "", NOW).layout;
+		return {
+			...layout,
+			zones: layout.zones.map((zone) =>
+				zone.id === "sales" && zone.rug
+					? { ...zone, rug: { ...zone.rug, center: { x: -6.6, z: 3.4 }, width: 7.6 } }
+					: zone,
+			),
+			desks: layout.desks.map((desk) => {
+				const position = FORMER_DESKS[desk.id];
+				return position ? { ...desk, position } : desk;
+			}),
+			callouts: [ACCESS],
+		};
+	}
+
+	async function load(layout: SavedLayout): Promise<Company["layout"] | undefined> {
+		const company = { ...seedCompany("acme", "Acme", "", NOW), layout };
+		await writeFile(join(dir, "acme.json"), JSON.stringify(company));
+		const [loaded] = await loadCompanies(dir);
+		return loaded?.layout;
+	}
+
+	const salesOf = (layout: SavedLayout | undefined) => ({
+		rug: layout?.zones.find((zone) => zone.id === "sales")?.rug,
+		desks: layout?.desks.filter((desk) => desk.zoneId === "sales").map((desk) => desk.position),
+	});
+
+	it("moves a sales floor left at its former default and drops the default ACCESS callout", async () => {
+		const layout = await load(formerLayout());
+		expect(salesOf(layout)).toEqual(salesOf(DEFAULT_LAYOUT));
+		expect(layout?.callouts).toEqual([]);
+		expect(layout?.migrations).toEqual(DEFAULT_LAYOUT.migrations);
+	});
+
+	it("leaves a sales floor the user changed, and an ACCESS callout they moved", async () => {
+		const former = formerLayout();
+		const edited: SavedLayout = {
+			...former,
+			// One desk nudged is enough to make the whole floor theirs.
+			desks: former.desks.map((desk) =>
+				desk.id === "sales-2" ? { ...desk, position: { x: -5, z: 2 } } : desk,
+			),
+			callouts: [{ ...ACCESS, position: { x: 2, z: 2 } }],
+		};
+		const layout = await load(edited);
+		expect(salesOf(layout)).toEqual(salesOf(edited));
+		expect(layout?.callouts).toEqual(edited.callouts);
+		expect(layout?.migrations).toEqual(DEFAULT_LAYOUT.migrations);
+	});
+
+	it("runs once: a floor moved back after the migration stays where the user put it", async () => {
+		const former = formerLayout();
+		const layout = await load({ ...former, migrations: DEFAULT_LAYOUT.migrations });
+		expect(salesOf(layout)).toEqual(salesOf(former));
+		expect(layout?.callouts).toEqual([ACCESS]);
+	});
+});

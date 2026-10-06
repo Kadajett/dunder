@@ -1,4 +1,10 @@
-import { type Layout, layoutSchema, type Zone } from "./schema";
+import { type Callout, type Desk, type Layout, layoutSchema, type Zone } from "./schema";
+
+/** Marker of the one-time move of the sales floor toward the TV (office-miz). */
+const SALES_NEAR_TV = "sales-near-tv";
+
+/** The sales floor's rug, a little narrower than before so it stays clear of the clients lounge. */
+const SALES_RUG = { center: { x: -6.2, z: -0.6 }, width: 6.8, depth: 7.4, color: "#b9a58a" };
 
 /**
  * The starter office, modelled on docs/reference/orpex-office.png: a long
@@ -30,7 +36,8 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 			id: "sales",
 			title: "#SALES",
 			workspaceLabel: "sales",
-			rug: { center: { x: -6.6, z: 3.4 }, width: 7.6, depth: 7.4, color: "#b9a58a" },
+			// 30% closer to the TV (x -6.6, z -10) than it first stood, clear of the break-room rug.
+			rug: SALES_RUG,
 		},
 		{
 			id: "delivery",
@@ -55,21 +62,21 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 	desks: [
 		{
 			id: "sales-1",
-			position: { x: -8.3, z: 2 },
+			position: { x: -7.9, z: -2 },
 			rotation: 0,
 			zoneId: "sales",
 			chairColor: "#2f5d63",
 		},
 		{
 			id: "sales-2",
-			position: { x: -5.2, z: 2 },
+			position: { x: -4.8, z: -2 },
 			rotation: 0,
 			zoneId: "sales",
 			chairColor: "#5d3f6a",
 		},
 		{
 			id: "sales-3",
-			position: { x: -6.8, z: 5.2 },
+			position: { x: -6.4, z: 1.2 },
 			rotation: 0,
 			zoneId: "sales",
 			chairColor: "#2f5d63",
@@ -158,15 +165,9 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 		{ id: "plant-7", kind: "tall-plant", position: { x: 12.2, z: -9.2 } },
 		{ id: "plant-8", kind: "plant", position: { x: -12.2, z: -8.8 } },
 	],
-	callouts: [
-		{
-			id: "access",
-			title: "ACCESS",
-			subtitle: "herdr · office session",
-			position: { x: 11.6, z: -5.4 },
-			height: 2.6,
-		},
-	],
+	callouts: [],
+	// The default is already in the state every one-time migration produces.
+	migrations: [SALES_NEAR_TV],
 });
 
 /** The default floor before it was matched to the reference (office-vl9.6). */
@@ -197,15 +198,98 @@ function labelOnlyZones(layout: Layout): ReadonlySet<Zone> {
 	return new Set(layout.zones.filter((zone) => !zone.rug && !seated.has(zone.id)));
 }
 
+type Rug = NonNullable<Zone["rug"]>;
+
+/** Where the sales floor and its desks stood before office-miz moved them toward the TV. */
+const FORMER_SALES_RUG = { center: { x: -6.6, z: 3.4 }, width: 7.6, depth: 7.4 } as const;
+const FORMER_SALES_DESKS: Readonly<Record<string, { x: number; z: number }>> = {
+	"sales-1": { x: -8.3, z: 2 },
+	"sales-2": { x: -5.2, z: 2 },
+	"sales-3": { x: -6.8, z: 5.2 },
+};
+
+/** The server rack's callout as shipped; nobody knew what it was for (office-miz). */
+const FORMER_ACCESS = {
+	id: "access",
+	title: "ACCESS",
+	subtitle: "herdr · office session",
+	position: { x: 11.6, z: -5.4 },
+} as const;
+
+function untouchedRug(rug: Rug): boolean {
+	const former = FORMER_SALES_RUG;
+	return (
+		rug.center.x === former.center.x &&
+		rug.center.z === former.center.z &&
+		rug.width === former.width &&
+		rug.depth === former.depth
+	);
+}
+
+function untouchedDesk(desk: Desk): boolean {
+	const former = FORMER_SALES_DESKS[desk.id];
+	return former !== undefined && desk.position.x === former.x && desk.position.z === former.z;
+}
+
+/**
+ * The sales zone and its desks at their new defaults, if the user never moved,
+ * resized or added to them; otherwise the layout is theirs and stays.
+ */
+function moveSalesTowardTv(layout: Layout): Pick<Layout, "zones" | "desks"> {
+	const sales = layout.zones.find((zone) => zone.id === "sales");
+	const rug = sales?.rug;
+	const members = layout.desks.filter((desk) => desk.zoneId === "sales");
+	if (!rug || !untouchedRug(rug) || !members.every(untouchedDesk)) return layout;
+	const moved: Rug = { ...SALES_RUG, color: rug.color };
+	const defaults = new Map(DEFAULT_LAYOUT.desks.map((desk) => [desk.id, desk.position]));
+	return {
+		zones: layout.zones.map((zone) => (zone === sales ? { ...zone, rug: moved } : zone)),
+		desks: layout.desks.map((desk) => {
+			const position = desk.zoneId === "sales" ? defaults.get(desk.id) : undefined;
+			return position ? { ...desk, position } : desk;
+		}),
+	};
+}
+
+function untouchedAccess(callout: Callout): boolean {
+	const former = FORMER_ACCESS;
+	return (
+		callout.id === former.id &&
+		callout.title === former.title &&
+		callout.subtitle === former.subtitle &&
+		callout.position.x === former.position.x &&
+		callout.position.z === former.position.z
+	);
+}
+
+/**
+ * office-miz, once per layout: the sales floor moves toward the TV and off the
+ * break-room rug, and the server rack's ACCESS callout goes, each only if the
+ * user left it as it was.
+ */
+function salesNearTv(layout: Layout): Layout {
+	if (layout.migrations.includes(SALES_NEAR_TV)) return layout;
+	return {
+		...layout,
+		...moveSalesTowardTv(layout),
+		callouts: layout.callouts.filter((callout) => !untouchedAccess(callout)),
+		migrations: [...layout.migrations, SALES_NEAR_TV],
+	};
+}
+
 /**
  * Bring a saved layout up to date with changed defaults. Companies copy the
  * default layout when created, so a value still on its former default was
  * never chosen by anyone: it moves to the current default on its own (floor
- * colour, wall height). Any other value is kept.
+ * colour, wall height). Any other value is kept. Moves that must not undo a
+ * later edit run once, recorded in `layout.migrations`.
  */
 export function migrateLayout(layout: Layout): Layout {
 	const room = migrateRoom(layout.room);
 	const dropped = labelOnlyZones(layout);
-	if (room === layout.room && dropped.size === 0) return layout;
-	return { ...layout, room, zones: layout.zones.filter((zone) => !dropped.has(zone)) };
+	const current =
+		room === layout.room && dropped.size === 0
+			? layout
+			: { ...layout, room, zones: layout.zones.filter((zone) => !dropped.has(zone)) };
+	return salesNearTv(current);
 }
