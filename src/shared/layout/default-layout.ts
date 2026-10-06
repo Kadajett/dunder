@@ -11,7 +11,8 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 	room: {
 		width: 26,
 		depth: 20,
-		wallHeight: 4.2,
+		// Low enough that the floor dominates as in the reference; the wall TV (top at 3.645) still fits.
+		wallHeight: 3.7,
 		floorColor: "#c8b28b",
 		wallColor: "#f1e5cc",
 		windows: [
@@ -204,13 +205,25 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 
 /** The default floor before it was matched to the reference (office-vl9.6). */
 const FORMER_DEFAULT_FLOOR = "#cfa979";
+/** The default wall height before it was lowered toward the reference (office-vl9.7). */
+const FORMER_DEFAULT_WALL_HEIGHT = 4.2;
 
 /**
  * Bring a saved layout up to date with changed defaults. Companies copy the
- * default layout when created, so a floor still on the former default was never
- * chosen by anyone: it moves to the current default. Any other colour is kept.
+ * default layout when created, so a floor colour or wall height still on its
+ * former default was never chosen by anyone: each moves to the current default
+ * on its own. Any other value is kept.
  */
 export function migrateLayout(layout: Layout): Layout {
-	if (layout.room.floorColor.toLowerCase() !== FORMER_DEFAULT_FLOOR) return layout;
-	return { ...layout, room: { ...layout.room, floorColor: DEFAULT_LAYOUT.room.floorColor } };
+	const { room } = layout;
+	const floorColor =
+		room.floorColor.toLowerCase() === FORMER_DEFAULT_FLOOR
+			? DEFAULT_LAYOUT.room.floorColor
+			: room.floorColor;
+	const wallHeight =
+		room.wallHeight === FORMER_DEFAULT_WALL_HEIGHT
+			? DEFAULT_LAYOUT.room.wallHeight
+			: room.wallHeight;
+	if (floorColor === room.floorColor && wallHeight === room.wallHeight) return layout;
+	return { ...layout, room: { ...room, floorColor, wallHeight } };
 }

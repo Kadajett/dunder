@@ -76,4 +76,22 @@ describe("company store", () => {
 		expect(floors).toEqual([DEFAULT_LAYOUT.room.floorColor, "#3a5f8c"]);
 		expect(DEFAULT_LAYOUT.room.floorColor).not.toBe("#cfa979");
 	});
+
+	it("moves walls saved at the former default height to the current one and keeps a chosen height", async () => {
+		const withWalls = (company: Company, wallHeight: number): Company => ({
+			...company,
+			layout: { ...company.layout, room: { ...company.layout.room, wallHeight } },
+		});
+		// The former default floor too: both migrate independently in one pass.
+		const former = withWalls(firstCompany(NOW), 4.2);
+		await saveCompany(dir, {
+			...former,
+			layout: { ...former.layout, room: { ...former.layout.room, floorColor: "#cfa979" } },
+		});
+		await saveCompany(dir, withWalls(seedCompany("acme", "Acme", "", LATER), 5));
+		const rooms = (await loadCompanies(dir)).map((company) => company.layout.room);
+		expect(rooms.map((room) => room.wallHeight)).toEqual([DEFAULT_LAYOUT.room.wallHeight, 5]);
+		expect(rooms[0]?.floorColor).toBe(DEFAULT_LAYOUT.room.floorColor);
+		expect(DEFAULT_LAYOUT.room.wallHeight).not.toBe(4.2);
+	});
 });
