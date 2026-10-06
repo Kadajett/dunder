@@ -162,3 +162,33 @@
 .model-applied {
 	color: var(--status-working);
 }
+
+/* Library card: the company's Beads memories, grouped by project. */
+.card-search {
+	width: 100%;
+	margin-bottom: 8px;
+	padding: 6px 8px;
+	border: 1px solid #e2d8c6;
+	border-radius: 8px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: 400 11px var(--font-ui);
+}
+
+.memory-shelf {
+	max-height: 420px;
+	overflow-y: auto;
+}
+
+.memory-shelf h4 {
+	margin: 10px 0 2px;
+	font: 800 10.5px var(--font-ui);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.memory-shelf .mail-list {
+	max-height: none;
+	overflow: visible;
+}

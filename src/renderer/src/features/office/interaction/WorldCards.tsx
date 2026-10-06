@@ -5,6 +5,7 @@ import { StaffActions } from "../../hire/StaffActions";
 import { openScreen } from "../focus/open-screen";
 import type { OfficeModel, SeatedAgent } from "../model/office-model";
 import { ModelPicker } from "../models/ModelPicker";
+import { LibraryCard } from "./LibraryCard";
 import { MailroomCard } from "./MailroomCard";
 import { useSelection } from "./selection-store";
 
@@ -106,6 +107,7 @@ export function WorldCards(props: {
 		if (item?.kind === "server-rack")
 			return <SessionCard snapshot={props.snapshot} close={clear} />;
 		if (item?.kind === "mail-cubby") return <MailroomCard close={clear} />;
+		if (item?.kind === "bookshelf") return <LibraryCard close={clear} />;
 	}
 	return null;
 }
