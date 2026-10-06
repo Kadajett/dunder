@@ -1,20 +1,21 @@
 import { useFrame } from "@react-three/fiber";
 import type { AvatarStyle } from "@shared/avatar/style";
 import { useMemo } from "react";
-import { Glasses, Headwear } from "./accessories";
+import { glassesBlocks, headwearBlocks } from "./accessories";
 import { animateRig } from "./animate";
+import { Block, Blocks, type Cuboid } from "./Block";
 import { animateExercise } from "./exercise";
-import { Face } from "./face";
-import { GEO, SKULL_SCALE } from "./geometry";
-import { Hair } from "./hair";
-import { OutfitTorso, pantsColorFor, type Sleeve, sleeveFor } from "./outfits";
-import { Part } from "./Part";
+import { faceBlocks } from "./face";
+import { hairBlocks } from "./hair";
+import { outfitBlocks, pantsColorFor, type Sleeve, sleeveFor } from "./outfits";
 import {
 	ARM_REACH,
+	ARM_WIDTH,
 	createRig,
-	HEAD_Y,
+	HEAD,
 	HIP_X,
 	HIP_Y,
+	LEG_WIDTH,
 	type MiiActivity,
 	type MiiPose,
 	NECK_Y,
@@ -23,7 +24,7 @@ import {
 	SHOULDER_X,
 	SHOULDER_Y,
 	THIGH,
-	TORSO_Y,
+	TORSO,
 } from "./rig";
 
 export type { MiiActivity, MiiPose } from "./rig";
@@ -55,69 +56,62 @@ function Leg({
 }) {
 	return (
 		<group ref={rig.thighs[index]} position={[index === 0 ? HIP_X : -HIP_X, 0, 0]}>
-			<Part geometry={GEO.thigh} color={pants} position={[0, -THIGH / 2, 0]} />
+			{/* Overlaps the torso above and the shin below so bent joints never gap. */}
+			<Block color={pants} at={[0, -THIGH / 2, 0]} size={[LEG_WIDTH, THIGH + 0.08, 0.16]} />
 			<group ref={rig.knees[index]} position={[0, -THIGH, 0]}>
 				<group ref={rig.shins[index]}>
-					<Part geometry={GEO.shin} color={pants} position={[0, -SHIN / 2, 0]} />
+					<Block color={pants} at={[0, -SHIN / 2, 0]} size={[LEG_WIDTH - 0.01, SHIN, 0.15]} />
 				</group>
 				<group ref={rig.feet[index]} position={[0, -SHIN, 0]}>
-					<Part geometry={GEO.shoe} color={shoes} position={[0, -0.035, 0.03]} />
+					<Block color={shoes} at={[0, -0.035, 0.03]} size={[LEG_WIDTH + 0.01, 0.07, 0.22]} />
 				</group>
 			</group>
 		</group>
 	);
 }
 
-function Arm({
-	rig,
-	index,
-	sleeve,
-	skin,
-}: {
-	rig: Rig;
-	index: Side;
-	sleeve: Sleeve;
-	skin: string;
-}) {
-	return (
-		<group ref={rig.arms[index]} position={[index === 0 ? SHOULDER_X : -SHOULDER_X, SHOULDER_Y, 0]}>
-			<Part geometry={GEO.arm} color={sleeve.long ? sleeve.color : skin} position={[0, -0.18, 0]} />
-			{sleeve.long ? null : (
-				<Part geometry={GEO.sleeve} color={sleeve.color} position={[0, -0.055, 0]} />
-			)}
-			{sleeve.cuff ? (
-				<Part
-					geometry={GEO.cuff}
-					color={sleeve.cuff}
-					position={[0, sleeve.long ? -0.32 : -0.115, 0]}
-					scale={sleeve.long ? 1 : [1.15, 0.6, 1.15]}
-				/>
-			) : null}
-			<Part geometry={GEO.hand} color={skin} position={[0, -ARM_REACH, 0]} />
-		</group>
-	);
+/** Arm blocks hanging from the shoulder pivot (−y), hand at `ARM_REACH`. */
+function armBlocks(sleeve: Sleeve, skin: string): Cuboid[] {
+	const wide = ARM_WIDTH + 0.016;
+	const blocks: Cuboid[] = [
+		{
+			color: sleeve.long ? sleeve.color : skin,
+			at: [0, -0.17, 0],
+			size: [ARM_WIDTH, 0.36, ARM_WIDTH],
+		},
+		{ color: skin, at: [0, -ARM_REACH, 0], size: [0.1, 0.1, 0.1] },
+	];
+	if (!sleeve.long)
+		blocks.push({ color: sleeve.color, at: [0, -0.055, 0], size: [wide, 0.13, wide] });
+	if (sleeve.cuff) {
+		const cuff = sleeve.long ? { y: -0.33, height: 0.04 } : { y: -0.115, height: 0.025 };
+		blocks.push({
+			color: sleeve.cuff,
+			at: [0, cuff.y, 0],
+			size: [wide - 0.004, cuff.height, wide - 0.004],
+		});
+	}
+	return blocks;
 }
 
-function Head({ style }: { style: AvatarStyle }) {
-	return (
-		<group scale={SKULL_SCALE}>
-			<Face
-				skin={style.skin}
-				browColor={style.hair.color}
-				eyes={style.eyes}
-				brows={style.brows}
-				mouth={style.mouth}
-			/>
-			<Hair style={style.hair.style} color={style.hair.color} />
-			{style.glasses ? <Glasses style={style.glasses} /> : null}
-			{style.headwear ? <Headwear {...style.headwear} /> : null}
-		</group>
-	);
+function headBlocks(style: AvatarStyle): Cuboid[] {
+	return [
+		...faceBlocks({
+			skin: style.skin,
+			browColor: style.hair.color,
+			eyes: style.eyes,
+			brows: style.brows,
+			mouth: style.mouth,
+		}),
+		...hairBlocks(style.hair.style, style.hair.color),
+		...(style.glasses ? glassesBlocks(style.glasses) : []),
+		...(style.headwear ? headwearBlocks(style.headwear.style, style.headwear.color) : []),
+	];
 }
 
 /**
- * A Mii-style office worker: big round head, dot eyes, small rounded body.
- * Feet rest on y = 0 when standing (≈1.45 m tall); faces local +z.
+ * A low-poly voxel office worker built from boxes: big cube head, block body.
+ * Feet rest on y = 0 when standing (≈1.4 m tall); faces local +z.
  */
 export function MiiCharacter({
 	style,
@@ -132,7 +126,12 @@ export function MiiCharacter({
 		if (pose === "exercising") animateExercise(rig, (Date.now() - workoutStartedAt) / 1_000);
 		else animateRig(rig, pose, activity, clock.elapsedTime + phase);
 	});
-	const sleeve = sleeveFor(style.outfit);
+	const head = useMemo(() => headBlocks(style), [style]);
+	const torso = useMemo(() => outfitBlocks(style.outfit), [style.outfit]);
+	const arm = useMemo(
+		() => armBlocks(sleeveFor(style.outfit), style.skin),
+		[style.outfit, style.skin],
+	);
 	const pants = pantsColorFor(style);
 	return (
 		<group ref={rig.root}>
@@ -140,15 +139,22 @@ export function MiiCharacter({
 				<Leg rig={rig} index={0} pants={pants} shoes={style.shoes} />
 				<Leg rig={rig} index={1} pants={pants} shoes={style.shoes} />
 				<group ref={rig.upper}>
-					<group position={[0, TORSO_Y, 0]}>
-						<OutfitTorso outfit={style.outfit} />
+					<group position={[0, TORSO.y, 0]}>
+						<Blocks items={torso} />
 					</group>
-					<Part geometry={GEO.neck} color={style.skin} position={[0, NECK_Y, 0]} />
-					<group ref={rig.head} position={[0, HEAD_Y, 0]}>
-						<Head style={style} />
+					<Block color={style.skin} at={[0, NECK_Y, 0]} size={[0.14, 0.06, 0.14]} />
+					<group ref={rig.head} position={[0, HEAD.y, 0]}>
+						<Blocks items={head} />
 					</group>
-					<Arm rig={rig} index={0} sleeve={sleeve} skin={style.skin} />
-					<Arm rig={rig} index={1} sleeve={sleeve} skin={style.skin} />
+					{([0, 1] as const).map((index) => (
+						<group
+							key={index}
+							ref={rig.arms[index]}
+							position={[index === 0 ? SHOULDER_X : -SHOULDER_X, SHOULDER_Y, 0]}
+						>
+							<Blocks items={arm} />
+						</group>
+					))}
 				</group>
 			</group>
 		</group>

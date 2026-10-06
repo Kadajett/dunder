@@ -3,8 +3,11 @@ import type { Desk, Vec2 } from "@shared/layout/schema";
 /** Workstations and people are modelled at 1:1 and drawn this much larger to read well from afar. */
 export const STATION_SCALE = 1.25;
 
-/** Seat position in (unscaled) desk-local space: the occupant sits on +z, facing the screen. */
-export const SEAT_Z = 0.8;
+/**
+ * Seat position in (unscaled) desk-local space: the occupant sits on +z, facing the screen,
+ * pulled in so the knees tuck under the desk edge (z 0.41) and the hands reach the keyboard.
+ */
+export const SEAT_Z = 0.64;
 
 export const DEG = Math.PI / 180;
 
