@@ -219,3 +219,16 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 		},
 	],
 });
+
+/** The default floor before it was matched to the reference (office-vl9.6). */
+const FORMER_DEFAULT_FLOOR = "#cfa979";
+
+/**
+ * Bring a saved layout up to date with changed defaults. Companies copy the
+ * default layout when created, so a floor still on the former default was never
+ * chosen by anyone: it moves to the current default. Any other colour is kept.
+ */
+export function migrateLayout(layout: Layout): Layout {
+	if (layout.room.floorColor.toLowerCase() !== FORMER_DEFAULT_FLOOR) return layout;
+	return { ...layout, room: { ...layout.room, floorColor: DEFAULT_LAYOUT.room.floorColor } };
+}

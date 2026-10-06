@@ -1,7 +1,9 @@
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Company } from "@shared/company/company";
 import { firstCompany, seedCompany } from "@shared/company/company-ops";
+import { DEFAULT_LAYOUT } from "@shared/layout/default-layout";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadCompanies, openCompanies, saveCompany, saveCurrentId } from "./store";
 
@@ -61,5 +63,17 @@ describe("company store", () => {
 		expect(await readFile(join(dir, `broken.json.${stamp}`), "utf8")).toBe('{"version":99}');
 		expect(await readFile(join(dir, `current.json.${stamp}`), "utf8")).toBe("not json");
 		expect(await readFile(join(dir, `other.json.${stamp}`), "utf8")).toBe(JSON.stringify(valid));
+	});
+
+	it("moves a floor saved on the former default to the current one and keeps a chosen colour", async () => {
+		const withFloor = (company: Company, floorColor: string): Company => ({
+			...company,
+			layout: { ...company.layout, room: { ...company.layout.room, floorColor } },
+		});
+		await saveCompany(dir, withFloor(firstCompany(NOW), "#cfa979"));
+		await saveCompany(dir, withFloor(seedCompany("acme", "Acme", "", LATER), "#3a5f8c"));
+		const floors = (await loadCompanies(dir)).map((company) => company.layout.room.floorColor);
+		expect(floors).toEqual([DEFAULT_LAYOUT.room.floorColor, "#3a5f8c"]);
+		expect(DEFAULT_LAYOUT.room.floorColor).not.toBe("#cfa979");
 	});
 });

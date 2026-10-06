@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Company, companyIdSchema, companySchema } from "@shared/company/company";
 import { firstCompany } from "@shared/company/company-ops";
+import { migrateLayout } from "@shared/layout/default-layout";
 import { z } from "zod";
 
 /**
@@ -46,8 +47,9 @@ async function writeJson(dir: string, file: string, value: unknown): Promise<voi
 }
 
 /**
- * Every valid company in `dir`, oldest first. A company whose id disagrees
- * with its file name is invalid.
+ * Every valid company in `dir`, oldest first, with its layout migrated to
+ * current defaults (saved back on the next layout save). A company whose id
+ * disagrees with its file name is invalid.
  */
 export async function loadCompanies(dir: string, now = new Date()): Promise<Company[]> {
 	let files: string[];
@@ -63,7 +65,7 @@ export async function loadCompanies(dir: string, now = new Date()): Promise<Comp
 		const id = file.slice(0, -".json".length);
 		const schema = companySchema.refine((company) => company.id === id);
 		const company = await readJson(join(dir, file), schema, now);
-		if (company) companies.push(company);
+		if (company) companies.push({ ...company, layout: migrateLayout(company.layout) });
 	}
 	return companies.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
