@@ -41,6 +41,8 @@ import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
 import { createWhiteboard } from "./whiteboard/create";
 import { registerWhiteboardIpc } from "./whiteboard/ipc";
+import { createWorkBoard } from "./work-board/create";
+import { registerWorkBoardIpc } from "./work-board/ipc";
 import { registerWorkforceIpc } from "./workforce/ipc";
 import { createStaffing, createWorkforce } from "./workforce/service";
 
@@ -156,6 +158,8 @@ const pool = createPool({
 	emit: (view) => broadcast(IPC.poolChanged, view),
 	emitFrame: (frame) => broadcast(IPC.poolFrame, frame),
 });
+/** The left bar's work board over the app repo's Beads (the repo root in stable mode). */
+const workBoard = createWorkBoard(app.getAppPath(), (board) => broadcast(IPC.workChanged, board));
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -243,6 +247,7 @@ app.whenReady().then(() => {
 	registerWhiteboardIpc(whiteboard.service);
 	registerPoolIpc(pool);
 	registerBrainstormIpc(brainstorm.service);
+	registerWorkBoardIpc(workBoard);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -271,6 +276,7 @@ app.whenReady().then(() => {
 	brainstorm
 		.start()
 		.catch((error: unknown) => createLogger("brainstorm").warn("not started", { error }));
+	workBoard.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -291,6 +297,7 @@ function stopServices(): void {
 	whiteboard.stop();
 	pool.stop();
 	brainstorm.stop();
+	workBoard.stop();
 }
 
 app.on("window-all-closed", () => {

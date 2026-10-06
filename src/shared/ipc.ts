@@ -16,6 +16,7 @@ import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
 import type { WeatherFeed } from "./tv";
 import type { WhiteboardApi } from "./whiteboard";
+import type { WorkBoardApi } from "./work-board";
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -106,6 +107,13 @@ export const IPC = {
 	brainstormStart: "brainstorm:start",
 	brainstormEnd: "brainstorm:end",
 	brainstormChanged: "brainstorm:changed",
+	/** Work board: bd-backed cards (invoke), every change (main → renderer), Jeremy's writes (invoke). */
+	workGet: "work:get",
+	workChanged: "work:changed",
+	workCreate: "work:create",
+	workPriority: "work:priority",
+	workMove: "work:move",
+	workAssign: "work:assign",
 } as const;
 
 export type BridgeStatus =
@@ -151,4 +159,5 @@ export interface OfficeApi {
 	readonly whiteboard: WhiteboardApi;
 	readonly pool: PoolApi;
 	readonly brainstorm: BrainstormApi;
+	readonly work: WorkBoardApi;
 }
