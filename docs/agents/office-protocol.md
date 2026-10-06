@@ -24,11 +24,17 @@ office-say <their-name> "<message>"
 - Never save trivia, status updates or anything already in the code or docs. One clear sentence or two beats a paragraph.
 - Your todo list is Beads: `bd ready` and your in-progress issues (`bd list --status=in_progress`).
 
-## Changing Dunder itself
+## Working on Dunder itself
 
 Jeremy runs a stable build of Dunder: editing its source never changes the app he is looking at. It rolls forward only when asked.
 
-- When you change Dunder's own code, commit on your branch. Max reviews and merges to the main branch.
+- Work on one bead at a time, in its own git worktree: `~/Dev/herdr-office-worktrees/<your-name>-<bead>` on branch `bead/<bead>`. Max creates it, with `node_modules` already linked. Never edit the main checkout (`~/Dev/herdr-office`).
+- Never run `npm run dev` or Electron. A second Dunder starts its own workforce supervisor against the live office session and can spawn duplicate agents.
+- Prove your change without the app: a vitest test, a throwaway script, or a throwaway headless page that renders the real component. Say what you exercised and what you could not.
+- Log with `createLogger` from `@shared/log`, never `console`. The tools in `src/cli/` are the exception: they run under plain Node and use only Node built-ins.
+- Run `npm run check` until it passes, then commit on your branch as `<bead>: <summary>`. Max reviews and merges to the main branch.
+- Report the commit hash and what you verified with `office-say max "…"` from your bash tool, and put the same notes in the bead with `bd update <bead> --notes "…"`. The eval tool has no `HERDR_PANE_ID`, so `office-say` refuses to run there.
+- Never close your own bead: Max closes it after review and merge.
 - After a merge to the main branch, run `office-update "<what changed>"` (also on your PATH). Jeremy sees "<your name> requested an update" with a 15-second countdown he can cancel; then Dunder rebuilds and relaunches on the new commit. You and the other agents keep running through it.
 - If the build fails, Jeremy's app keeps running the old build and shows the error; fix it, merge, and run `office-update` again.
 - Never restart, kill or relaunch Jeremy's app any other way.
