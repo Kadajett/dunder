@@ -1,18 +1,18 @@
 import { STATION_SCALE } from "../scene/station";
+import { CueStick } from "./cue-stick";
 import { PALETTE } from "./palette";
 import { Block } from "./parts";
 
-/** Tip blue, as on the house cue and the chalk. */
-const TIP = "#3c6fb5";
 const CUE_X = [-0.24, -0.08, 0.08, 0.24] as const;
+/** Butts rest in the tray at the bottom; tips stand just above the board. */
+const BUTT_Y = -0.6;
+const TIP_Y = 0.714;
 
-/** One spare cue standing in the rack: dark butt below, pale shaft above, blue tip. */
+/** One spare cue standing in the rack, tip up. */
 function StandingCue({ x }: { readonly x: number }) {
 	return (
-		<group position={[x, 0, 0.075]}>
-			<Block size={[0.03, 0.45, 0.03]} position={[0, -0.375, 0]} color={PALETTE.woodDeep} />
-			<Block size={[0.018, 0.85, 0.018]} position={[0, 0.275, 0]} color={PALETTE.woodLight} />
-			<Block size={[0.02, 0.014, 0.02]} position={[0, 0.706, 0]} color={TIP} noShadow />
+		<group position={[x, TIP_Y, 0.075]} rotation={[0, 0, Math.PI / 2]}>
+			<CueStick length={TIP_Y - BUTT_Y} />
 		</group>
 	);
 }

@@ -1,15 +1,17 @@
 import { POOL_TABLE } from "@shared/pool";
 import { DYNAMIC } from "../scene/StaticBatch";
 import { STATION_SCALE } from "../scene/station";
+import { CueStick } from "./cue-stick";
 import { PALETTE } from "./palette";
 import { Block } from "./parts";
 import { POOL_SURFACE_Y, PoolBalls } from "./pool-balls";
 import { restingRack } from "./pool-rack";
 
 /*
- * Table space, in metres before the station scale: the playing surface (inside
- * the cushion noses) is centred on the origin, pool x along x (+x the rack end),
- * pool y along -z. Rails, cushions and frame stand outside it.
+ * Table space, in metres before the station scale (the table's group applies
+ * STATION_SCALE): the playing surface (inside the cushion noses) is centred on
+ * the origin at height POOL_SURFACE_Y, pool x along x (+x the rack end), pool y
+ * along -z. Rails, cushions and frame stand outside it. Play (dk7.4) draws in it.
  */
 const HALF_L = POOL_TABLE.length / 2;
 const HALF_W = POOL_TABLE.width / 2;
@@ -25,7 +27,6 @@ const FELT = "#2f7a58";
 const CUSHION_FELT = "#276a4b";
 /** Pockets share the office charcoal, so they add no material of their own. */
 const POCKET = PALETTE.charcoal;
-const TIP = "#3c6fb5";
 
 /** Cushion noses between the pockets: each long rail in two halves, each short rail whole. */
 function Cushions() {
@@ -153,27 +154,11 @@ function Body() {
 	);
 }
 
-/** The house cue, laid on the cloth along the near rail between shots; play moves it. */
-function RestingCue() {
-	const z = HALF_W - 0.1;
+/** The house cue, laid on the cloth along the near rail between games; play hides it. */
+export function RestingCue() {
 	return (
-		<group userData={DYNAMIC}>
-			<Block
-				size={[0.55, 0.03, 0.03]}
-				position={[-0.65, POOL_SURFACE_Y + 0.015, z]}
-				color={PALETTE.woodDeep}
-			/>
-			<Block
-				size={[0.85, 0.02, 0.02]}
-				position={[0.05, POOL_SURFACE_Y + 0.01, z]}
-				color={PALETTE.woodLight}
-			/>
-			<Block
-				size={[0.012, 0.018, 0.018]}
-				position={[0.481, POOL_SURFACE_Y + 0.01, z]}
-				color={TIP}
-				noShadow
-			/>
+		<group userData={DYNAMIC} position={[0.487, POOL_SURFACE_Y + 0.015, HALF_W - 0.1]}>
+			<CueStick />
 		</group>
 	);
 }
