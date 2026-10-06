@@ -102,6 +102,9 @@ const api: OfficeApi = {
 		fire: (name) => ipcRenderer.invoke(IPC.workforceFire, name),
 		restart: (name) => ipcRenderer.invoke(IPC.workforceRestart, name),
 	},
+	staff: {
+		onOutcome: (listener) => listen(IPC.staffOutcome, listener),
+	},
 	update: {
 		status: () => ipcRenderer.invoke(IPC.updateStatus),
 		onStatus: (listener) => listen(IPC.updateChanged, listener),

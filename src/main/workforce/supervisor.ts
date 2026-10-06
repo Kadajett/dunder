@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type { Roster } from "@shared/company/roster";
 import {
 	activeAgents,
@@ -41,6 +41,8 @@ export interface SpawnConfig {
 	readonly paneEnv: Readonly<Record<string, string>>;
 	/** Role → markdown brief appended after "Who you are", for roles that have one. */
 	readonly rolePrompts?: Readonly<Record<string, string>>;
+	/** Directory of per-worker extra briefs (`<name>.md`, from `office-staff hire --brief`). */
+	readonly briefDir?: string;
 }
 
 export interface SupervisorDeps {
@@ -237,7 +239,13 @@ export class WorkforceSupervisor {
 	async #writePrompt(plan: SpawnPlan): Promise<string> {
 		const protocol = await readFile(this.#deps.spawn.protocolPath, "utf8");
 		const briefPath = this.#deps.spawn.rolePrompts?.[plan.agent.role];
-		const brief = briefPath === undefined ? undefined : await readFile(briefPath, "utf8");
+		const roleBrief = briefPath === undefined ? undefined : await readFile(briefPath, "utf8");
+		const { briefDir } = this.#deps.spawn;
+		const ownBrief =
+			briefDir === undefined
+				? undefined
+				: await readFile(join(briefDir, `${plan.agent.name}.md`), "utf8").catch(() => undefined);
+		const brief = [roleBrief?.trim(), ownBrief?.trim()].filter(Boolean).join("\n\n");
 		const prompt = agentPrompt(protocol, plan.agent, brief);
 		await mkdir(dirname(plan.promptPath), { recursive: true });
 		await writeFile(plan.promptPath, prompt, "utf8");

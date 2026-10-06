@@ -1,6 +1,7 @@
 import type { Workout } from "@shared/calisthenics";
 import type { HerdrEvent, SessionSnapshot } from "@shared/herdr/schema";
 import { type AgentModel, shortModelName } from "@shared/models";
+import type { StaffOutcome } from "@shared/staff";
 import type { OfficeMessage } from "@shared/switchboard";
 import { z } from "zod";
 
@@ -99,6 +100,19 @@ export function workoutToDraft(workout: Workout): FeedDraft {
 		agent: "Office",
 		action: `calisthenics break (${n} agent${n === 1 ? "" : "s"})`,
 		tone: "office",
+	};
+}
+
+/** Feed draft for a handled `office-staff` request; a successful `list` is not news. */
+export function staffOutcomeToDraft(outcome: StaffOutcome): FeedDraft | null {
+	if (outcome.action === "list" && outcome.ok) return null;
+	const target = outcome.name ? ` ${outcome.name}` : "";
+	return {
+		agent: displayName(outcome.by),
+		action: outcome.ok
+			? outcome.message
+			: `office-staff ${outcome.action}${target} refused: ${outcome.message}`,
+		tone: outcome.ok ? "office" : "blocked",
 	};
 }
 

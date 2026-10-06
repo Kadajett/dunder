@@ -8,6 +8,7 @@ import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
 import type { ModelsApi } from "./models";
 import type { OfficeStatsApi } from "./office-stats";
 import type { ScreensApi, Unsubscribe } from "./screens";
+import type { StaffApi } from "./staff";
 import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
 import type { WeatherFeed } from "./tv";
@@ -73,6 +74,8 @@ export const IPC = {
 	workforceHire: "workforce:hire",
 	workforceFire: "workforce:fire",
 	workforceRestart: "workforce:restart",
+	/** main → renderer: an `office-staff` request was handled (Activity Feed). */
+	staffOutcome: "staff:outcome",
 	/** Stable-mode updates: status (invoke), changes (main → renderer), apply and cancel (invoke). */
 	updateStatus: "update:status",
 	updateChanged: "update:changed",
@@ -117,5 +120,6 @@ export interface OfficeApi {
 	readonly stats: OfficeStatsApi;
 	readonly companies: CompaniesApi;
 	readonly workforce: WorkforceApi;
+	readonly staff: StaffApi;
 	readonly update: AppUpdateApi;
 }

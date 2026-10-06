@@ -1,0 +1,3 @@
+#!/bin/sh
+# Chief of staff only: hire, fire, restart and re-model workers. office-staff --help
+exec node "$(dirname "$(readlink -f "$0")")/../src/cli/office-staff.mts" "$@"

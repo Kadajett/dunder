@@ -21,6 +21,7 @@ import { registerModelsIpc } from "./models/ipc";
 import { createModels } from "./models/service";
 import { CostTracker } from "./office-stats/cost-tracker";
 import { registerOfficeStatsIpc } from "./office-stats/ipc";
+import { createStaffDesk } from "./staff-desk/create";
 import { createSwitchboardService } from "./switchboard/service";
 import { ObservePool } from "./terminal/observe-pool";
 import { startObserveSession } from "./terminal/observe-session";
@@ -76,6 +77,15 @@ const workforce = createWorkforce(
 );
 const models = createModels(workforce, (live) => broadcast(IPC.modelsLiveChanged, live));
 const staffing = createStaffing(workforce, models.catalog);
+/** Max's `office-staff` requests: hire, fire, restart, model and list from the shell. */
+const staffDesk = createStaffDesk({
+	userData: app.getPath("userData"),
+	appRoot: app.getAppPath(),
+	staffing,
+	workforce,
+	models: models.service,
+	emit: (outcome) => broadcast(IPC.staffOutcome, outcome),
+});
 const chief = createChief(app.getPath("userData"), {
 	roster: () => workforce.roster(),
 	modelOf: (name) => models.service.live()[name]?.model,
@@ -124,6 +134,7 @@ async function startBridge(): Promise<void> {
 				chief.update(snapshot);
 				aiCost.update(snapshot);
 				appUpdate.updateSnapshot(snapshot);
+				staffDesk.updateSnapshot(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -191,6 +202,9 @@ app.whenReady().then(() => {
 	chief.start();
 	aiCost.start();
 	void appUpdate.start();
+	staffDesk
+		.start()
+		.catch((error: unknown) => createLogger("staff-desk").warn("not started", { error }));
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -207,6 +221,7 @@ function stopServices(): void {
 	chief.stop();
 	aiCost.stop();
 	appUpdate.stop();
+	staffDesk.stop();
 }
 
 app.on("window-all-closed", () => {
