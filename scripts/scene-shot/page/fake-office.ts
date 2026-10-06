@@ -84,6 +84,15 @@ const fakeOffice = {
 		recent: async () => [],
 		onMessage: () => unsubscribe,
 	},
+	// A sample day's AI spend, so the wall placard shows a figure as it does in the app.
+	stats: {
+		costToday: async () => ({ state: "ok", day: "2026-10-06", usd: 47.18, sessions: 9 }),
+		onCostToday: () => unsubscribe,
+		memories: async () => ({ projects: [] }),
+		remember: async () => ({ ok: false, reason: "scene-shot" }),
+		forget: async () => ({ ok: false, reason: "scene-shot" }),
+		markSeen: async () => ({ ok: true }),
+	},
 } satisfies Pick<
 	OfficeApi,
 	| "getSnapshot"
@@ -96,6 +105,7 @@ const fakeOffice = {
 	| "screens"
 	| "calisthenics"
 	| "switchboard"
+	| "stats"
 >;
 
 Object.defineProperty(window, "office", { value: fakeOffice });

@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import type { Group } from "three";
 import { ringBell } from "../../calisthenics/workout-store";
+import { useCostToday } from "../../hud/live-data";
 import { FONTS } from "../fonts";
 import { Clickable } from "../interaction/Clickable";
 import { PALETTE } from "./palette";
@@ -80,19 +81,82 @@ export function WallBell({ label }: DecorProps) {
 				</group>
 			</group>
 			{label ? (
+				// Painted on the wall below the bell, large enough to read from the overview.
 				<Text
 					font={FONTS.monoBold}
-					fontSize={0.07}
+					fontSize={0.12}
 					letterSpacing={0.2}
-					color="#a08b68"
+					color="#7d6748"
 					anchorX="center"
 					anchorY="top"
-					position={[0, -0.28, 0.004]}
+					position={[0, -0.5, 0.004]}
 				>
 					{label.toUpperCase()}
 				</Text>
 			) : null}
 		</Clickable>
+	);
+}
+
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const PLACARD_W = 1.5;
+const PLACARD_H = 0.9;
+/** Hung slightly askew, like the reference's revenue placard. */
+const PLACARD_TILT = -0.1;
+
+/**
+ * Dark wall placard with today's AI spend in green, live from the office-stats
+ * IPC (the figure the HUD's AI cost tile shows); a dash while it is unavailable.
+ * `label` replaces the caption.
+ */
+export function WallPlacard({ label = "AI SPEND · TODAY" }: DecorProps) {
+	const cost = useCostToday();
+	const figure = cost.state === "ok" ? usd.format(cost.usd) : "—";
+	const detail =
+		cost.state === "ok"
+			? `${cost.sessions} agent session${cost.sessions === 1 ? "" : "s"}`
+			: "not tracked yet";
+	return (
+		<group rotation={[0, 0, PLACARD_TILT]}>
+			<Block size={[PLACARD_W, PLACARD_H, 0.06]} position={[0, 0, 0.03]} color={PALETTE.charcoal} />
+			<Block
+				size={[PLACARD_W - 0.1, PLACARD_H - 0.1, 0.01]}
+				position={[0, 0, 0.065]}
+				color="#24272c"
+				noShadow
+			/>
+			<Text
+				font={FONTS.monoBold}
+				fontSize={0.075}
+				letterSpacing={0.22}
+				color="#d9cfbd"
+				anchorX="center"
+				anchorY="middle"
+				position={[0, 0.27, 0.072]}
+			>
+				{label.toUpperCase()}
+			</Text>
+			<Text
+				font={FONTS.display}
+				fontSize={0.3}
+				color={PALETTE.ledGreen}
+				anchorX="center"
+				anchorY="middle"
+				position={[0, 0.02, 0.072]}
+			>
+				{figure}
+			</Text>
+			<Text
+				font={FONTS.mono}
+				fontSize={0.06}
+				color="#9a978f"
+				anchorX="center"
+				anchorY="middle"
+				position={[0, -0.27, 0.072]}
+			>
+				{detail}
+			</Text>
+		</group>
 	);
 }
 

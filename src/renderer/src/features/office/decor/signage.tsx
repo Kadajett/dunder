@@ -56,16 +56,19 @@ const POSTINGS = [
 	{ width: 0.46, color: PALETTE.postingGray },
 ] as const;
 
+/** The board face is drawn at 1:1 and shown this much larger, to read at reception like the reference. */
+const BOARD_SCALE = 1.55;
+
 /** Freestanding board on a post; `label` is the title above coloured postings. */
 export function NoticeBoard({ label = "OPEN ROLES" }: DecorProps) {
-	const post = 1.0;
-	const boardY = post + 0.3;
+	const post = 1.1;
+	const boardY = post + 0.3 * BOARD_SCALE;
 	return (
 		<group>
-			<Block size={[0.5, 0.05, 0.08]} position={[0, 0.025, 0]} color={PALETTE.woodDeep} />
-			<Block size={[0.08, 0.05, 0.4]} position={[0, 0.025, 0]} color={PALETTE.woodDeep} />
-			<Block size={[0.08, post, 0.08]} position={[0, post / 2, 0]} color={PALETTE.woodDeep} />
-			<group position={[0, boardY, 0]}>
+			<Block size={[0.6, 0.05, 0.1]} position={[0, 0.025, 0]} color={PALETTE.woodDeep} />
+			<Block size={[0.1, 0.05, 0.5]} position={[0, 0.025, 0]} color={PALETTE.woodDeep} />
+			<Block size={[0.1, post, 0.1]} position={[0, post / 2, 0]} color={PALETTE.woodDeep} />
+			<group position={[0, boardY, 0]} scale={BOARD_SCALE}>
 				<Block size={[0.9, 0.64, 0.05]} color={PALETTE.boardBorder} />
 				<Block size={[0.84, 0.58, 0.01]} position={[0, 0, 0.03]} color={PALETTE.paper} />
 				<Text

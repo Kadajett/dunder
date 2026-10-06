@@ -102,18 +102,19 @@ function vLeaves(length: number, width: number): LeafSpec[] {
 	];
 }
 
-const SMALL_POT: PotSpec = { side: 0.36, height: 0.32 };
-const SMALL_LEAVES = vLeaves(0.72, 0.36);
+// Sized against the reference, where potted plants stand about as tall as a seated agent.
+const SMALL_POT: PotSpec = { side: 0.46, height: 0.42 };
+const SMALL_LEAVES = vLeaves(1.08, 0.5);
 
-const TALL_POT: PotSpec = { side: 0.5, height: 0.44 };
-const TALL_LEAVES = vLeaves(1.16, 0.48);
+const TALL_POT: PotSpec = { side: 0.6, height: 0.54 };
+const TALL_LEAVES = vLeaves(1.62, 0.64);
 
-/** Potted plant ≈ 1.0 tall: a square planter and broad low-poly leaves. */
+/** Potted plant ≈ 1.5 tall: a square planter and broad low-poly leaves. */
 export function Plant() {
 	return <PottedPlant pot={SMALL_POT} leaves={SMALL_LEAVES} />;
 }
 
-/** Floor plant ≈ 1.6 tall in a larger planter. */
+/** Floor plant ≈ 2.2 tall in a larger planter. */
 export function TallPlant() {
 	return <PottedPlant pot={TALL_POT} leaves={TALL_LEAVES} />;
 }
