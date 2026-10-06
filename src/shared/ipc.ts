@@ -1,5 +1,6 @@
 import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
-import type { TerminalCommand, TerminalOpenRequest } from "./terminal";
+import type { ScreensApi, Unsubscribe } from "./screens";
+import type { TerminalCommand } from "./terminal";
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -8,11 +9,15 @@ export const IPC = {
 	snapshot: "office:snapshot",
 	event: "office:event",
 	status: "office:status",
+	/** renderer → main: create this window's screens MessagePort (sent once per page load). */
+	screensConnect: "screens:connect",
+	/** main → renderer: carries the port; all `ScreenPortMessage`s flow over it. */
+	screensPort: "screens:port",
+	screensObserve: "screens:observe",
+	screensUnobserve: "screens:unobserve",
 	terminalOpen: "terminal:open",
 	terminalCommand: "terminal:command",
 	terminalClose: "terminal:close",
-	terminalFrame: "terminal:frame",
-	terminalClosed: "terminal:closed",
 } as const;
 
 export type BridgeStatus =
@@ -21,22 +26,15 @@ export type BridgeStatus =
 	| { readonly state: "reconnecting" }
 	| { readonly state: "error"; readonly message: string };
 
-export interface TerminalFrameMessage {
-	readonly terminalId: string;
-	readonly data: Uint8Array;
-}
-
-export interface TerminalClosedMessage {
-	readonly terminalId: string;
-	readonly reason: string;
+export interface ObserveMessage {
+	readonly subscriberId: string;
+	readonly paneId: string;
 }
 
 export interface TerminalCommandMessage {
 	readonly terminalId: string;
 	readonly command: TerminalCommand;
 }
-
-export type Unsubscribe = () => void;
 
 /** The API the preload script exposes to the renderer as `window.office`. */
 export interface OfficeApi {
@@ -45,11 +43,5 @@ export interface OfficeApi {
 	onSnapshot(listener: (snapshot: SessionSnapshot) => void): Unsubscribe;
 	onEvent(listener: (event: HerdrEvent) => void): Unsubscribe;
 	onStatus(listener: (status: BridgeStatus) => void): Unsubscribe;
-	terminal: {
-		open(request: TerminalOpenRequest): Promise<string>;
-		send(terminalId: string, command: TerminalCommand): void;
-		close(terminalId: string): void;
-		onFrame(terminalId: string, listener: (data: Uint8Array) => void): Unsubscribe;
-		onClosed(terminalId: string, listener: (reason: string) => void): Unsubscribe;
-	};
+	readonly screens: ScreensApi;
 }

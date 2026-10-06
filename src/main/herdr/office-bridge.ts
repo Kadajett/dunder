@@ -34,9 +34,15 @@ export class OfficeBridge {
 		this.#stream = createEventStream({
 			api,
 			onEvent: (event) => {
-				listener.event(event);
-				clearTimeout(this.#refreshTimer);
-				this.#refreshTimer = setTimeout(() => void this.refresh(), refreshDelayMs);
+				// pane.updated fires on every output change; it only means "re-snapshot soon".
+				if (event.event !== "pane.updated") listener.event(event);
+				// Throttle, never debounce: a busy agent emits updates faster than any
+				// debounce window, which would starve status changes until it went quiet.
+				if (this.#refreshTimer) return;
+				this.#refreshTimer = setTimeout(() => {
+					this.#refreshTimer = undefined;
+					void this.refresh();
+				}, refreshDelayMs);
 			},
 			onConnectionChange: (connected) => {
 				listener.status(connected ? { state: "connected" } : { state: "reconnecting" });

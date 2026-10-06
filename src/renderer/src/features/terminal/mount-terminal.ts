@@ -1,3 +1,4 @@
+import type { ScreenPortMessage } from "@shared/screens";
 import type { TerminalCommand } from "@shared/terminal";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
@@ -23,10 +24,15 @@ export interface MountOptions {
 
 export interface MountedTerminal {
 	focus(): void;
+	/** Recompute cols/rows for the host now, e.g. once a camera tween settles. */
+	fit(): void;
 	dispose(): void;
 }
 
 type Send = (command: TerminalCommand) => void;
+
+const BRACKETED_PASTE_ON = "\x1b[?2004h";
+const RESIZE_DEBOUNCE_MS = 120;
 
 function createEmulator(host: HTMLElement, fontSize: number): { term: Terminal; fit: FitAddon } {
 	const term = new Terminal({
@@ -52,31 +58,62 @@ function createEmulator(host: HTMLElement, fontSize: number): { term: Terminal; 
 	return { term, fit };
 }
 
+/** Applies one control session's port traffic to the emulator. */
+function applyControlMessage(
+	term: Terminal,
+	options: MountOptions,
+	terminalId: string,
+	message: ScreenPortMessage,
+): void {
+	if (message.type === "status") {
+		const { status } = message;
+		if (status.kind !== "control" || status.id !== terminalId || status.state !== "closed") return;
+		const reason = status.reason ?? "closed";
+		term.write(`\r\n\x1b[2m[screen closed: ${reason}]\x1b[0m`);
+		options.onClosed(reason);
+		return;
+	}
+	for (const chunk of message.chunks) {
+		if (chunk.kind !== "control" || chunk.id !== terminalId) continue;
+		if (chunk.reset) {
+			// A fresh attach repaints everything; reset drops modes, so re-enable paste brackets.
+			term.reset();
+			if (options.bracketedPaste) term.write(BRACKETED_PASTE_ON);
+		}
+		term.write(chunk.data);
+	}
+}
+
 /** Owns the herdr control stream for one screen; queues input until attached. */
 function connectScreen(term: Terminal, options: MountOptions): { send: Send; dispose(): void } {
-	const office = window.office.terminal;
+	const screens = window.office.screens;
 	let terminalId: string | undefined;
 	let disposed = false;
 	const pending: TerminalCommand[] = [];
-	const unsubscribers: Array<() => void> = [];
+	/** Port traffic can outrun the `open` reply; hold it until the id is known. */
+	const early: ScreenPortMessage[] = [];
+	const stopListening = screens.onMessage((message) => {
+		if (terminalId) {
+			applyControlMessage(term, options, terminalId, message);
+			return;
+		}
+		const forControl =
+			message.type === "status"
+				? message.status.kind === "control"
+				: message.chunks.some((chunk) => chunk.kind === "control");
+		if (!disposed && forControl) early.push(message);
+	});
 	const send: Send = (command) => {
-		if (terminalId) office.send(terminalId, command);
+		if (terminalId) screens.send(terminalId, command);
 		else pending.push(command);
 	};
 	const attach = (id: string): void => {
 		if (disposed) {
-			office.close(id);
+			screens.close(id);
 			return;
 		}
 		terminalId = id;
-		unsubscribers.push(
-			office.onFrame(id, (data) => term.write(data)),
-			office.onClosed(id, (reason) => {
-				terminalId = undefined;
-				term.write(`\r\n\x1b[2m[screen closed: ${reason}]\x1b[0m`);
-				options.onClosed(reason);
-			}),
-		);
+		for (const message of early.splice(0)) applyControlMessage(term, options, id, message);
 		for (const command of pending.splice(0)) send(command);
 	};
 	const fail = (error: unknown): void => {
@@ -84,19 +121,14 @@ function connectScreen(term: Terminal, options: MountOptions): { send: Send; dis
 		term.write(`\x1b[31m[could not open screen: ${message}]\x1b[0m`);
 		options.onClosed(message);
 	};
-	const request = {
-		paneId: options.paneId,
-		cols: term.cols,
-		rows: term.rows,
-		takeover: options.takeover,
-	};
-	office.open(request).then(attach, fail);
+	const { paneId, takeover } = options;
+	screens.open({ paneId, cols: term.cols, rows: term.rows, takeover }).then(attach, fail);
 	return {
 		send,
 		dispose() {
 			disposed = true;
-			for (const unsubscribe of unsubscribers) unsubscribe();
-			if (terminalId) office.close(terminalId);
+			stopListening();
+			if (terminalId) screens.close(terminalId);
 		},
 	};
 }
@@ -129,7 +161,15 @@ function wireInput(term: Terminal, send: Send): void {
 		return false;
 	});
 	term.onData((text) => send({ type: "terminal.input", text }));
-	term.onResize(({ cols, rows }) => send({ type: "terminal.resize", cols, rows }));
+	// Animated layouts (camera tweens, window drags) refit every frame; herdr only needs the end size.
+	let resizeTimer: number | undefined;
+	term.onResize(({ cols, rows }) => {
+		window.clearTimeout(resizeTimer);
+		resizeTimer = window.setTimeout(
+			() => send({ type: "terminal.resize", cols, rows }),
+			RESIZE_DEBOUNCE_MS,
+		);
+	});
 }
 
 /** ResizeObserver already batches to once per rendered frame, so fit directly. */
@@ -145,12 +185,13 @@ function observeSize(host: HTMLElement, fit: FitAddon): () => void {
  */
 export function mountTerminal(host: HTMLElement, options: MountOptions): MountedTerminal {
 	const { term, fit } = createEmulator(host, options.fontSize ?? 13);
-	if (options.bracketedPaste) term.write("\x1b[?2004h");
+	if (options.bracketedPaste) term.write(BRACKETED_PASTE_ON);
 	const screen = connectScreen(term, options);
 	wireInput(term, screen.send);
 	const stopObserving = observeSize(host, fit);
 	return {
 		focus: () => term.focus(),
+		fit: () => fit.fit(),
 		dispose: () => {
 			stopObserving();
 			screen.dispose();

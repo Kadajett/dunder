@@ -1,23 +1,24 @@
+import { type BridgeStatus, IPC } from "@shared/ipc";
 import {
-	type BridgeStatus,
-	IPC,
-	type TerminalClosedMessage,
-	type TerminalFrameMessage,
-} from "@shared/ipc";
-import { type IpcMainEvent, type IpcMainInvokeEvent, ipcMain, type WebContents } from "electron";
+	type IpcMainEvent,
+	type IpcMainInvokeEvent,
+	ipcMain,
+	MessageChannelMain,
+	type WebContents,
+} from "electron";
 import { z } from "zod";
 import type { OfficeBridge } from "./herdr/office-bridge";
-import type { TerminalRegistry, TerminalSink } from "./terminal/registry";
+import { createCoalescingSink, type WindowSink } from "./terminal/screen-sink";
+import type { ScreensService } from "./terminal/screens-service";
 
 const cell = z.number().int().min(0).max(10_000);
 const size = z.number().int().min(2).max(1_000);
+const paneId = z.string().min(1).max(64);
+const terminalId = z.string().min(1).max(64);
 
-const openRequestSchema = z.object({
-	paneId: z.string().min(1).max(64),
-	cols: size,
-	rows: size,
-	takeover: z.boolean(),
-});
+const openRequestSchema = z.object({ paneId, cols: size, rows: size, takeover: z.boolean() });
+
+const observeSchema = z.object({ subscriberId: z.string().min(1).max(128), paneId });
 
 const commandSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("terminal.input"), text: z.string().max(1_000_000) }),
@@ -40,21 +41,18 @@ const commandSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("terminal.release") }),
 ]);
 
-const commandMessageSchema = z.object({ terminalId: z.string(), command: commandSchema });
+const commandMessageSchema = z.object({ terminalId, command: commandSchema });
 
-function sinkFor(contents: WebContents): TerminalSink {
+/** Screen traffic for one window, coalesced onto the main end of its MessageChannel. */
+function windowSink(contents: WebContents): WindowSink {
+	const { port1, port2 } = new MessageChannelMain();
+	const sink = createCoalescingSink(contents.id, (message) => port1.postMessage(message));
+	contents.postMessage(IPC.screensPort, null, [port2]);
 	return {
-		ownerId: contents.id,
-		frame: (terminalId, frame) => {
-			if (contents.isDestroyed()) return;
-			contents.send(IPC.terminalFrame, {
-				terminalId,
-				data: frame.data,
-			} satisfies TerminalFrameMessage);
-		},
-		closed: (terminalId, reason) => {
-			if (contents.isDestroyed()) return;
-			contents.send(IPC.terminalClosed, { terminalId, reason } satisfies TerminalClosedMessage);
+		...sink,
+		dispose() {
+			sink.dispose();
+			port1.close();
 		},
 	};
 }
@@ -62,28 +60,46 @@ function sinkFor(contents: WebContents): TerminalSink {
 export interface IpcDeps {
 	readonly bridge: () => OfficeBridge | undefined;
 	readonly status: () => BridgeStatus;
-	readonly terminals: TerminalRegistry;
+	readonly screens: ScreensService;
 }
 
 /** Register every renderer-facing handler. Renderer payloads are untrusted. */
 export function registerIpc(deps: IpcDeps): void {
+	const { screens } = deps;
 	const tracked = new WeakSet<WebContents>();
 	ipcMain.handle(IPC.getSnapshot, () => deps.bridge()?.latest() ?? null);
 	ipcMain.handle(IPC.getStatus, () => deps.status());
-	ipcMain.handle(IPC.terminalOpen, (event: IpcMainInvokeEvent, payload: unknown) => {
-		const request = openRequestSchema.parse(payload);
+	ipcMain.on(IPC.screensConnect, (event: IpcMainEvent) => {
 		const contents = event.sender;
+		const ownerId = contents.id;
 		if (!tracked.has(contents)) {
 			tracked.add(contents);
-			contents.once("destroyed", () => deps.terminals.closeOwnedBy(contents.id));
+			contents.once("destroyed", () => screens.disconnect(ownerId));
+			contents.on("render-process-gone", () => screens.disconnect(ownerId));
 		}
-		return deps.terminals.open(request, sinkFor(contents));
+		screens.connect(windowSink(contents));
 	});
-	ipcMain.on(IPC.terminalCommand, (_event: IpcMainEvent, payload: unknown) => {
+	ipcMain.on(IPC.screensObserve, (event: IpcMainEvent, payload: unknown) => {
+		const parsed = observeSchema.safeParse(payload);
+		if (parsed.success) {
+			screens.observe(event.sender.id, parsed.data.subscriberId, parsed.data.paneId);
+		}
+	});
+	ipcMain.on(IPC.screensUnobserve, (event: IpcMainEvent, payload: unknown) => {
+		const parsed = observeSchema.safeParse(payload);
+		if (parsed.success) {
+			screens.unobserve(event.sender.id, parsed.data.subscriberId, parsed.data.paneId);
+		}
+	});
+	ipcMain.handle(IPC.terminalOpen, (event: IpcMainInvokeEvent, payload: unknown) =>
+		screens.open(event.sender.id, openRequestSchema.parse(payload)),
+	);
+	ipcMain.on(IPC.terminalCommand, (event: IpcMainEvent, payload: unknown) => {
 		const parsed = commandMessageSchema.safeParse(payload);
-		if (parsed.success) deps.terminals.send(parsed.data.terminalId, parsed.data.command);
+		if (parsed.success) screens.send(event.sender.id, parsed.data.terminalId, parsed.data.command);
 	});
-	ipcMain.on(IPC.terminalClose, (_event: IpcMainEvent, payload: unknown) => {
-		if (typeof payload === "string") deps.terminals.close(payload);
+	ipcMain.on(IPC.terminalClose, (event: IpcMainEvent, payload: unknown) => {
+		const parsed = terminalId.safeParse(payload);
+		if (parsed.success) screens.close(event.sender.id, parsed.data);
 	});
 }

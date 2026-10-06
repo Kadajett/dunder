@@ -1,9 +1,5 @@
-import {
-	IPC,
-	type OfficeApi,
-	type TerminalClosedMessage,
-	type TerminalFrameMessage,
-} from "@shared/ipc";
+import { IPC, type ObserveMessage, type OfficeApi, type TerminalCommandMessage } from "@shared/ipc";
+import type { ScreenPortMessage, ScreensApi } from "@shared/screens";
 import { contextBridge, type IpcRendererEvent, ipcRenderer } from "electron";
 
 function listen<T>(channel: string, listener: (payload: T) => void): () => void {
@@ -12,25 +8,40 @@ function listen<T>(channel: string, listener: (payload: T) => void): () => void 
 	return () => ipcRenderer.removeListener(channel, handler);
 }
 
-/** Per-terminal listener fan-out so each screen only sees its own stream. */
-function keyedListeners<T>(channel: string, pick: (message: T) => string) {
-	const listeners = new Map<string, Set<(message: T) => void>>();
-	listen<T>(channel, (message) => {
-		for (const listener of listeners.get(pick(message)) ?? []) listener(message);
-	});
-	return (key: string, listener: (message: T) => void): (() => void) => {
-		const set = listeners.get(key) ?? new Set();
-		set.add(listener);
-		listeners.set(key, set);
-		return () => {
-			set.delete(listener);
-			if (set.size === 0) listeners.delete(key);
+/**
+ * Main sends one MessagePort per page load; every chunk and status arrives on
+ * it. Messages are fanned out to the page's listeners, so register
+ * `onMessage` before calling `observe`/`open`.
+ */
+function createScreensApi(): ScreensApi {
+	const listeners = new Set<(message: ScreenPortMessage) => void>();
+	ipcRenderer.on(IPC.screensPort, (event: IpcRendererEvent) => {
+		const [port] = event.ports;
+		if (!port) return;
+		// A DOM MessagePort at runtime; main is the only writer on it.
+		port.onmessage = (event: { readonly data: ScreenPortMessage }) => {
+			for (const listener of listeners) listener(event.data);
 		};
+	});
+	ipcRenderer.send(IPC.screensConnect);
+	return {
+		observe: (subscriberId, paneId) =>
+			ipcRenderer.send(IPC.screensObserve, { subscriberId, paneId } satisfies ObserveMessage),
+		unobserve: (subscriberId, paneId) =>
+			ipcRenderer.send(IPC.screensUnobserve, { subscriberId, paneId } satisfies ObserveMessage),
+		open: (request) => ipcRenderer.invoke(IPC.terminalOpen, request),
+		send: (terminalId, command) =>
+			ipcRenderer.send(IPC.terminalCommand, {
+				terminalId,
+				command,
+			} satisfies TerminalCommandMessage),
+		close: (terminalId) => ipcRenderer.send(IPC.terminalClose, terminalId),
+		onMessage: (listener) => {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
 	};
 }
-
-const onFrame = keyedListeners<TerminalFrameMessage>(IPC.terminalFrame, (m) => m.terminalId);
-const onClosed = keyedListeners<TerminalClosedMessage>(IPC.terminalClosed, (m) => m.terminalId);
 
 const api: OfficeApi = {
 	getSnapshot: () => ipcRenderer.invoke(IPC.getSnapshot),
@@ -38,13 +49,7 @@ const api: OfficeApi = {
 	onSnapshot: (listener) => listen(IPC.snapshot, listener),
 	onEvent: (listener) => listen(IPC.event, listener),
 	onStatus: (listener) => listen(IPC.status, listener),
-	terminal: {
-		open: (request) => ipcRenderer.invoke(IPC.terminalOpen, request),
-		send: (terminalId, command) => ipcRenderer.send(IPC.terminalCommand, { terminalId, command }),
-		close: (terminalId) => ipcRenderer.send(IPC.terminalClose, terminalId),
-		onFrame: (terminalId, listener) => onFrame(terminalId, (message) => listener(message.data)),
-		onClosed: (terminalId, listener) => onClosed(terminalId, (message) => listener(message.reason)),
-	},
+	screens: createScreensApi(),
 };
 
 contextBridge.exposeInMainWorld("office", api);

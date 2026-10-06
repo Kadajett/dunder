@@ -44,6 +44,19 @@
 					"style": { "noExcessiveLinesPerFile": "off" }
 				}
 			}
+		},
+		{
+			"includes": ["src/renderer/**/*.tsx"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noExcessiveLinesPerFunction": {
+							"level": "error",
+							"options": { "maxLines": 90, "skipBlankLines": true }
+						}
+					}
+				}
+			}
 		}
 	]
 }

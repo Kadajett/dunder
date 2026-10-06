@@ -1,13 +1,31 @@
 import { join } from "node:path";
 import { type BridgeStatus, IPC } from "@shared/ipc";
 import { app, BrowserWindow, Menu } from "electron";
-import { createHerdrApi } from "./herdr/api-client";
+import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
 import { registerIpc } from "./ipc";
+import { ObservePool } from "./terminal/observe-pool";
+import { startObserveSession } from "./terminal/observe-session";
+import { createPaneSizeResolver } from "./terminal/pane-size";
+import { createPtySizeResolver } from "./terminal/pty-size";
 import { TerminalRegistry } from "./terminal/registry";
+import { ScreensService } from "./terminal/screens-service";
 
-const terminals = new TerminalRegistry();
+/** Resolves once the office server is up; screens size themselves from its layout. */
+const officeApi = Promise.withResolvers<HerdrApi>();
+/** Layout size: where a released screen puts the pane back. */
+const homeSize = createPaneSizeResolver(officeApi.promise);
+const observers = new ObservePool({
+	start: startObserveSession,
+	resolveSize: createPtySizeResolver(homeSize),
+});
+const screens = new ScreensService(
+	observers,
+	new TerminalRegistry({ homeSize, onPaneResized: (paneId) => observers.refresh(paneId) }),
+);
+/** Upper bound on waiting for screen processes to exit when quitting. */
+const SHUTDOWN_TIMEOUT_MS = 2_000;
 let bridge: OfficeBridge | undefined;
 let status: BridgeStatus = { state: "starting" };
 
@@ -26,7 +44,9 @@ async function startBridge(): Promise<void> {
 	try {
 		const logPath = join(app.getPath("logs"), "office-server.log");
 		const socketPath = await ensureOfficeServer(defaultSessionDeps(logPath));
-		bridge = new OfficeBridge(createHerdrApi(socketPath), {
+		const api = createHerdrApi(socketPath);
+		officeApi.resolve(api);
+		bridge = new OfficeBridge(api, {
 			snapshot: (snapshot) => broadcast(IPC.snapshot, snapshot),
 			event: (event) => broadcast(IPC.event, event),
 			status: setStatus,
@@ -62,7 +82,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
 	// The default menu binds Ctrl+R, Ctrl+W and friends, which terminal programs need.
 	Menu.setApplicationMenu(null);
-	registerIpc({ bridge: () => bridge, status: () => status, terminals });
+	registerIpc({ bridge: () => bridge, status: () => status, screens });
 	createWindow();
 	void startBridge();
 	app.on("activate", () => {
@@ -71,7 +91,19 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-	terminals.closeAll();
 	bridge?.stop();
 	app.quit();
+});
+
+let screensStopped = false;
+app.on("will-quit", (event) => {
+	if (screensStopped) return;
+	// Hold the quit until every herdr child has released its pane and exited.
+	event.preventDefault();
+	const timeout = Promise.withResolvers<void>();
+	setTimeout(timeout.resolve, SHUTDOWN_TIMEOUT_MS);
+	void Promise.race([screens.shutdown(), timeout.promise]).finally(() => {
+		screensStopped = true;
+		app.quit();
+	});
 });
