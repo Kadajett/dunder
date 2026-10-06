@@ -23,6 +23,7 @@ const WALL_ELEVATION: Partial<Record<DecorKind, number>> = {
 	"wall-bell": 2.9,
 	"wall-clock": 3,
 	"wall-tv": 2.9,
+	"wall-placard": 2.8,
 };
 
 /** `prefix-N` with the smallest N not used by any item of the layout. */

@@ -7,13 +7,13 @@ import type { DecorProps } from "./props";
 import { Armchair, CoffeeTable, Sofa } from "./seating";
 import { NoticeBoard, ReceptionDesk } from "./signage";
 import { Bookshelf, MailCubby } from "./storage";
-import { WallBell, WallClock } from "./wall-items";
+import { WallBell, WallClock, WallPlacard } from "./wall-items";
 
 export type { DecorProps } from "./props";
 
 /**
  * Component for every decor kind. Floor kinds stand on y = 0 centred on their footprint;
- * wall kinds (wall-bell, wall-clock, wall-tv) have their back plane at z = 0 and are
+ * wall kinds (wall-bell, wall-clock, wall-tv, wall-placard) have their back plane at z = 0 and are
  * centred on the origin. Fronts face local +z.
  */
 export const DECOR: Record<DecorKind, ComponentType<DecorProps>> = {
@@ -33,4 +33,5 @@ export const DECOR: Record<DecorKind, ComponentType<DecorProps>> = {
 	"water-cooler": WaterCooler,
 	printer: Printer,
 	"wall-tv": WallTv,
+	"wall-placard": WallPlacard,
 };

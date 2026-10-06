@@ -16,8 +16,8 @@ export interface HandleBox {
 
 /** Rough footprint (w × h × d, metres) of each decor kind; wall kinds hang centred on `elevation`. */
 const DECOR_SIZE: Record<DecorKind, Vec3> = {
-	plant: [0.7, 1.1, 0.7],
-	"tall-plant": [0.8, 1.9, 0.8],
+	plant: [0.9, 1.5, 0.9],
+	"tall-plant": [1.1, 2.3, 1.1],
 	bookshelf: [2.2, 2.2, 0.6],
 	sofa: [2.2, 0.95, 1],
 	armchair: [1, 0.95, 1],
@@ -28,16 +28,18 @@ const DECOR_SIZE: Record<DecorKind, Vec3> = {
 	"wall-clock": [0.8, 0.8, 0.15],
 	"floor-lamp": [0.5, 1.8, 0.5],
 	"mail-cubby": [1.7, 1.7, 0.6],
-	"notice-board": [1.5, 1.6, 0.4],
+	"notice-board": [1.5, 2.1, 0.4],
 	"water-cooler": [0.55, 1.35, 0.55],
 	printer: [0.9, 1, 0.7],
 	"wall-tv": [2.2, 1.3, 0.15],
+	"wall-placard": [1.5, 0.9, 0.1],
 };
 
 const WALL_KINDS: Partial<Record<DecorKind, true>> = {
 	"wall-bell": true,
 	"wall-clock": true,
 	"wall-tv": true,
+	"wall-placard": true,
 };
 
 /** Every editable item, in draw order. */
