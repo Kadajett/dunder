@@ -41,19 +41,19 @@ function Couch({ width, seats }: { readonly width: number; readonly seats: numbe
 			<Block
 				size={[width, baseHeight, DEPTH]}
 				position={[0, LEG + baseHeight / 2, 0]}
-				color={PALETTE.purpleDark}
+				color={PALETTE.plumDark}
 			/>
 			<Block
 				size={[width, 0.5, backDepth]}
 				position={[0, BASE_TOP + 0.25, -DEPTH / 2 + backDepth / 2]}
-				color={PALETTE.purpleDark}
+				color={PALETTE.plumDark}
 			/>
 			{[-1, 1].map((side) => (
 				<Block
 					key={side}
-					size={[ARM, 0.3, DEPTH]}
-					position={[side * (width / 2 - ARM / 2), BASE_TOP + 0.15, 0]}
-					color={PALETTE.purple}
+					size={[ARM, 0.38, DEPTH]}
+					position={[side * (width / 2 - ARM / 2), BASE_TOP + 0.19, 0]}
+					color={PALETTE.plum}
 				/>
 			))}
 			{Array.from({ length: seats }, (_, i) => {
@@ -63,13 +63,13 @@ function Couch({ width, seats }: { readonly width: number; readonly seats: numbe
 						<Block
 							size={[cushion - 0.03, 0.14, DEPTH - backDepth - 0.04]}
 							position={[x, BASE_TOP + 0.07, backDepth / 2 + 0.01]}
-							color={PALETTE.purpleLight}
+							color={PALETTE.plumLight}
 						/>
 						<Block
 							size={[cushion - 0.05, 0.36, 0.12]}
 							position={[x, BASE_TOP + 0.3, -DEPTH / 2 + backDepth + 0.06]}
 							rotation={[-0.12, 0, 0]}
-							color={PALETTE.purple}
+							color={PALETTE.plum}
 						/>
 					</group>
 				);
@@ -78,12 +78,22 @@ function Couch({ width, seats }: { readonly width: number; readonly seats: numbe
 	);
 }
 
-/** Purple break-room sofa, 2.0 × 0.9. */
+/** Plum break-room sofa, 2.0 × 0.9, with a tan throw cushion. */
 export function Sofa() {
-	return <Couch width={2} seats={2} />;
+	return (
+		<group>
+			<Couch width={2} seats={2} />
+			<Block
+				size={[0.42, 0.08, 0.34]}
+				position={[-0.32, BASE_TOP + 0.18, 0.12]}
+				rotation={[0, 0.2, 0]}
+				color={PALETTE.cushionTan}
+			/>
+		</group>
+	);
 }
 
-/** Single purple armchair, 1.0 × 0.9. */
+/** Single plum armchair, 1.0 × 0.9. */
 export function Armchair() {
 	return <Couch width={1} seats={1} />;
 }

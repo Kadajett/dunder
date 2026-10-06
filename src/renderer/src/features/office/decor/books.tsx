@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { Color, type InstancedMesh, Object3D } from "three";
-import { SPINES } from "./palette";
+import { BRIGHT_SPINES } from "./palette";
 
 export interface ShelfRow {
 	/** Height of the shelf board surface the books stand on. */
@@ -29,21 +29,22 @@ function seededRandom(seed: number): () => number {
 	};
 }
 
+/** Fairly uniform, evenly spaced spines with the odd gap, like the reference's library. */
 function fillRow(row: ShelfRow, span: number, random: () => number): Book[] {
 	const books: Book[] = [];
-	let x = -span / 2 + 0.02;
-	const end = span / 2 - 0.02;
+	let x = -span / 2 + 0.04;
+	const end = span / 2 - 0.04;
 	while (x < end) {
-		if (random() < 0.08) {
-			x += 0.12 + random() * 0.1;
+		if (random() < 0.12) {
+			x += 0.1 + random() * 0.12;
 			continue;
 		}
-		const width = Math.min(0.045 + random() * 0.05, end - x);
-		if (width < 0.03) break;
-		const height = row.clearance * (0.62 + random() * 0.3);
-		const color = SPINES[Math.floor(random() * SPINES.length)] ?? SPINES[0];
+		const width = Math.min(0.07 + random() * 0.03, end - x);
+		if (width < 0.05) break;
+		const height = row.clearance * (0.66 + random() * 0.16);
+		const color = BRIGHT_SPINES[Math.floor(random() * BRIGHT_SPINES.length)] ?? BRIGHT_SPINES[0];
 		books.push({ x: x + width / 2, y: row.y + height / 2, width, height, color });
-		x += width + 0.004;
+		x += width + 0.035 + random() * 0.02;
 	}
 	return books;
 }
