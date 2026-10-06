@@ -11,7 +11,8 @@ export interface SemVer {
 export const BUMP_KINDS = ["patch", "minor", "major"] as const;
 export type BumpKind = (typeof BUMP_KINDS)[number];
 
-const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const SEMVER =
+	/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const NUMERIC = /^\d+$/;
 
 export function isVersion(text: string): boolean {
