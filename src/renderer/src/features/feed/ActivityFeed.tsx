@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { useSelection } from "../office/interaction/selection-store";
+import { useFocus } from "../office/focus/focus-store";
+import { useTv } from "../office/tv/tv-store";
 import { type FeedItem, formatClock } from "./feed-model";
 import { connectFeed, useFeed } from "./feed-store";
 import "./feed.css";
@@ -26,13 +28,16 @@ function FeedCard({ item }: { readonly item: FeedItem }) {
 	);
 }
 
-/** Bottom-left live feed: newest cards above a pill that expands into the full list. */
+/** Bottom-left live feed: newest cards above a pill that expands into the full list; hidden while a screen or the TV is focused. */
 export function ActivityFeed() {
 	const items = useFeed((state) => state.items);
 	const unseen = useFeed((state) => state.unseen);
 	const expanded = useFeed((state) => state.expanded);
 	const toggle = useFeed((state) => state.toggle);
+	const focused = useFocus((state) => state.target !== null);
+	const tv = useTv((state) => state.fullscreen);
 	useEffect(connectFeed, []);
+	if (focused || tv) return null;
 	const shown = expanded ? items : items.slice(0, PEEK);
 	return (
 		<section className={`feed${expanded ? " feed--open" : ""}`} aria-label="Activity Feed">
