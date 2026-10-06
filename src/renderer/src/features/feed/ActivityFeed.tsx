@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useSelection } from "../office/interaction/selection-store";
 import { useFocus } from "../office/focus/focus-store";
+import { useSelection } from "../office/interaction/selection-store";
 import { useTv } from "../office/tv/tv-store";
 import { type FeedItem, formatClock } from "./feed-model";
 import { connectFeed, useFeed } from "./feed-store";
