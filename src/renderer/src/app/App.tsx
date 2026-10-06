@@ -1,4 +1,7 @@
 import { useEffect } from "react";
+import { BrainstormDialog } from "../features/brainstorm/BrainstormDialog";
+import { connectBoardPosts } from "../features/brainstorm/board-posts";
+import { connectBrainstorm } from "../features/brainstorm/brainstorm-store";
 import { ChiefOfStaffDock } from "../features/chief/ChiefOfStaffDock";
 import { ClassicView } from "../features/classic/ClassicView";
 import { connectCompanies, useCompany } from "../features/company/company-store";
@@ -35,6 +38,8 @@ export function App() {
 	useEffect(connectMailQueue, []);
 	useEffect(connectCompanies, []);
 	useEffect(connectRoster, []);
+	useEffect(connectBrainstorm, []);
+	useEffect(connectBoardPosts, []);
 	return (
 		<div className="office-app" data-view={view}>
 			{view === "office" ? (
@@ -54,6 +59,7 @@ export function App() {
 			<ChiefOfStaffDock model={model} />
 			<HireDialog snapshot={snapshot} />
 			<WhiteboardOverlay />
+			<BrainstormDialog />
 			{status.state === "connected" ? null : (
 				<div className="bridge-banner" data-state={status.state}>
 					herdr session “office”: {status.state === "error" ? status.message : status.state}

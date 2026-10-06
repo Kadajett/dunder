@@ -15,11 +15,13 @@ const seat: Placement = { position: { x: 0, z: 0 }, rotationY: 0 };
 const cooler: Placement = { position: { x: 5, z: 5 }, rotationY: 0 };
 const gym: Placement = { position: { x: -4, z: 3 }, rotationY: FACE_CAMERA };
 const besideDesk: Placement = { position: { x: 1, z: 0 }, rotationY: FACE_CAMERA };
+const byTheBoard: Placement = { position: { x: -10, z: 6 }, rotationY: -Math.PI / 2 };
 
 function world(overrides: Partial<BrainWorld> = {}): BrainWorld {
 	return {
 		seat,
 		workoutSpots: [gym, besideDesk],
+		meetingSpots: [byTheBoard, besideDesk],
 		pickSpot: () => cooler,
 		route: (from: Vec2, to: Vec2) => [from, to],
 		random: () => 0.5,
@@ -189,5 +191,50 @@ describe("visiting a colleague to deliver a message", () => {
 		);
 		const during = stepBrain(walking, { ...visitTick("idle", 111), workout }, world());
 		expect(during).toMatchObject({ mode: "walking", purpose: "workout" });
+	});
+});
+
+describe("gathering for a brainstorm", () => {
+	const meeting = (status: "idle" | "working", now: number, position: Vec2 = seat.position) =>
+		({ ...tick(status, now, position), meeting: true }) as const;
+
+	it("walks to the board even while working, stands there, and goes back when it ends", () => {
+		const walking = stepBrain(
+			initialBrain(0, () => 0),
+			meeting("working", 5),
+			world(),
+		);
+		expect(walking).toMatchObject({ mode: "walking", purpose: "meeting", goal: byTheBoard });
+		const standing = stepBrain(walking, { type: "arrived", now: 9 }, world());
+		expect(standing).toEqual({ mode: "meeting", at: byTheBoard });
+		// Work arriving does not send it back mid-brainstorm…
+		expect(stepBrain(standing, meeting("working", 30, byTheBoard.position), world())).toBe(
+			standing,
+		);
+		// …the end of the brainstorm does.
+		expect(stepBrain(standing, tick("working", 40, byTheBoard.position), world())).toMatchObject({
+			mode: "walking",
+			purpose: "return",
+		});
+	});
+
+	it("drops everything for a workout, then goes straight back to the board", () => {
+		const standing: Brain = { mode: "meeting", at: byTheBoard };
+		const during = { ...meeting("idle", 110, byTheBoard.position), workout };
+		expect(stepBrain(standing, during, world())).toMatchObject({
+			mode: "walking",
+			purpose: "workout",
+		});
+		const exercising: Brain = { mode: "exercising", at: gym };
+		const after = { ...meeting("idle", 180, gym.position), workout };
+		expect(stepBrain(exercising, after, world())).toMatchObject({
+			purpose: "meeting",
+			goal: byTheBoard,
+		});
+		expect(
+			stepBrain(exercising, { ...tick("idle", 180, gym.position), workout }, world()),
+		).toMatchObject({
+			purpose: "return",
+		});
 	});
 });

@@ -130,6 +130,12 @@ const api: OfficeApi = {
 		setViewing: (viewing) => ipcRenderer.invoke(IPC.poolViewing, viewing),
 		shoot: (input) => ipcRenderer.invoke(IPC.poolShoot, input),
 	},
+	brainstorm: {
+		current: () => ipcRenderer.invoke(IPC.brainstormCurrent),
+		onChanged: (listener) => listen(IPC.brainstormChanged, listener),
+		start: (topic) => ipcRenderer.invoke(IPC.brainstormStart, topic),
+		end: () => ipcRenderer.invoke(IPC.brainstormEnd),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

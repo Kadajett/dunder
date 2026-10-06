@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { type MenuState, menuSections, updateBadge } from "./hud-menu";
 
-const BASE: MenuState = { panel: null, view: "office", editing: false, editReady: true };
+const BASE: MenuState = {
+	panel: null,
+	view: "office",
+	editing: false,
+	editReady: true,
+	brainstorming: false,
+};
 
 const entries = (state: MenuState) => menuSections(state).flatMap((section) => section.entries);
 const checked = (state: MenuState) =>
@@ -10,16 +16,24 @@ const checked = (state: MenuState) =>
 		.map((entry) => entry.label);
 
 describe("menuSections", () => {
-	it("holds every former top-bar action except the inbox, plus the whiteboard", () => {
+	it("holds every former top-bar action except the inbox, plus the whiteboard and brainstorms", () => {
 		expect(entries(BASE).map((entry) => entry.action)).toEqual([
 			{ kind: "panel", panel: "clients" },
 			{ kind: "panel", panel: "brain" },
 			{ kind: "panel", panel: "team" },
 			{ kind: "whiteboard" },
+			{ kind: "brainstorm" },
 			{ kind: "view", view: "office" },
 			{ kind: "view", view: "classic" },
 			{ kind: "edit" },
 		]);
+	});
+
+	it("offers to end a running brainstorm instead of starting one", () => {
+		const brainstorm = (state: MenuState) =>
+			entries(state).find((entry) => entry.action.kind === "brainstorm")?.label;
+		expect(brainstorm(BASE)).toBe("Start brainstorm…");
+		expect(brainstorm({ ...BASE, brainstorming: true })).toBe("End brainstorm");
 	});
 
 	it("checks the open panel and the current view", () => {

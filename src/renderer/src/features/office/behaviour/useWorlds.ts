@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { SeatedAgent } from "../model/office-model";
 import { seatPlacement, visitorPlacement } from "../scene/station";
 import type { BrainWorld } from "./brain";
+import { meetingSpots } from "./meeting-spots";
 import { buildNavGrid } from "./nav-grid";
 import { findPath } from "./pathfind";
 import { chooseSpot, decorSpots } from "./spots";
@@ -15,15 +16,18 @@ export function useWorlds(layout: Layout, seated: readonly SeatedAgent[]): Map<s
 	return useMemo(() => {
 		const worlds = new Map<string, BrainWorld>();
 		const gym = workoutSpots(grid, ROOM_CENTER, seated.length);
+		const huddle = meetingSpots(grid, layout, seated.length);
 		const deskOf = new Map(seated.map(({ desk, agent }) => [agent.name, desk]));
 		seated.forEach(({ desk, agent }, index) => {
 			const colleagues = seated
 				.filter((other) => other.desk.id !== desk.id)
 				.map((other) => other.desk);
 			const spot = gym[index];
+			const standing = huddle[index];
 			worlds.set(agent.paneId, {
 				seat: seatPlacement(desk),
 				workoutSpots: spot ? [spot, besideDesk(desk)] : [besideDesk(desk)],
+				meetingSpots: standing ? [standing, besideDesk(desk)] : [besideDesk(desk)],
 				pickSpot: (random) => chooseSpot(random, spots, colleagues),
 				route: (from, to) => findPath(grid, from, to),
 				random: Math.random,
@@ -34,5 +38,5 @@ export function useWorlds(layout: Layout, seated: readonly SeatedAgent[]): Map<s
 			});
 		});
 		return worlds;
-	}, [grid, spots, seated]);
+	}, [grid, spots, seated, layout]);
 }

@@ -8,6 +8,8 @@ import { app, BrowserWindow, Menu } from "electron";
 import { migrateLegacyDirs } from "./app-dirs";
 import { createAppUpdater } from "./app-update/create";
 import { registerAppUpdateIpc } from "./app-update/ipc";
+import { createBrainstorm } from "./brainstorm/create";
+import { registerBrainstormIpc } from "./brainstorm/ipc";
 import { createCalisthenics } from "./calisthenics/service";
 import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
@@ -120,15 +122,23 @@ const companies = createCompanies(
 			.catch((error: unknown) => createLogger("whiteboard").warn("board switch failed", { error }));
 	},
 );
+/** The chief of staff's live name, from the roster. */
+function chiefName(): string | undefined {
+	const roster = workforce.roster();
+	return roster && activeAgents(roster).find((agent) => agent.role === CHIEF_ROLE)?.name;
+}
 /** The shared whiteboard: Jeremy's tldraw editor plus agents' `office-board` notes. */
 const whiteboard = createWhiteboard({
 	userData: app.getPath("userData"),
 	currentCompanyId: () => companies.current().then((company) => company.id),
-	chiefName: () => {
-		const roster = workforce.roster();
-		return roster && activeAgents(roster).find((agent) => agent.role === CHIEF_ROLE)?.name;
-	},
+	chiefName,
 	emit: (change) => broadcast(IPC.whiteboardChanged, change),
+});
+/** Brainstorms at the whiteboard: started from the HUD or by the chief with `office-brainstorm`. */
+const brainstorm = createBrainstorm({
+	userData: app.getPath("userData"),
+	chiefName,
+	emit: (current) => broadcast(IPC.brainstormChanged, current),
 });
 /** Stable mode: notices new commits, rebuilds and relaunches only when asked. */
 const appUpdate = createAppUpdater({
@@ -177,6 +187,7 @@ async function startBridge(): Promise<void> {
 				staffDesk.updateSnapshot(snapshot);
 				whiteboard.service.updateSnapshot(snapshot);
 				pool.updateSnapshot(snapshot);
+				brainstorm.service.updateSnapshot(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -231,6 +242,7 @@ app.whenReady().then(() => {
 	registerAppUpdateIpc(appUpdate);
 	registerWhiteboardIpc(whiteboard.service);
 	registerPoolIpc(pool);
+	registerBrainstormIpc(brainstorm.service);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -256,6 +268,9 @@ app.whenReady().then(() => {
 		.start()
 		.catch((error: unknown) => createLogger("whiteboard").warn("not started", { error }));
 	pool.start();
+	brainstorm
+		.start()
+		.catch((error: unknown) => createLogger("brainstorm").warn("not started", { error }));
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -275,6 +290,7 @@ function stopServices(): void {
 	staffDesk.stop();
 	whiteboard.stop();
 	pool.stop();
+	brainstorm.stop();
 }
 
 app.on("window-all-closed", () => {

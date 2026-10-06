@@ -4,6 +4,7 @@ import type { AgentStatus } from "@shared/herdr/schema";
 import type { Vec2 } from "@shared/layout/schema";
 import { type ReactNode, useRef, useState } from "react";
 import type { Group } from "three";
+import { inBrainstorm } from "../../brainstorm/brainstorm-store";
 import { useAgentWorkout } from "../../calisthenics/workout-store";
 import { useAgentStyle } from "../../hire/roster-store";
 import {
@@ -36,6 +37,7 @@ const POSE: Record<Brain["mode"], MiiPose> = {
 	walking: "walking",
 	hanging: "standing",
 	exercising: "exercising",
+	meeting: "standing",
 };
 
 interface Walk {
@@ -179,6 +181,7 @@ export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 			position,
 			workout: signal,
 			visit,
+			meeting: inBrainstorm(agent.name),
 		} as const;
 		change(stepBrain(brain.current, tick, world));
 	});
