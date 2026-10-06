@@ -30,10 +30,19 @@ function main(argv: readonly string[]): number {
 		process.stderr.write("office-say: message is longer than 4000 characters\n");
 		return 2;
 	}
+	// The office knows the sender only by its pane. Without it the colleague sees
+	// "someone" and has no way to reply, so refuse rather than send anonymously.
+	const fromPane = process.env["HERDR_PANE_ID"];
+	if (!fromPane) {
+		process.stderr.write(
+			`office-say: HERDR_PANE_ID is not set, so ${to} would not know who sent this or how to reply. Nothing was sent. Run office-say from your bash tool in your office pane (omp's eval tool does not pass HERDR_PANE_ID).\n`,
+		);
+		return 1;
+	}
 	const line = {
 		v: 1,
 		id: randomUUID(),
-		fromPane: process.env["HERDR_PANE_ID"],
+		fromPane,
 		to,
 		text,
 		sentAt: new Date().toISOString(),
