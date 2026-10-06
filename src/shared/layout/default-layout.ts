@@ -163,6 +163,15 @@ export const DEFAULT_LAYOUT: Layout = layoutSchema.parse({
 			reserved: true,
 			chairColor: "#24272c",
 		},
+		{
+			id: "chief-desk",
+			position: { x: 5.5, z: 2.6 },
+			rotation: 0,
+			zoneId: "you",
+			agentName: "max",
+			reserved: true,
+			chairColor: "#2f6b4c",
+		},
 	],
 	decor: [
 		{ id: "sofa", kind: "sofa", position: { x: -12.2, z: 6.4 }, rotation: 90 },

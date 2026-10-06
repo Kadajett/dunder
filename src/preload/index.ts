@@ -72,6 +72,18 @@ const api: OfficeApi = {
 		setModel: (agentName, selector, thinking) =>
 			ipcRenderer.invoke(IPC.modelsSet, { agentName, selector, thinking }),
 	},
+	chief: {
+		status: () => ipcRenderer.invoke(IPC.chiefStatus),
+		history: () => ipcRenderer.invoke(IPC.chiefHistory),
+		onMessage: (listener) => listen(IPC.chiefMessage, listener),
+		send: (text) => ipcRenderer.invoke(IPC.chiefSend, text),
+	},
+	stats: {
+		costToday: () => ipcRenderer.invoke(IPC.statsCostToday),
+		onCostToday: (listener) => listen(IPC.statsCostTodayChanged, listener),
+		memories: () => ipcRenderer.invoke(IPC.statsMemories),
+		markSeen: (agentName) => ipcRenderer.invoke(IPC.statsMarkSeen, agentName),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

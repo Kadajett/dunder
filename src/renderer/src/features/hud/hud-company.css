@@ -1,0 +1,133 @@
+/* HUD company switcher chip and its companies menu. */
+.hud-company {
+	position: relative;
+}
+
+.hud-company-chip {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px 8px 9px;
+	text-align: left;
+}
+
+.hud-logo {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	border-radius: 8px;
+	background: #2f7d55;
+	color: #fff;
+	font: 700 15px var(--font-ui);
+	flex: none;
+}
+
+.hud-logo-small {
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	font-size: 12px;
+}
+
+.hud-company-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.hud-company-text strong {
+	font: 700 14px var(--font-ui);
+	letter-spacing: -0.01em;
+}
+
+.hud-company-text small {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font: 700 9.5px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+	white-space: nowrap;
+}
+
+.hud-company-text small .status-dot {
+	width: 6px;
+	height: 6px;
+	box-shadow: none;
+}
+
+.hud-caret {
+	margin-left: 6px;
+	color: var(--ink-soft);
+	font-size: 11px;
+}
+
+.hud-menu-backdrop {
+	position: fixed;
+	inset: 0;
+	border: 0;
+	background: transparent;
+	cursor: default;
+}
+
+.hud-menu {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 0;
+	min-width: 260px;
+	padding: 8px;
+	border-radius: 12px;
+	background: #fffdf8;
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 14px 32px #6b553a33;
+}
+
+.hud-menu-heading {
+	margin: 4px 8px 6px;
+	font: 700 10px var(--font-mono);
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.hud-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 8px;
+	border: 0;
+	border-radius: 9px;
+	background: #f4ede0;
+	text-align: left;
+}
+
+.hud-menu-item span:nth-child(2) {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+}
+
+.hud-menu-item strong {
+	font: 600 13px var(--font-ui);
+}
+
+.hud-menu-item small {
+	font: 400 10.5px var(--font-mono);
+	color: var(--ink-soft);
+}
+
+.hud-check {
+	color: #2f7d55;
+	font-weight: 700;
+}
+
+/* Narrow windows: drop the session caption. */
+@media (max-width: 1180px) {
+	.hud-company-text small {
+		display: none;
+	}
+}

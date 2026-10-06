@@ -1,0 +1,187 @@
+/* Classic view: a flat, scrolling grid of agent tiles under the HUD. */
+.classic-view {
+	position: absolute;
+	inset: 0;
+	overflow-y: auto;
+	padding: 78px 24px 104px;
+	box-sizing: border-box;
+	background: radial-gradient(ellipse at 50% 0%, #f6efe2 0%, var(--paper) 70%);
+}
+
+.classic-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+	grid-auto-flow: row dense;
+	gap: 18px;
+	max-width: 1880px;
+	margin: 0 auto;
+}
+
+.classic-empty {
+	margin: 18vh auto 0;
+	text-align: center;
+	color: var(--ink-soft);
+	font: 500 13px var(--font-mono);
+	letter-spacing: 0.04em;
+}
+
+.classic-tile {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	border: 1px solid var(--panel-edge);
+	border-radius: 16px;
+	background: var(--panel);
+	box-shadow:
+		0 1px 2px #26231f0f,
+		0 8px 24px #26231f14;
+	overflow: hidden;
+	transition: box-shadow 160ms ease;
+}
+
+.classic-tile:hover,
+.classic-tile[data-open="true"] {
+	box-shadow:
+		0 1px 2px #26231f14,
+		0 12px 32px #26231f24;
+}
+
+.classic-tile[data-wide="true"] {
+	grid-column: 1 / -1;
+}
+
+.classic-tile-head {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	min-height: 44px;
+	padding: 0 10px 0 14px;
+	box-sizing: border-box;
+}
+
+.classic-tile-name {
+	font: 650 14px var(--font-ui);
+	color: var(--ink);
+	white-space: nowrap;
+}
+
+.classic-tile-room {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--ink-soft);
+	font: 500 10.5px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.classic-tile-model {
+	margin-left: auto;
+	padding: 3px 8px;
+	border-radius: 999px;
+	background: #f1e9db;
+	color: var(--ink);
+	font: 500 11px var(--font-mono);
+	white-space: nowrap;
+}
+
+.classic-tile-actions {
+	display: flex;
+	gap: 4px;
+}
+
+.classic-tile-button {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--ink-soft);
+	font: 600 14px var(--font-ui);
+	cursor: pointer;
+}
+
+.classic-tile-button:hover {
+	background: #f1e9db;
+	color: var(--ink);
+}
+
+.classic-tile-button[aria-pressed="true"] {
+	background: var(--ink);
+	color: #f6efe2;
+}
+
+.classic-tile-screen {
+	position: relative;
+	aspect-ratio: 16 / 10;
+	margin: 0 8px 8px;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #1d1b22;
+}
+
+.classic-tile[data-wide="true"] .classic-tile-screen {
+	aspect-ratio: auto;
+	height: clamp(360px, 64vh, 780px);
+}
+
+.classic-preview {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	padding: 0;
+	background: #1d1b22;
+	cursor: pointer;
+}
+
+.classic-preview-canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.classic-preview-state {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	padding: 3px 8px;
+	border-radius: 999px;
+	background: #f6efe2e6;
+	color: var(--ink);
+	font: 600 10.5px var(--font-mono);
+	letter-spacing: 0.06em;
+}
+
+.classic-preview-hint {
+	position: absolute;
+	right: 12px;
+	bottom: 12px;
+	padding: 6px 12px;
+	border-radius: 9px;
+	background: #f6efe2;
+	color: var(--ink);
+	font: 650 12px var(--font-ui);
+	box-shadow: 0 6px 18px #0000004d;
+	opacity: 0;
+	transform: translateY(4px);
+	transition:
+		opacity 140ms ease,
+		transform 140ms ease;
+}
+
+.classic-preview:hover .classic-preview-hint,
+.classic-preview:focus-visible .classic-preview-hint {
+	opacity: 1;
+	transform: none;
+}
+
+.classic-preview:focus-visible {
+	outline: 2px solid #3f7be0;
+	outline-offset: -2px;
+}

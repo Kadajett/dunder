@@ -1,6 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import type { Layout } from "@shared/layout/schema";
 import { PCFSoftShadowMap } from "three";
+import { useChief } from "../chief/chief-store";
 import { useWorlds } from "./behaviour/useWorlds";
 import { AgentActor } from "./characters/AgentActor";
 import { SpeechBubble } from "./conversations/SpeechBubble";
@@ -28,6 +29,7 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 	const focusedDesk = useFocus((state) => state.target?.deskId);
 	const select = useSelection((state) => state.select);
 	const clearSelection = useSelection((state) => state.clear);
+	const openChief = useChief((state) => state.open);
 	const seatByDesk = new Map(model.seated.map((seat) => [seat.desk.id, seat]));
 
 	return (
@@ -45,6 +47,8 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 			<DecorItems layout={layout} />
 			{layout.desks.map((desk) => {
 				const seat = seatByDesk.get(desk.id);
+				// Your desk (reserved, nobody pinned) opens the Chief of Staff chat.
+				const yours = desk.reserved && !desk.agentName;
 				return (
 					<DeskStation
 						key={desk.id}
@@ -52,7 +56,7 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 						status={seat?.agent.status ?? "empty"}
 						paneId={seat?.agent.paneId}
 						screenLive={focusedDesk !== desk.id}
-						onOpenScreen={seat ? () => openScreen(seat) : undefined}
+						onOpenScreen={seat ? () => openScreen(seat) : yours ? openChief : undefined}
 					/>
 				);
 			})}

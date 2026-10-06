@@ -9,6 +9,7 @@ import {
 	updateAgent,
 } from "@shared/company/roster-ops";
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { type ChiefSeed, ensureChief } from "./chief";
 import { afterFailure, planSpawns, type SpawnAttempts, type SpawnPlan, trackMissing } from "./plan";
 import { agentPrompt } from "./prompt";
 import { loadRoster, saveRoster } from "./roster-store";
@@ -25,6 +26,8 @@ export interface SpawnConfig {
 	readonly protocolPath: string;
 	/** Environment for the shell panes workers are started in. */
 	readonly paneEnv: Readonly<Record<string, string>>;
+	/** Role → markdown brief appended after "Who you are", for roles that have one. */
+	readonly rolePrompts?: Readonly<Record<string, string>>;
 }
 
 export interface SupervisorDeps {
@@ -35,6 +38,8 @@ export interface SupervisorDeps {
 	readonly onChange: (roster: Roster) => void;
 	readonly now: () => number;
 	readonly newId: () => string;
+	/** Hired into the roster on the first reconcile when it has no chief of staff. */
+	readonly chief?: ChiefSeed;
 }
 
 function describe(error: unknown): string {
@@ -130,6 +135,8 @@ export class WorkforceSupervisor {
 		let roster = current;
 		if (this.#adoptPending)
 			roster = adoptLiveAgents(roster, snapshot, new Date(now), this.#deps.newId);
+		if (this.#deps.chief)
+			roster = ensureChief(roster, this.#deps.chief, new Date(now), this.#deps.newId);
 		roster = syncSessions(roster, snapshot);
 		if (roster !== current || this.#adoptPending) await this.#commit(roster);
 		this.#adoptPending = false;
@@ -174,8 +181,10 @@ export class WorkforceSupervisor {
 	/** Fresh each spawn, so protocol and role edits reach the next start. */
 	async #writePrompt(plan: SpawnPlan): Promise<void> {
 		const protocol = await readFile(this.#deps.spawn.protocolPath, "utf8");
+		const briefPath = this.#deps.spawn.rolePrompts?.[plan.agent.role];
+		const brief = briefPath === undefined ? undefined : await readFile(briefPath, "utf8");
 		await mkdir(dirname(plan.promptPath), { recursive: true });
-		await writeFile(plan.promptPath, agentPrompt(protocol, plan.agent), "utf8");
+		await writeFile(plan.promptPath, agentPrompt(protocol, plan.agent, brief), "utf8");
 	}
 
 	async #spawn(plan: SpawnPlan): Promise<void> {

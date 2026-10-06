@@ -1,0 +1,74 @@
+/* HUD clock and live stat tiles. Clock rules come first: they are less specific than the tile states. */
+.hud-clock {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 2px;
+	padding: 0 4px;
+	pointer-events: none;
+}
+
+.hud-clock strong {
+	font: 700 16px var(--font-mono);
+	letter-spacing: 0.02em;
+}
+
+.hud-clock small {
+	font: 700 9.5px var(--font-mono);
+	letter-spacing: 0.1em;
+	color: var(--ink-soft);
+	white-space: nowrap;
+}
+
+.hud-tiles {
+	display: flex;
+	gap: 10px;
+}
+
+.hud-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 72px;
+	padding: 8px 13px 9px;
+}
+
+.hud-tile-value {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	white-space: nowrap;
+}
+
+.hud-tile-value strong {
+	font: 700 17px var(--font-ui);
+	letter-spacing: -0.02em;
+}
+
+.hud-tile-value code {
+	font: 600 11px var(--font-mono);
+	color: #2f8a5a;
+}
+
+.hud-tile small {
+	font: 700 9.5px var(--font-mono);
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+	white-space: nowrap;
+}
+
+.hud-tile[data-unavailable="true"] strong {
+	color: var(--ink-soft);
+}
+
+.hud-tile[data-unavailable="true"] small {
+	color: #a8742e;
+}
+
+/* Narrow windows: drop the clock caption. */
+@media (max-width: 1180px) {
+	.hud-clock small {
+		display: none;
+	}
+}

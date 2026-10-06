@@ -1,0 +1,66 @@
+import { agent, snapshot, workspace } from "@shared/herdr/fixtures/snapshot";
+import type { AgentStatus } from "@shared/herdr/schema";
+import { describe, expect, it } from "vitest";
+import { inboxAgents, seenKey, type TrustItem, trustInbox } from "./trust-inbox";
+
+function office(...agents: [string, string, AgentStatus, number][]) {
+	return inboxAgents(
+		snapshot({
+			workspaces: [workspace("w1", "sales"), workspace("w2", "delivery")],
+			agents: agents.map(([name, paneId, status, seq]) => ({
+				...agent(name, paneId),
+				agent_status: status,
+				state_change_seq: seq,
+			})),
+		}),
+	);
+}
+
+const summary = (items: readonly TrustItem[]) =>
+	items.map((item) => `${item.kind}:${item.agent.name}`);
+
+describe("trustInbox", () => {
+	it("lists blocked agents first, then finished ones, each by name", () => {
+		const agents = office(
+			["nora", "w1:p1", "done", 4],
+			["jonas", "w1:p2", "blocked", 7],
+			["ava", "w2:p1", "working", 2],
+			["ben", "w2:p2", "done", 9],
+			["emma", "w2:p3", "blocked", 1],
+			["finn", "w2:p4", "idle", 3],
+		);
+		expect(summary(trustInbox(agents, new Set()))).toEqual([
+			"blocked:emma",
+			"blocked:jonas",
+			"done:ben",
+			"done:nora",
+		]);
+	});
+
+	it("hides a seen done until the agent finishes again", () => {
+		const seen = new Set([seenKey("nora", 4), seenKey("jonas", 7)]);
+		const before = office(["nora", "w1:p1", "done", 4], ["jonas", "w1:p2", "blocked", 7]);
+		// Seen never hides a blocked agent: it still needs the user.
+		expect(summary(trustInbox(before, seen))).toEqual(["blocked:jonas"]);
+		const finishedAgain = office(["nora", "w1:p1", "done", 6]);
+		expect(summary(trustInbox(finishedAgain, seen))).toEqual(["done:nora"]);
+	});
+
+	it("is empty with no snapshot", () => {
+		expect(trustInbox(inboxAgents(null), new Set())).toEqual([]);
+	});
+});
+
+describe("inboxAgents", () => {
+	it("carries the room and the words of the terminal title", () => {
+		const [nora] = inboxAgents(
+			snapshot({
+				workspaces: [workspace("w1", "sales")],
+				agents: [
+					{ ...agent("nora", "w1:p1"), terminal_title_stripped: "π > Send greeting to Ava" },
+				],
+			}),
+		);
+		expect(nora).toMatchObject({ workspaceLabel: "sales", activity: "Send greeting to Ava" });
+	});
+});

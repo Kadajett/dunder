@@ -79,7 +79,8 @@ body,
 
 .bridge-banner {
 	position: absolute;
-	top: 16px;
+	top: 84px;
+	z-index: 900;
 	left: 50%;
 	transform: translateX(-50%);
 	padding: 8px 14px;

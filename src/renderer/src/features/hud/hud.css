@@ -1,0 +1,217 @@
+/* HUD top bar: white paper chips floating over the office, like the reference.
+   Company switcher: hud-company.css. Stat tiles and clock: hud-stats.css. */
+.hud-topbar {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 600;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 16px 20px;
+	pointer-events: none;
+	font-family: var(--font-ui);
+	color: var(--ink);
+}
+
+.hud-topbar > * {
+	pointer-events: auto;
+}
+
+.hud-topbar button {
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+}
+
+.hud-spacer {
+	flex: 1;
+	pointer-events: none;
+}
+
+.hud-chip {
+	border: 1px solid #ece3d3;
+	border-radius: 12px;
+	background: #fffdf8;
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 8px 22px #6b553a1c;
+}
+
+/* Nav pills. */
+.hud-nav {
+	display: flex;
+	gap: 2px;
+	padding: 5px;
+}
+
+.hud-nav button {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 8px 13px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	font: 600 13px var(--font-ui);
+	color: #3d3832;
+}
+
+.hud-nav button:hover {
+	background: #f4ede0;
+}
+
+.hud-nav button[aria-pressed="true"] {
+	background: var(--ink);
+	color: #f6efe2;
+}
+
+.hud-icon {
+	flex: none;
+	opacity: 0.75;
+}
+
+/* Trust Inbox. */
+.hud-trust {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	padding: 8px 9px 8px 10px;
+	border: 0;
+	border-radius: 12px;
+	background: linear-gradient(180deg, #3366cc, #2a55b0);
+	box-shadow:
+		0 1px 0 #1e3f86,
+		0 10px 24px #2a55b052;
+	color: #fff;
+	text-align: left;
+}
+
+.hud-topbar .hud-trust {
+	color: #fff;
+}
+
+.hud-trust[aria-pressed="true"] {
+	box-shadow:
+		0 0 0 3px #fffdf8,
+		0 0 0 5px #2a55b0,
+		0 10px 24px #2a55b052;
+}
+
+.hud-trust-glyph {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 7px;
+	background: #ffffff26;
+}
+
+.hud-trust-text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.hud-trust-text strong {
+	font: 700 13.5px var(--font-ui);
+}
+
+.hud-trust-text small {
+	font: 700 9.5px var(--font-mono);
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	opacity: 0.8;
+	white-space: nowrap;
+}
+
+.hud-trust-count {
+	display: grid;
+	place-items: center;
+	min-width: 30px;
+	height: 30px;
+	margin-left: 6px;
+	padding: 0 7px;
+	border-radius: 8px;
+	background: #ffffff2e;
+	font: 700 16px var(--font-mono);
+}
+
+.hud-trust-count[data-zero="true"] {
+	opacity: 0.6;
+}
+
+/* Classic / Office toggle: native radios, each label drawn as a segmented pill. */
+.hud-toggle {
+	display: flex;
+	padding: 4px;
+	gap: 2px;
+}
+
+.hud-toggle label {
+	position: relative;
+	padding: 7px 14px;
+	border-radius: 8px;
+	background: transparent;
+	font: 600 13px var(--font-ui);
+	color: #3d3832;
+	cursor: pointer;
+	user-select: none;
+}
+
+.hud-toggle input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.hud-toggle label:has(input:checked) {
+	background: var(--ink);
+	color: #f6efe2;
+}
+
+.hud-toggle label:has(input:focus-visible) {
+	outline: 2px solid #3f7be0;
+	outline-offset: 1px;
+}
+
+.hud-avatar {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 11px;
+	background: #2f7d55;
+	color: #fff;
+	font: 700 14px var(--font-ui);
+	box-shadow: 0 8px 20px #2f7d5540;
+	flex: none;
+	user-select: none;
+}
+
+/* Narrow windows: icon-only nav, then drop the Trust Inbox text (captions: hud-company.css, hud-stats.css). */
+@media (max-width: 1420px) {
+	.hud-nav-label,
+	.hud-trust-text small {
+		display: none;
+	}
+
+	.hud-nav button {
+		padding: 8px 10px;
+	}
+}
+
+@media (max-width: 1180px) {
+	.hud-trust-text {
+		display: none;
+	}
+
+	.hud-topbar {
+		gap: 8px;
+		padding: 12px 14px;
+	}
+}

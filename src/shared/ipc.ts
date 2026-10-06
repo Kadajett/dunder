@@ -1,7 +1,9 @@
 import type { CalisthenicsApi } from "./calisthenics";
+import type { ChiefApi } from "./chief";
 import type { RosterApi } from "./company/roster";
 import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
 import type { ModelsApi } from "./models";
+import type { OfficeStatsApi } from "./office-stats";
 import type { ScreensApi, Unsubscribe } from "./screens";
 import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
@@ -42,6 +44,16 @@ export const IPC = {
 	modelsLive: "models:live",
 	modelsLiveChanged: "models:live-changed",
 	modelsSet: "models:set",
+	/** Chief of Staff chat: status, history and send (invoke), new/updated messages (main → renderer). */
+	chiefStatus: "chief:status",
+	chiefHistory: "chief:history",
+	chiefSend: "chief:send",
+	chiefMessage: "chief:message",
+	/** HUD stats: today's AI cost (invoke + main → renderer), company memories and mark-seen (invoke). */
+	statsCostToday: "stats:cost-today",
+	statsCostTodayChanged: "stats:cost-today-changed",
+	statsMemories: "stats:memories",
+	statsMarkSeen: "stats:mark-seen",
 } as const;
 
 export type BridgeStatus =
@@ -77,4 +89,6 @@ export interface OfficeApi {
 	};
 	readonly roster: RosterApi;
 	readonly models: ModelsApi;
+	readonly chief: ChiefApi;
+	readonly stats: OfficeStatsApi;
 }

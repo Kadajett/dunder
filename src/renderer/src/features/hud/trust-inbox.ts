@@ -1,0 +1,53 @@
+import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
+
+/** What the Trust Inbox needs to know about one live agent. */
+export interface InboxAgent {
+	readonly name: string;
+	readonly paneId: string;
+	readonly status: AgentStatus;
+	/** herdr's `state_change_seq`: identifies this particular `done`. */
+	readonly seq: number | undefined;
+	readonly workspaceLabel: string | undefined;
+	/** The agent's terminal title, e.g. what omp says it is doing. */
+	readonly activity: string | undefined;
+}
+
+export type TrustItem =
+	| { readonly kind: "blocked"; readonly agent: InboxAgent }
+	| { readonly kind: "done"; readonly agent: InboxAgent };
+
+/** A `done` the user has already seen: the agent's name and the state change that was seen. */
+export function seenKey(name: string, seq: number | undefined): string {
+	return `${name}#${seq ?? "?"}`;
+}
+
+/** Inbox view of the snapshot's agents (named like `liveAgents`). */
+export function inboxAgents(snapshot: SessionSnapshot | null): InboxAgent[] {
+	if (!snapshot) return [];
+	const labels = new Map(snapshot.workspaces.map((ws) => [ws.workspace_id, ws.label]));
+	return snapshot.agents.map((agent) => ({
+		name: agent.name ?? `${agent.agent}-${agent.pane_id.replace(":", "-")}`,
+		paneId: agent.pane_id,
+		status: agent.agent_status,
+		seq: agent.state_change_seq,
+		workspaceLabel: labels.get(agent.workspace_id),
+		// omp titles read `π > Send greeting message to Ava`: drop the prompt glyph.
+		activity: agent.terminal_title_stripped?.replace(/^\S{1,3}\s*>\s+/u, "") || undefined,
+	}));
+}
+
+/**
+ * What needs the user: every blocked agent, then every finished agent whose
+ * `done` has not been seen yet. Each group is sorted by name.
+ */
+export function trustInbox(agents: readonly InboxAgent[], seen: ReadonlySet<string>): TrustItem[] {
+	const byName = (a: InboxAgent, b: InboxAgent): number => a.name.localeCompare(b.name);
+	const blocked = agents.filter((agent) => agent.status === "blocked").sort(byName);
+	const done = agents
+		.filter((agent) => agent.status === "done" && !seen.has(seenKey(agent.name, agent.seq)))
+		.sort(byName);
+	return [
+		...blocked.map((agent) => ({ kind: "blocked" as const, agent })),
+		...done.map((agent) => ({ kind: "done" as const, agent })),
+	];
+}

@@ -1,43 +1,60 @@
-import type { DecorKind, Layout } from "@shared/layout/schema";
+import type { Decor, DecorKind, Layout } from "@shared/layout/schema";
+import { useHud } from "../../hud/view-store";
 import { DECOR } from "../decor";
 import { Clickable } from "../interaction/Clickable";
 import { useSelection } from "../interaction/selection-store";
 import { DEG } from "./station";
 
 /**
- * Decor that opens a world card when clicked, with its hover-ring radius.
- * Items with their own click behaviour (TV, bell) handle it inside the component.
+ * What clicking a piece of decor does, with its hover-ring radius. Items with
+ * their own click behaviour (TV, bell) handle it inside the component.
  */
-const CARD_DECOR: Partial<Record<DecorKind, number>> = {
-	"server-rack": 0.65,
-	"mail-cubby": 0.85,
+const ACTIONS: Partial<
+	Record<DecorKind, { readonly ring: number; readonly opens: "card" | "brain" }>
+> = {
+	"server-rack": { ring: 0.65, opens: "card" },
+	"mail-cubby": { ring: 0.85, opens: "card" },
+	// The library is the company brain: its shelves open the Brain panel.
+	bookshelf: { ring: 1.15, opens: "brain" },
 };
 
-/** Every decor item from the layout, placed and (where it has a card) clickable. */
-export function DecorItems({ layout }: { readonly layout: Layout }) {
+function useDecorAction(item: Decor): (() => void) | undefined {
 	const select = useSelection((state) => state.select);
+	const togglePanel = useHud((state) => state.togglePanel);
+	const action = ACTIONS[item.kind];
+	if (!action) return undefined;
+	if (action.opens === "brain") return () => togglePanel("brain");
+	return () => select({ kind: "decor", id: item.id });
+}
+
+function DecorItem({ item }: { readonly item: Decor }) {
+	const Item = DECOR[item.kind];
+	const onSelect = useDecorAction(item);
+	const ring = ACTIONS[item.kind]?.ring;
+	const body = <Item {...(item.label ? { label: item.label } : {})} />;
+	return (
+		<group
+			position={[item.position.x, item.elevation, item.position.z]}
+			rotation={[0, item.rotation * DEG, 0]}
+		>
+			{onSelect ? (
+				<Clickable {...(ring === undefined ? {} : { ring })} onSelect={onSelect}>
+					{body}
+				</Clickable>
+			) : (
+				body
+			)}
+		</group>
+	);
+}
+
+/** Every decor item from the layout, placed and (where it does something) clickable. */
+export function DecorItems({ layout }: { readonly layout: Layout }) {
 	return (
 		<>
-			{layout.decor.map((item) => {
-				const Item = DECOR[item.kind];
-				const ring = CARD_DECOR[item.kind];
-				const body = <Item {...(item.label ? { label: item.label } : {})} />;
-				return (
-					<group
-						key={item.id}
-						position={[item.position.x, item.elevation, item.position.z]}
-						rotation={[0, item.rotation * DEG, 0]}
-					>
-						{ring === undefined ? (
-							body
-						) : (
-							<Clickable ring={ring} onSelect={() => select({ kind: "decor", id: item.id })}>
-								{body}
-							</Clickable>
-						)}
-					</group>
-				);
-			})}
+			{layout.decor.map((item) => (
+				<DecorItem key={item.id} item={item} />
+			))}
 		</>
 	);
 }

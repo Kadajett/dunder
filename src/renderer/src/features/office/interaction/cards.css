@@ -1,7 +1,7 @@
 /* World cards: what you clicked (an agent, the server rack, the mailroom…). */
 .world-card {
 	position: absolute;
-	top: 20px;
+	top: 88px;
 	right: 20px;
 	z-index: 500;
 	width: 330px;

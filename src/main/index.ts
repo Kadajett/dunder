@@ -2,12 +2,16 @@ import { join } from "node:path";
 import { type BridgeStatus, IPC } from "@shared/ipc";
 import { app, BrowserWindow, Menu } from "electron";
 import { createCalisthenics } from "./calisthenics/service";
+import { registerChiefIpc } from "./chief/ipc";
+import { createChief } from "./chief/service";
 import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
 import { registerIpc } from "./ipc";
 import { registerModelsIpc } from "./models/ipc";
 import { createModels } from "./models/service";
+import { CostTracker } from "./office-stats/cost-tracker";
+import { registerOfficeStatsIpc } from "./office-stats/ipc";
 import { createSwitchboardService } from "./switchboard/service";
 import { ObservePool } from "./terminal/observe-pool";
 import { startObserveSession } from "./terminal/observe-session";
@@ -52,6 +56,12 @@ const workforce = createWorkforce(
 	(roster) => broadcast(IPC.roster, roster),
 );
 const models = createModels(workforce, (live) => broadcast(IPC.modelsLiveChanged, live));
+const chief = createChief(app.getPath("userData"), {
+	roster: () => workforce.roster(),
+	modelOf: (name) => models.service.live()[name]?.model,
+	emit: (message) => broadcast(IPC.chiefMessage, message),
+});
+const aiCost = new CostTracker((cost) => broadcast(IPC.statsCostTodayChanged, cost));
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -77,6 +87,8 @@ async function startBridge(): Promise<void> {
 				switchboard.update(snapshot);
 				workforce.handleSnapshot(snapshot);
 				models.service.update(snapshot);
+				chief.update(snapshot);
+				aiCost.update(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -123,12 +135,20 @@ app.whenReady().then(() => {
 		roster: () => workforce.roster(),
 	});
 	registerModelsIpc(models.catalog, models.service);
+	registerChiefIpc(chief);
+	registerOfficeStatsIpc({
+		cost: aiCost,
+		appRoot: app.getAppPath(),
+		roster: () => workforce.roster(),
+	});
 	createWindow();
 	void startBridge();
 	weather.start();
 	calisthenics.start();
 	workforce.start().catch((error: unknown) => console.warn("[workforce] not started:", error));
 	models.service.start();
+	chief.start();
+	aiCost.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -141,6 +161,8 @@ app.on("window-all-closed", () => {
 	switchboard.stop();
 	workforce.stop();
 	models.service.stop();
+	chief.stop();
+	aiCost.stop();
 	app.quit();
 });
 
