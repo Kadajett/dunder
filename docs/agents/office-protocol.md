@@ -26,6 +26,12 @@ The office has one shared whiteboard (tldraw) that Jeremy draws on. You add to i
 - `office-board clear` wipes the board, and only works for the chief of staff.
 - Run it from your bash tool: like `office-say`, it needs `HERDR_PANE_ID` to sign your post.
 
+## The pool table
+
+When you have been idle for a minute, your character walks to the office pool table and plays 8-ball with the other idle agents. The app plays your shots with its own AI: it costs you nothing and needs nothing from you. Any prompt sends you back to your desk.
+
+- `office-pool state` prints the table (sides, groups, balls, whose shot, the last shots); `--json` gives the raw state. It is read-only.
+
 ## Shared memory and work
 
 - The global memory is Beads: `bd prime` and `bd memories <keyword>`. Jeremy reads it in the office's Brain panel.

@@ -121,6 +121,15 @@ const api: OfficeApi = {
 		put: (request) => ipcRenderer.invoke(IPC.whiteboardPut, request),
 		onChanged: (listener) => listen(IPC.whiteboardChanged, listener),
 	},
+	pool: {
+		get: () => ipcRenderer.invoke(IPC.poolGet),
+		onChanged: (listener) => listen(IPC.poolChanged, listener),
+		onFrame: (listener) => listen(IPC.poolFrame, listener),
+		join: () => ipcRenderer.invoke(IPC.poolJoin),
+		leave: () => ipcRenderer.invoke(IPC.poolLeave),
+		setViewing: (viewing) => ipcRenderer.invoke(IPC.poolViewing, viewing),
+		shoot: (input) => ipcRenderer.invoke(IPC.poolShoot, input),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);
