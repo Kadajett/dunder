@@ -90,6 +90,11 @@ export class TerminalRegistry {
 		return this.#entries.get(terminalId)?.sink.ownerId;
 	}
 
+	/** Whether the pane has an interactive screen (Jeremy has it open in terminal focus). */
+	isOpen(paneId: string): boolean {
+		return this.#current.has(paneId);
+	}
+
 	send(terminalId: string, command: TerminalCommand): void {
 		const entry = this.#entries.get(terminalId);
 		if (entry?.session) entry.session.send(command);

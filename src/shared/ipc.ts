@@ -8,6 +8,7 @@ import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
 import type { MailQueueApi } from "./mail-queue";
 import type { ModelsApi } from "./models";
 import type { OfficeStatsApi } from "./office-stats";
+import type { PoolApi } from "./pool";
 import type { ScreensApi, Unsubscribe } from "./screens";
 import type { StaffApi } from "./staff";
 import type { OfficeMessage } from "./switchboard";
@@ -91,6 +92,14 @@ export const IPC = {
 	whiteboardGet: "whiteboard:get",
 	whiteboardPut: "whiteboard:put",
 	whiteboardChanged: "whiteboard:changed",
+	/** Pool table: state (invoke), every change and ~30 Hz ball frames (main → renderer), Jeremy's actions (invoke). */
+	poolGet: "pool:get",
+	poolChanged: "pool:changed",
+	poolFrame: "pool:frame",
+	poolJoin: "pool:join",
+	poolLeave: "pool:leave",
+	poolViewing: "pool:viewing",
+	poolShoot: "pool:shoot",
 } as const;
 
 export type BridgeStatus =
@@ -134,4 +143,5 @@ export interface OfficeApi {
 	readonly staff: StaffApi;
 	readonly update: AppUpdateApi;
 	readonly whiteboard: WhiteboardApi;
+	readonly pool: PoolApi;
 }

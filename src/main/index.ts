@@ -25,6 +25,8 @@ import { createModels } from "./models/service";
 import { CostTracker } from "./office-stats/cost-tracker";
 import { registerOfficeStatsIpc } from "./office-stats/ipc";
 import { createSeenDoneStore } from "./office-stats/seen-done";
+import { createPool } from "./pool/create";
+import { registerPoolIpc } from "./pool/ipc";
 import { createStaffDesk } from "./staff-desk/create";
 import { createSwitchboardService } from "./switchboard/service";
 import { ObservePool } from "./terminal/observe-pool";
@@ -57,10 +59,12 @@ const observers = new ObservePool({
 	start: startObserveSession,
 	resolveSize: createPtySizeResolver(homeSize),
 });
-const screens = new ScreensService(
-	observers,
-	new TerminalRegistry({ homeSize, onPaneResized: (paneId) => observers.refresh(paneId) }),
-);
+/** Interactive screens; the pool table asks it whether Jeremy has an agent open. */
+const terminals = new TerminalRegistry({
+	homeSize,
+	onPaneResized: (paneId) => observers.refresh(paneId),
+});
+const screens = new ScreensService(observers, terminals);
 /** Upper bound on waiting for screen processes to exit when quitting. */
 const SHUTDOWN_TIMEOUT_MS = 2_000;
 let bridge: OfficeBridge | undefined;
@@ -136,6 +140,12 @@ const appUpdate = createAppUpdater({
 		return stopScreens();
 	},
 });
+/** The pool table: idle agents play 8-ball with the built-in AI; Jeremy can join from the app. */
+const pool = createPool({
+	isOpen: (paneId) => terminals.isOpen(paneId),
+	emit: (view) => broadcast(IPC.poolChanged, view),
+	emitFrame: (frame) => broadcast(IPC.poolFrame, frame),
+});
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -166,6 +176,7 @@ async function startBridge(): Promise<void> {
 				appUpdate.updateSnapshot(snapshot);
 				staffDesk.updateSnapshot(snapshot);
 				whiteboard.service.updateSnapshot(snapshot);
+				pool.updateSnapshot(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -219,6 +230,7 @@ app.whenReady().then(() => {
 	registerWorkforceIpc(staffing, app.getAppPath());
 	registerAppUpdateIpc(appUpdate);
 	registerWhiteboardIpc(whiteboard.service);
+	registerPoolIpc(pool);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -243,6 +255,7 @@ app.whenReady().then(() => {
 	whiteboard
 		.start()
 		.catch((error: unknown) => createLogger("whiteboard").warn("not started", { error }));
+	pool.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -261,6 +274,7 @@ function stopServices(): void {
 	appUpdate.stop();
 	staffDesk.stop();
 	whiteboard.stop();
+	pool.stop();
 }
 
 app.on("window-all-closed", () => {
