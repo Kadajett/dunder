@@ -1,6 +1,7 @@
 import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
 import type { OfficeApi } from "@shared/ipc";
 import { type MailQueue, previewOf, type QueuedNote } from "@shared/mail-queue";
+import type { OfficeMessage } from "@shared/switchboard";
 import { fakeWhiteboard } from "./fake-board";
 
 /**
@@ -93,9 +94,22 @@ let mailQueue: MailQueue = {
 	),
 };
 
-/** The profiler measures the office with no notes unless `?notes` is in its URL. */
+/** leo's note to max, still waiting for max to be free: the shots show its waiting mark. */
+let switchboardRecent: OfficeMessage[] = [
+	{
+		id: "max-leo-0",
+		from: "leo",
+		to: "max",
+		text: "Library sync done, 14 new memories",
+		sentAt: "2026-10-06T13:00:00.000Z",
+		state: "queued",
+	},
+];
+
+/** The profiler measures the office with no notes or waiting mail unless `?notes` is in its URL. */
 export function withoutSampleMail(): void {
 	mailQueue = {};
+	switchboardRecent = [];
 }
 
 const fakeOffice = {
@@ -120,7 +134,7 @@ const fakeOffice = {
 		startNow: async () => undefined,
 	},
 	switchboard: {
-		recent: async () => [],
+		recent: async () => switchboardRecent,
 		onMessage: () => unsubscribe,
 	},
 	mailQueue: {

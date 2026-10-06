@@ -45,7 +45,7 @@ export type Speech =
 
 /**
  * What an agent is saying right now: a just-delivered message (speech bubble),
- * or one still waiting for its recipient to be free (thought bubble).
+ * or one still waiting for its recipient to be free (a faint waiting mark).
  */
 export function speechFor(
 	heard: readonly Heard[],
