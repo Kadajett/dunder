@@ -12,6 +12,7 @@ import type { StaffApi } from "./staff";
 import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
 import type { WeatherFeed } from "./tv";
+import type { WhiteboardApi } from "./whiteboard";
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -81,6 +82,10 @@ export const IPC = {
 	updateChanged: "update:changed",
 	updateApply: "update:apply",
 	updateCancel: "update:cancel",
+	/** Whiteboard: the current company's board (invoke), the editor's save (invoke), every change (main → renderer). */
+	whiteboardGet: "whiteboard:get",
+	whiteboardPut: "whiteboard:put",
+	whiteboardChanged: "whiteboard:changed",
 } as const;
 
 export type BridgeStatus =
@@ -122,4 +127,5 @@ export interface OfficeApi {
 	readonly workforce: WorkforceApi;
 	readonly staff: StaffApi;
 	readonly update: AppUpdateApi;
+	readonly whiteboard: WhiteboardApi;
 }

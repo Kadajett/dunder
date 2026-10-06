@@ -111,6 +111,11 @@ const api: OfficeApi = {
 		apply: (reason) => ipcRenderer.invoke(IPC.updateApply, reason),
 		cancel: () => ipcRenderer.invoke(IPC.updateCancel),
 	},
+	whiteboard: {
+		get: () => ipcRenderer.invoke(IPC.whiteboardGet),
+		put: (request) => ipcRenderer.invoke(IPC.whiteboardPut, request),
+		onChanged: (listener) => listen(IPC.whiteboardChanged, listener),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

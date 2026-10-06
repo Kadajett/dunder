@@ -17,6 +17,15 @@ office-say <their-name> "<message>"
 - The office shows every message as a speech bubble, so write what you'd say out loud.
 - To see who is in the office, run `herdr agent list`.
 
+## The whiteboard
+
+The office has one shared whiteboard (tldraw) that Jeremy draws on. You add to it and read it from your shell, also with Dunder's `bin/` on your PATH:
+
+- `office-board note "<text>" [--color yellow|green|blue|pink]` posts a sticky note signed with your name; `office-board text "<text>"` posts plain text. Both take `--x <n> --y <n>` for a position; without it, posts fill a grid.
+- `office-board read` prints every note and text block with its author (shapes Jeremy drew show as `jeremy`).
+- `office-board clear` wipes the board, and only works for the chief of staff.
+- Run it from your bash tool: like `office-say`, it needs `HERDR_PANE_ID` to sign your post.
+
 ## Shared memory and work
 
 - The global memory is Beads: `bd prime` and `bd memories <keyword>`. Jeremy reads it in the office's Brain panel.
