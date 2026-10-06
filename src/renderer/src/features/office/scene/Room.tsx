@@ -6,6 +6,11 @@ import { FONTS } from "../fonts";
 
 const WALL_THICKNESS = 0.3;
 const FLOOR_THICKNESS = 0.45;
+/**
+ * How much of the wall paint is self-lit (see `wallPaint` in Room). Above 1 because ACES
+ * tone mapping compresses highlights: this lands the paint near the reference's #fbf8f1.
+ */
+const WALL_GLOW = 1.6;
 const FRAME_COLOR = "#ece2cc";
 const SILL_COLOR = "#e2d5bb";
 const TRIM_COLOR = "#ddcfb3";
@@ -63,10 +68,10 @@ function usePlankTexture(color: string, width: number, depth: number): CanvasTex
 			context.fillStyle = color;
 			context.fillRect(0, 0, 256, 256);
 			for (let row = 0; row < 8; row += 1) {
-				const shade = row % 2 === 0 ? "rgba(255,248,232,0.05)" : "rgba(80,64,40,0.04)";
+				const shade = row % 2 === 0 ? "rgba(255,248,232,0.03)" : "rgba(80,64,40,0.025)";
 				context.fillStyle = shade;
 				context.fillRect(0, row * 32, 256, 32);
-				context.fillStyle = "rgba(80,64,40,0.09)";
+				context.fillStyle = "rgba(80,64,40,0.05)";
 				context.fillRect(0, row * 32, 256, 1);
 				const seam = (row * 97) % 256;
 				context.fillRect(seam, row * 32, 1, 32);
@@ -178,6 +183,17 @@ export function Room({ room }: { readonly room: RoomSpec }) {
 	const planks = usePlankTexture(room.floorColor, room.width, room.depth);
 	const sky = useSkyTexture();
 	const wallShade = useWallTexture();
+	// The sun barely reaches the two back walls, so lit alone they read grey-beige. A share of
+	// their own paint as emission keeps them the near-white cream of the reference without
+	// brightening the floor; the shade map still darkens them toward the baseboard.
+	const wallPaint = {
+		color: room.wallColor,
+		map: wallShade,
+		emissive: room.wallColor,
+		emissiveMap: wallShade,
+		emissiveIntensity: WALL_GLOW,
+		roughness: 0.95,
+	} as const;
 	const { width, depth, wallHeight: height } = room;
 	const t = WALL_THICKNESS;
 	// The wall boxes span from the slab's underside to `height`; the cap trim sits on top.
@@ -193,7 +209,7 @@ export function Room({ room }: { readonly room: RoomSpec }) {
 				castShadow
 			>
 				<boxGeometry args={[t, height + FLOOR_THICKNESS, depth + t]} />
-				<meshStandardMaterial color={room.wallColor} map={wallShade} roughness={0.95} />
+				<meshStandardMaterial {...wallPaint} />
 			</mesh>
 			<mesh
 				position={[-t / 2, height / 2 - FLOOR_THICKNESS / 2, -depth / 2 - t / 2]}
@@ -201,7 +217,7 @@ export function Room({ room }: { readonly room: RoomSpec }) {
 				castShadow
 			>
 				<boxGeometry args={[width + t, height + FLOOR_THICKNESS, t]} />
-				<meshStandardMaterial color={room.wallColor} map={wallShade} roughness={0.95} />
+				<meshStandardMaterial {...wallPaint} />
 			</mesh>
 			<mesh position={[-width / 2 - t / 2, height + 0.03, -t / 2]}>
 				<boxGeometry args={[t + 0.06, 0.06, depth + t + 0.06]} />
