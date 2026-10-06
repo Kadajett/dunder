@@ -3,6 +3,7 @@ import { CHIEF_MESSAGE_MAX, type ChiefMessage, type ChiefPresence } from "@share
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { formatClock } from "../feed/feed-model";
 import { ChiefAvatar } from "./ChiefAvatar";
+import { ChiefMarkdown } from "./ChiefMarkdown";
 import { isWorking, presenceLabel } from "./chat-model";
 import { rehydrateChief, sendToChief, useChiefChat } from "./chat-store";
 import "./chief-chat.css";
@@ -12,7 +13,10 @@ function Bubble({ message }: { readonly message: ChiefMessage }) {
 	const pending = mine && message.state !== undefined && message.state !== "sent";
 	return (
 		<li className={`chief-msg chief-msg--${mine ? "you" : "chief"}`}>
-			<div className="chief-msg__bubble">{message.text}</div>
+			{/* Jeremy's own text stays plain (newlines kept by CSS); the chief writes Markdown. */}
+			<div className="chief-msg__bubble">
+				{mine ? message.text : <ChiefMarkdown text={message.text} />}
+			</div>
 			<div className="chief-msg__meta">
 				<time dateTime={new Date(message.at).toISOString()}>{formatClock(message.at)}</time>
 				{pending && (

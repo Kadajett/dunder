@@ -11,6 +11,7 @@ import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
 import { registerCompaniesIpc } from "./companies/ipc";
 import { createCompanies } from "./companies/service";
+import { guardNavigation } from "./external-links";
 import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
@@ -151,6 +152,7 @@ function createWindow(): void {
 		},
 	});
 	window.once("ready-to-show", () => window.show());
+	guardNavigation(window.webContents);
 	const devUrl = process.env["ELECTRON_RENDERER_URL"];
 	if (devUrl) void window.loadURL(devUrl);
 	else void window.loadFile(join(__dirname, "../renderer/index.html"));
