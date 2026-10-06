@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Company } from "@shared/company/company";
 import { firstCompany, seedCompany } from "@shared/company/company-ops";
 import { DEFAULT_LAYOUT } from "@shared/layout/default-layout";
+import type { Zone } from "@shared/layout/schema";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadCompanies, openCompanies, saveCompany, saveCurrentId } from "./store";
 
@@ -93,5 +94,31 @@ describe("company store", () => {
 		expect(rooms.map((room) => room.wallHeight)).toEqual([DEFAULT_LAYOUT.room.wallHeight, 5]);
 		expect(rooms[0]?.floorColor).toBe(DEFAULT_LAYOUT.room.floorColor);
 		expect(DEFAULT_LAYOUT.room.wallHeight).not.toBe(4.2);
+	});
+
+	it("turns untouched YOUR DESK and RECEPTION cards into hover captions, keeping edited or chosen ones", async () => {
+		// As saved before label modes existed: no zone has a labelMode.
+		const predating = (company: Company, edit: (zone: Zone) => Zone = (zone) => zone): Company => ({
+			...company,
+			layout: {
+				...company.layout,
+				zones: company.layout.zones.map(({ labelMode: _mode, ...zone }) => edit(zone)),
+			},
+		});
+		const renamed = (zone: Zone): Zone =>
+			zone.id === "reception" ? { ...zone, title: "FRONT DESK" } : zone;
+		const chosen = (zone: Zone): Zone =>
+			zone.id === "you" ? { ...zone, labelMode: "always" } : zone;
+		await saveCompany(dir, predating(firstCompany(NOW)));
+		await saveCompany(dir, predating(seedCompany("acme", "Acme", "", LATER), renamed));
+		await saveCompany(dir, predating(seedCompany("zeta", "Zeta", "", LATER), chosen));
+		const modes = (await loadCompanies(dir)).map((company) =>
+			Object.fromEntries(company.layout.zones.map((zone) => [zone.id, zone.labelMode])),
+		);
+		expect(modes.map((zones) => [zones["you"], zones["reception"], zones["sales"]])).toEqual([
+			["hover", "hover", undefined],
+			["hover", undefined, undefined],
+			["always", "hover", undefined],
+		]);
 	});
 });

@@ -93,3 +93,28 @@
 .zone-card-accent em {
 	color: inherit;
 }
+
+/*
+ * Hover-mode zones: no card, just the zone's name in small lowercase over a
+ * thin underline, faded in while the pointer is over the zone. Always laid out,
+ * so appearing never shifts anything.
+ */
+.zone-caption {
+	display: inline-block;
+	padding: 0 2px 2px;
+	border-bottom: 1px solid #26231f66;
+	font: 600 11px / 1.2 var(--font-ui);
+	letter-spacing: 0.04em;
+	color: var(--ink);
+	text-shadow:
+		0 0 6px #fffdf8,
+		0 0 2px #fffdf8;
+	white-space: nowrap;
+	user-select: none;
+	opacity: 0;
+	transition: opacity 160ms ease-out;
+}
+
+.zone-caption[data-visible="true"] {
+	opacity: 1;
+}

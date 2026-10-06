@@ -1,5 +1,5 @@
 import { snapInRoom } from "./ops";
-import type { Callout, Decor, Desk, Layout, Zone } from "./schema";
+import type { Callout, Decor, Desk, Layout, Zone, ZoneLabelMode } from "./schema";
 
 /**
  * Pure field edits for the edit-mode inspector. Text fields set to "" remove
@@ -17,6 +17,8 @@ export interface ZonePatch {
 	readonly rugWidth?: number;
 	readonly rugDepth?: number;
 	readonly rugColor?: string;
+	/** Card always shown, or only a caption on hover; once set it is kept explicitly. */
+	readonly labelMode?: ZoneLabelMode;
 }
 
 const clampSize = (value: number, max: number) =>
@@ -39,7 +41,7 @@ function patchRug(layout: Layout, zone: Zone, patch: ZonePatch): Zone["rug"] {
 	return { center, width, depth, color: patch.rugColor ?? base.color };
 }
 
-/** Edit a zone's title, subtitle, bound workspace label and rug size/colour (adding a rug if it has none). */
+/** Edit a zone's title, subtitle, label mode, bound workspace label and rug size/colour (adding a rug if it has none). */
 export function updateZone(layout: Layout, id: string, patch: ZonePatch): Layout {
 	const edit = (zone: Zone): Zone => {
 		const { subtitle, workspaceLabel, rug: _rug, ...rest } = zone;
@@ -49,6 +51,7 @@ export function updateZone(layout: Layout, id: string, patch: ZonePatch): Layout
 		return {
 			...rest,
 			title: patch.title ?? zone.title,
+			...(patch.labelMode ? { labelMode: patch.labelMode } : {}),
 			...(nextSubtitle ? { subtitle: nextSubtitle } : {}),
 			...(nextLabel ? { workspaceLabel: nextLabel } : {}),
 			...(rug ? { rug } : {}),
