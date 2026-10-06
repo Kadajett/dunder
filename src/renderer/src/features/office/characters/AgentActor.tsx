@@ -14,7 +14,7 @@ import {
 	type WorkoutWindow,
 } from "../behaviour/brain";
 import { useConversations, visitFor } from "../conversations/conversation-store";
-import { NameTag } from "../labels/Labels";
+import { NameRing } from "../labels/NameRing";
 import type { LiveAgent } from "../model/live-agents";
 import { type Placement, STATION_SCALE } from "../scene/station";
 import { MiiCharacter, type MiiPose } from "./MiiCharacter";
@@ -124,6 +124,8 @@ export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 	const brain = useRef<Brain>(initialBrain(0, world.random));
 	const [mode, setMode] = useState<Brain["mode"]>(brain.current.mode);
 	const body = useRef<Group>(null);
+	// The name ring follows the body's position but not its turning, so it keeps facing the camera.
+	const feet = useRef<Group>(null);
 	const walk = useRef<Walk>({ segment: 0, along: 0 });
 	const thinkAt = useRef(0);
 	const status = useRef(agent.status);
@@ -146,7 +148,10 @@ export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 		const current = brain.current;
 		const target = bodyTarget(current, world.seat, walk.current, delta * WALK_SPEED);
 		walk.current = target.walk;
-		if (target.position) group.position.set(target.position.x, 0, target.position.z);
+		if (target.position) {
+			group.position.set(target.position.x, 0, target.position.z);
+			feet.current?.position.set(target.position.x, 0, target.position.z);
+		}
 		if (target.heading !== undefined) {
 			const turn = Math.min(1, delta * TURN_RATE);
 			group.rotation.set(
@@ -180,26 +185,25 @@ export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 
 	const activity = mode === "seated" ? SEATED_ACTIVITY[agent.status] : "idle";
 	return (
-		<group
-			ref={body}
-			position={[world.seat.position.x, 0, world.seat.position.z]}
-			rotation={[0, world.seat.rotationY, 0]}
-			scale={STATION_SCALE}
-		>
-			<MiiCharacter
-				style={style}
-				pose={POSE[mode]}
-				activity={activity}
-				phase={phase}
-				workoutStartedAt={workout?.startedAt ?? 0}
-			/>
-			<NameTag
-				position={[0, mode === "seated" ? 1.62 : 1.85, 0]}
-				name={agent.name}
-				status={agent.status}
-				paneId={agent.paneId}
-			/>
-			{overlay}
-		</group>
+		<>
+			<group
+				ref={body}
+				position={[world.seat.position.x, 0, world.seat.position.z]}
+				rotation={[0, world.seat.rotationY, 0]}
+				scale={STATION_SCALE}
+			>
+				<MiiCharacter
+					style={style}
+					pose={POSE[mode]}
+					activity={activity}
+					phase={phase}
+					workoutStartedAt={workout?.startedAt ?? 0}
+				/>
+				{overlay}
+			</group>
+			<group ref={feet} position={[world.seat.position.x, 0, world.seat.position.z]}>
+				<NameRing name={agent.name} status={agent.status} paneId={agent.paneId} />
+			</group>
+		</>
 	);
 }
