@@ -1,5 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { CHIEF_ROLE } from "@shared/chief";
+import { activeAgents } from "@shared/company/roster-ops";
 import { type BridgeStatus, IPC } from "@shared/ipc";
 import { createLogger } from "@shared/log/logger";
 import { app, BrowserWindow, Menu } from "electron";
@@ -31,6 +33,8 @@ import { TerminalRegistry } from "./terminal/registry";
 import { ScreensService } from "./terminal/screens-service";
 import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
+import { createWhiteboard } from "./whiteboard/create";
+import { registerWhiteboardIpc } from "./whiteboard/ipc";
 import { registerWorkforceIpc } from "./workforce/ipc";
 import { createStaffing, createWorkforce } from "./workforce/service";
 
@@ -94,8 +98,23 @@ const chief = createChief(app.getPath("userData"), {
 const aiCost = new CostTracker((cost) => broadcast(IPC.statsCostTodayChanged, cost));
 const companies = createCompanies(
 	{ userData: app.getPath("userData"), appRoot: app.getAppPath() },
-	(company) => broadcast(IPC.companiesChanged, company),
+	(company) => {
+		broadcast(IPC.companiesChanged, company);
+		whiteboard.service
+			.companyChanged(company.id)
+			.catch((error: unknown) => createLogger("whiteboard").warn("board switch failed", { error }));
+	},
 );
+/** The shared whiteboard: Jeremy's tldraw editor plus agents' `office-board` notes. */
+const whiteboard = createWhiteboard({
+	userData: app.getPath("userData"),
+	currentCompanyId: () => companies.current().then((company) => company.id),
+	chiefName: () => {
+		const roster = workforce.roster();
+		return roster && activeAgents(roster).find((agent) => agent.role === CHIEF_ROLE)?.name;
+	},
+	emit: (change) => broadcast(IPC.whiteboardChanged, change),
+});
 /** Stable mode: notices new commits, rebuilds and relaunches only when asked. */
 const appUpdate = createAppUpdater({
 	root: app.getAppPath(),
@@ -135,6 +154,7 @@ async function startBridge(): Promise<void> {
 				aiCost.update(snapshot);
 				appUpdate.updateSnapshot(snapshot);
 				staffDesk.updateSnapshot(snapshot);
+				whiteboard.service.updateSnapshot(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -186,6 +206,7 @@ app.whenReady().then(() => {
 	registerCompaniesIpc(companies);
 	registerWorkforceIpc(staffing, app.getAppPath());
 	registerAppUpdateIpc(appUpdate);
+	registerWhiteboardIpc(whiteboard.service);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -205,6 +226,9 @@ app.whenReady().then(() => {
 	staffDesk
 		.start()
 		.catch((error: unknown) => createLogger("staff-desk").warn("not started", { error }));
+	whiteboard
+		.start()
+		.catch((error: unknown) => createLogger("whiteboard").warn("not started", { error }));
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -222,6 +246,7 @@ function stopServices(): void {
 	aiCost.stop();
 	appUpdate.stop();
 	staffDesk.stop();
+	whiteboard.stop();
 }
 
 app.on("window-all-closed", () => {

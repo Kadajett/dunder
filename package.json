@@ -29,6 +29,10 @@
 		"scene:profile": "vite --config scripts/scene-shot/vite.config.ts --port 5179 --strictPort --logLevel info"
 	},
 	"dependencies": {
+		"@tldraw/state": "5.5.2",
+		"@tldraw/store": "5.5.2",
+		"@tldraw/tlschema": "5.5.2",
+		"@tldraw/utils": "5.5.2",
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {

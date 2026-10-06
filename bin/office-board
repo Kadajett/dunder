@@ -1,0 +1,3 @@
+#!/bin/sh
+# The office whiteboard: office-board note|text "<text>", office-board read, office-board clear
+exec node "$(dirname "$(readlink -f "$0")")/../src/cli/office-board.mts" "$@"
