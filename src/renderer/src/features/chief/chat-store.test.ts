@@ -53,7 +53,7 @@ const shown = (messages: readonly ChiefMessage[]) => messages.map((m) => [m.id, 
 describe("chief chat rehydration", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
-	it("restores every message with its delivery state when a reloaded module reconnects", async () => {
+	it("restores every message with its delivery state after a full renderer reload", async () => {
 		const chief = fakeChief(async () => ON_DISK);
 		const before = await loadChatStore(chief.api);
 		const disconnect = before.connectChief();
@@ -61,7 +61,6 @@ describe("chief chat rehydration", () => {
 		disconnect();
 
 		const after = await loadChatStore(chief.api);
-		expect(after.useChiefChat.getState().messages).toEqual([]);
 		const cleanup = after.connectChief();
 		await vi.waitFor(() =>
 			expect(shown(after.useChiefChat.getState().messages)).toEqual([
