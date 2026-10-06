@@ -52,6 +52,13 @@ export type StatsActionResult =
 	| { readonly ok: true }
 	| { readonly ok: false; readonly reason: string };
 
+/**
+ * Finished work the user marked seen in the Trust Inbox: agent name → herdr's
+ * `state_change_seq` of the `done` they saw (null when herdr reported none).
+ * The agent's next state change gets a new seq, so its next `done` shows again.
+ */
+export type SeenDone = Readonly<Record<string, number | null>>;
+
 /** `window.office.stats`: HUD figures computed in the main process. */
 export interface OfficeStatsApi {
 	costToday(): Promise<CostToday>;
@@ -61,6 +68,11 @@ export interface OfficeStatsApi {
 	remember(request: RememberRequest): Promise<StatsActionResult>;
 	/** Delete a memory by key from one office project (`bd forget`). */
 	forget(cwd: string, key: string): Promise<StatsActionResult>;
-	/** Tell herdr the user has seen an agent's finished work (`agent focus <name>`). */
-	markSeen(agentName: string): Promise<StatsActionResult>;
+	/** Finished work already marked seen, kept by Dunder across restarts. */
+	seenDone(): Promise<SeenDone>;
+	/**
+	 * Mark one agent's `done` seen. Dunder keeps it; herdr is not told, because
+	 * `agent focus` clears `done` for every pane that comes into view with it.
+	 */
+	markSeen(name: string, seq: number | null): Promise<void>;
 }

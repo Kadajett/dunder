@@ -91,7 +91,8 @@ const fakeOffice = {
 		memories: async () => ({ projects: [] }),
 		remember: async () => ({ ok: false, reason: "scene-shot" }),
 		forget: async () => ({ ok: false, reason: "scene-shot" }),
-		markSeen: async () => ({ ok: true }),
+		seenDone: async () => ({}),
+		markSeen: async () => undefined,
 	},
 } satisfies Pick<
 	OfficeApi,

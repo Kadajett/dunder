@@ -84,7 +84,8 @@ const api: OfficeApi = {
 		memories: () => ipcRenderer.invoke(IPC.statsMemories),
 		remember: (request) => ipcRenderer.invoke(IPC.statsRemember, request),
 		forget: (cwd, key) => ipcRenderer.invoke(IPC.statsForget, { cwd, key }),
-		markSeen: (agentName) => ipcRenderer.invoke(IPC.statsMarkSeen, agentName),
+		seenDone: () => ipcRenderer.invoke(IPC.statsSeenDone),
+		markSeen: (name, seq) => ipcRenderer.invoke(IPC.statsMarkSeen, { name, seq }),
 	},
 	companies: {
 		list: () => ipcRenderer.invoke(IPC.companiesList),

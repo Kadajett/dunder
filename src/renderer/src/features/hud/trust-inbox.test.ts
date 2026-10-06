@@ -1,7 +1,7 @@
 import { agent, snapshot, workspace } from "@shared/herdr/fixtures/snapshot";
 import type { AgentStatus } from "@shared/herdr/schema";
 import { describe, expect, it } from "vitest";
-import { inboxAgents, seenKey, type TrustItem, trustInbox } from "./trust-inbox";
+import { inboxAgents, type TrustItem, trustInbox } from "./trust-inbox";
 
 function office(...agents: [string, string, AgentStatus, number][]) {
 	return inboxAgents(
@@ -29,7 +29,7 @@ describe("trustInbox", () => {
 			["emma", "w2:p3", "blocked", 1],
 			["finn", "w2:p4", "idle", 3],
 		);
-		expect(summary(trustInbox(agents, new Set()))).toEqual([
+		expect(summary(trustInbox(agents, {}))).toEqual([
 			"blocked:emma",
 			"blocked:jonas",
 			"done:ben",
@@ -37,8 +37,17 @@ describe("trustInbox", () => {
 		]);
 	});
 
+	it("hides exactly the done that was seen; the others stay", () => {
+		const agents = office(
+			["nora", "w1:p1", "done", 4],
+			["ben", "w2:p2", "done", 9],
+			["finn", "w2:p4", "done", 3],
+		);
+		expect(summary(trustInbox(agents, { ben: 9 }))).toEqual(["done:finn", "done:nora"]);
+	});
+
 	it("hides a seen done until the agent finishes again", () => {
-		const seen = new Set([seenKey("nora", 4), seenKey("jonas", 7)]);
+		const seen = { nora: 4, jonas: 7 };
 		const before = office(["nora", "w1:p1", "done", 4], ["jonas", "w1:p2", "blocked", 7]);
 		// Seen never hides a blocked agent: it still needs the user.
 		expect(summary(trustInbox(before, seen))).toEqual(["blocked:jonas"]);
@@ -47,7 +56,7 @@ describe("trustInbox", () => {
 	});
 
 	it("is empty with no snapshot", () => {
-		expect(trustInbox(inboxAgents(null), new Set())).toEqual([]);
+		expect(trustInbox(inboxAgents(null), {})).toEqual([]);
 	});
 });
 
