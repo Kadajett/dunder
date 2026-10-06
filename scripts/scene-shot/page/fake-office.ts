@@ -1,5 +1,6 @@
 import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
 import type { OfficeApi } from "@shared/ipc";
+import { type MailQueue, previewOf, type QueuedNote } from "@shared/mail-queue";
 
 /**
  * A stand-in for the preload's `window.office`, so the real scene renders in a
@@ -59,6 +60,43 @@ function crewSnapshot(): SessionSnapshot {
 const snapshot = crewSnapshot();
 const unsubscribe = (): void => undefined;
 
+function notes(
+	to: string,
+	from: string,
+	texts: readonly string[],
+	fromJeremy = false,
+): QueuedNote[] {
+	return texts.map((text, index) => ({
+		id: `${to}-${from}-${index}`,
+		from,
+		fromJeremy,
+		preview: previewOf(text),
+		at: Date.parse("2026-10-06T13:00:00.000Z") + index * 60_000,
+	}));
+}
+
+/** Mail held for busy agents, so the shots show sticky notes (see `withoutSampleMail`). */
+let mailQueue: MailQueue = {
+	ava: notes("ava", "max", [
+		"Fintech CTO moved to Thursday 14:00",
+		"Can you prep the Nuvora pitch deck?",
+	]),
+	max: [
+		...notes("max", "jeremy", ["When you're free: what's blocking delivery?"], true),
+		...notes("max", "leo", ["Library sync done, 14 new memories"]),
+	],
+	jonas: notes(
+		"jonas",
+		"nora",
+		Array.from({ length: 7 }, (_, index) => `Follow up with lead ${index + 1} before Friday`),
+	),
+};
+
+/** The profiler measures the office with no notes unless `?notes` is in its URL. */
+export function withoutSampleMail(): void {
+	mailQueue = {};
+}
+
 const fakeOffice = {
 	getSnapshot: async () => snapshot,
 	getStatus: async () => ({ state: "connected" }),
@@ -84,6 +122,10 @@ const fakeOffice = {
 		recent: async () => [],
 		onMessage: () => unsubscribe,
 	},
+	mailQueue: {
+		get: async () => mailQueue,
+		onChange: () => unsubscribe,
+	},
 	// A sample day's AI spend, so the wall placard shows a figure as it does in the app.
 	stats: {
 		costToday: async () => ({ state: "ok", day: "2026-10-06", usd: 47.18, sessions: 9 }),
@@ -106,6 +148,7 @@ const fakeOffice = {
 	| "screens"
 	| "calisthenics"
 	| "switchboard"
+	| "mailQueue"
 	| "stats"
 >;
 

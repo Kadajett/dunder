@@ -1,6 +1,7 @@
 import { shortModelName } from "@shared/models";
 import type { ScreenState } from "@shared/screens";
 import { useState } from "react";
+import { useMailQueue } from "../office/mail/mail-queue-store";
 import { useModels } from "../office/models/models-store";
 import { useScreenCanvas } from "../screens/useScreenCanvas";
 import { TerminalView } from "../terminal/TerminalView";
@@ -54,6 +55,18 @@ function ModelTag({ agentName, kind }: { readonly agentName: string; readonly ki
 	);
 }
 
+/** How many messages wait for this agent; nothing when none do. */
+function MailCount({ agentName }: { readonly agentName: string }) {
+	const notes = useMailQueue((state) => state.queue[agentName]);
+	if (!notes || notes.length === 0) return null;
+	const senders = [...new Set(notes.map((note) => note.from))].join(", ");
+	return (
+		<span className="classic-tile-mail" title={`${notes.length} waiting from ${senders}`}>
+			✉ {notes.length}
+		</span>
+	);
+}
+
 /** One agent: status, name, room, live model, and its screen (preview or live terminal). */
 export function ClassicTile(props: ClassicTileProps) {
 	const { tile, open, wide } = props;
@@ -64,6 +77,7 @@ export function ClassicTile(props: ClassicTileProps) {
 				<span className={`status-dot status-${agent.status}`} title={agent.status} />
 				<strong className="classic-tile-name">{agent.name}</strong>
 				<span className="classic-tile-room">{tile.room}</span>
+				<MailCount agentName={agent.name} />
 				<ModelTag agentName={agent.name} kind={agent.kind} />
 				{open ? (
 					<span className="classic-tile-actions">

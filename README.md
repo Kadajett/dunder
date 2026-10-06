@@ -41,7 +41,7 @@ npm run scene:profile  # the same stubbed scene served at http://localhost:5179/
 
 `scene:shot` serves `scripts/scene-shot/page` with Vite and renders it in headless Chrome (a system Chrome/Chromium, Playwright's cached headless shell, or `$SCENE_SHOT_CHROME`). It writes `docs/screenshots/m5-office.png`, `docs/screenshots/m5-vs-reference.png` and `docs/screenshots/characters-lineup.png` (every crew member plus each hairstyle, face part, accessory, outfit and headwear, under the office's lights and camera angle, at overview zoom and in close-up). Use it instead of a second app instance, which would start its own workforce on the live `office` session.
 
-`scene:profile` serves the same page for a browser you drive yourself; `window.__probe.measure(ms)` reports frame time, R3F loop CPU time, draw calls and WebGL calls per frame, `window.__probe.sceneStats()` mesh and shadow-caster counts per scene child.
+`scene:profile` serves the same page for a browser you drive yourself; `window.__probe.measure(ms)` reports frame time, R3F loop CPU time, draw calls and WebGL calls per frame, `window.__probe.sceneStats()` mesh and shadow-caster counts per scene child. The scene shots show sample sticky notes (queued mail) on a few desks; the profiler leaves them off unless its URL has `?notes`.
 
 ## Architecture
 

@@ -22,7 +22,7 @@ function CalloutCard({ callout }: { readonly callout: Callout }) {
 	);
 }
 
-/** The layout's floating callout cards (e.g. ACCESS over the server rack). Zones have no label in the office. */
+/** The layout's floating callout cards, placed in edit mode. Zones have no label in the office. */
 export function Callouts({ callouts }: { readonly callouts: readonly Callout[] }) {
 	return (
 		<>

@@ -14,6 +14,7 @@ import { useHud } from "../features/hud/view-store";
 import { connectConversations } from "../features/office/conversations/conversation-store";
 import { FocusOverlay } from "../features/office/focus/FocusOverlay";
 import { WorldCards } from "../features/office/interaction/WorldCards";
+import { connectMailQueue } from "../features/office/mail/mail-queue-store";
 import { useOfficeModel } from "../features/office/model/office-model";
 import { connectModels } from "../features/office/models/models-store";
 import { OfficeView } from "../features/office/OfficeView";
@@ -31,6 +32,7 @@ export function App() {
 	const model = useOfficeModel(layout, snapshot);
 	useEffect(connectConversations, []);
 	useEffect(connectModels, []);
+	useEffect(connectMailQueue, []);
 	useEffect(connectCompanies, []);
 	useEffect(connectRoster, []);
 	return (
