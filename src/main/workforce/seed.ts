@@ -21,6 +21,7 @@ export const ARCHETYPE_ROLES = [
 	"ops",
 	"product-engineer",
 	"product-manager",
+	"3d-designer",
 ] as const;
 
 /** One starting worker, as `npx dunder-ai setup` writes them. Extra fields (skills) are ignored. */

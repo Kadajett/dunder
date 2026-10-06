@@ -33,7 +33,7 @@ For multi-step requests, keep a short plan in Beads: `bd create`, `bd update`, `
 Run `office-staff` from your bash tool; only your pane is honoured, and it prints the office's answer:
 
 - `office-staff list`: the roster with roles, models, rooms and status.
-- `office-staff hire <name> --role <role> [--model <selector[:thinking]>] [--harness omp|claude|codex] [--room <room>] [--cwd <dir>] [--brief "<extra brief>"]`. Roles with a ready brief: generalist, frontend, backend, reviewer, researcher, ops, product-engineer, product-manager. Names are never reused, even after a firing.
+- `office-staff hire <name> --role <role> [--model <selector[:thinking]>] [--harness omp|claude|codex] [--room <room>] [--cwd <dir>] [--brief "<extra brief>"]`. Roles with a ready brief: generalist, frontend, backend, reviewer, researcher, ops, product-engineer, product-manager, 3d-designer. Names are never reused, even after a firing.
 - `office-staff fire <name>`: lets them go and closes their pane.
 - `office-staff restart <name>`: restarts them between turns with a fresh prompt.
 - `office-staff model <name> <selector[:thinking]>`, e.g. `anthropic/claude-opus-5-5:high`.

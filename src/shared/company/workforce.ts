@@ -13,6 +13,7 @@ export const ROLE_PRESETS = [
 	"ops",
 	"product-engineer",
 	"product-manager",
+	"3d-designer",
 ] as const;
 
 /** herdr's rule for live agent names, stricter than names adopted into old rosters. */
