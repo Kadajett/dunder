@@ -15,7 +15,11 @@ import { type MailboxTail, tailMailbox } from "./mailbox";
 
 const log = createLogger("switchboard");
 
-const stateSchema = z.object({ offset: z.number().int().nonnegative() });
+/** The offset only means something for the file it was read from; it is keyed to that path. */
+const stateSchema = z.object({
+	mailboxPath: z.string(),
+	offset: z.number().int().nonnegative(),
+});
 const RECENT_LIMIT = 50;
 /** A just-prompted agent may still read idle in the last snapshot; treat it as busy meanwhile. */
 const PROMPT_GRACE_MS = 8_000;
@@ -25,10 +29,28 @@ const RETRYABLE = new Set(["agent_blocked", "agent_busy", "agent_not_found", "ag
 export interface SwitchboardDeps {
 	readonly api: Pick<HerdrApi, "call">;
 	readonly mailboxPath: string;
-	/** JSON file remembering how much of the mailbox was already handled. */
+	/** JSON file remembering which mailbox was read, and how much of it was already handled. */
 	readonly statePath: string;
 	emit(message: OfficeMessage): void;
 	readonly now?: () => number;
+}
+
+/**
+ * Where to resume reading `mailboxPath`. A saved offset for another file (the
+ * mailbox moved), or one from before offsets were keyed to a path, would land
+ * mid-line in this file and silently skip mail, so those start from the top.
+ */
+async function resumeOffset(statePath: string, mailboxPath: string): Promise<number> {
+	const text = await readFile(statePath, "utf8").catch(() => undefined);
+	if (text === undefined) return 0;
+	let json: unknown;
+	try {
+		json = JSON.parse(text);
+	} catch {
+		return 0;
+	}
+	const saved = stateSchema.safeParse(json).data;
+	return saved?.mailboxPath === mailboxPath ? saved.offset : 0;
 }
 
 /** Delivers agent-to-agent mail from the mailbox file through `herdr agent prompt`. */
@@ -49,16 +71,13 @@ export class Switchboard {
 	}
 
 	async start(): Promise<void> {
-		const saved = await readFile(this.#deps.statePath, "utf8").then(
-			(text) => stateSchema.safeParse(JSON.parse(text)).data?.offset ?? 0,
-			() => 0,
-		);
+		const { mailboxPath, statePath } = this.#deps;
 		this.#tail = await tailMailbox({
-			path: this.#deps.mailboxPath,
-			offset: saved,
+			path: mailboxPath,
+			offset: await resumeOffset(statePath, mailboxPath),
 			onLines: (lines, offset) => {
 				this.#accept(lines);
-				void writeFile(this.#deps.statePath, JSON.stringify({ offset }));
+				void writeFile(statePath, JSON.stringify({ mailboxPath, offset }));
 				void this.pump();
 			},
 			onError: (error) => log.child("mailbox").warn("read failed", error),
