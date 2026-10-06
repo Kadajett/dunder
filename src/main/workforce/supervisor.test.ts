@@ -125,6 +125,8 @@ describe("WorkforceSupervisor", () => {
 			"PATH=/office/bin:/usr/bin",
 			"--no-focus",
 		]);
+		// A fresh pane gets the env from `--env`; nothing is typed into its shell.
+		expect(calls.filter((c) => c[0] === "pane" && c[1] === "run")).toEqual([]);
 		expect(calls.find((c) => c[1] === "start")).toEqual([
 			"agent",
 			"start",
@@ -143,6 +145,23 @@ describe("WorkforceSupervisor", () => {
 		const prompt = await readFile(join(dir, "prompts", "jonas.md"), "utf8");
 		expect(prompt).toContain("# Office protocol");
 		expect(prompt).toContain("You are jonas, the office's generalist, working in the sales room.");
+	});
+
+	it("exports the office env into a reused bare-shell pane before starting the worker there", async () => {
+		const { sup } = await supervisor(() => ["nora"]);
+		sup.handleSnapshot(staffed);
+		sup.handleSnapshot(jonasGone);
+		await sup.settled();
+		clock += MISSING_GRACE_MS;
+		// jonas's old pane w1:p4 is back at a bare shell (no agent in it).
+		sup.handleSnapshot(snapshot({ workspaces, panes: [pane("w1:p4")], agents: jonasGone.agents }));
+		await sup.settled();
+		const spawnCalls = calls.filter((c) => c[0] === "pane" || c[1] === "start");
+		expect(spawnCalls.map((c) => c.slice(0, 4))).toEqual([
+			["pane", "run", "w1:p4", "export PATH='/office/bin:/usr/bin'"],
+			["agent", "start", "jonas", "--kind"],
+		]);
+		expect(calls.find((c) => c[1] === "start")).toContain("w1:p4");
 	});
 
 	it("does not start a second copy when herdr already sees the worker", async () => {
