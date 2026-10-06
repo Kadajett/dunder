@@ -1,0 +1,92 @@
+import type { UpdateStatus } from "@shared/app-update";
+import type { HudPanel, ViewMode } from "./view-store";
+
+/** What the top-bar menu reflects: open panel, view, and the layout editor. */
+export interface MenuState {
+	readonly panel: HudPanel | null;
+	readonly view: ViewMode;
+	readonly editing: boolean;
+	/** The editor has a saved layout to start from; until then it can't open. */
+	readonly editReady: boolean;
+}
+
+/** Panels reached through the menu; the Trust Inbox has its own button in the bar. */
+export type MenuPanel = Exclude<HudPanel, "inbox">;
+
+export type MenuAction =
+	| { readonly kind: "panel"; readonly panel: MenuPanel }
+	| { readonly kind: "view"; readonly view: ViewMode }
+	| { readonly kind: "edit" };
+
+export interface MenuEntry {
+	readonly label: string;
+	readonly role: "menuitem" | "menuitemcheckbox" | "menuitemradio";
+	/** Checkbox and radio entries only. */
+	readonly checked?: boolean;
+	readonly disabled?: boolean;
+	readonly hint?: string;
+	readonly action: MenuAction;
+}
+
+export interface MenuSection {
+	readonly heading: string;
+	readonly entries: readonly MenuEntry[];
+}
+
+const PANELS: readonly { readonly panel: MenuPanel; readonly label: string }[] = [
+	{ panel: "clients", label: "Clients" },
+	{ panel: "brain", label: "Brain" },
+	{ panel: "team", label: "Team" },
+];
+
+const VIEWS: readonly { readonly view: ViewMode; readonly label: string }[] = [
+	{ view: "office", label: "Office" },
+	{ view: "classic", label: "Classic" },
+];
+
+function editEntry(state: MenuState): MenuEntry {
+	const action = { kind: "edit" } as const;
+	if (state.editing) {
+		return { label: "Exit edit", role: "menuitem", hint: "discards unsaved changes", action };
+	}
+	if (!state.editReady) {
+		return { label: "Edit layout", role: "menuitem", disabled: true, hint: "loading…", action };
+	}
+	return { label: "Edit layout", role: "menuitem", action };
+}
+
+/** The menu's entries for the current state, grouped as shown. */
+export function menuSections(state: MenuState): readonly MenuSection[] {
+	return [
+		{
+			heading: "Panels",
+			entries: PANELS.map(({ panel, label }) => ({
+				label,
+				role: "menuitemcheckbox",
+				checked: state.panel === panel,
+				action: { kind: "panel", panel },
+			})),
+		},
+		{
+			heading: "View",
+			entries: VIEWS.map(({ view, label }) => ({
+				label,
+				role: "menuitemradio",
+				checked: state.view === view,
+				action: { kind: "view", view },
+			})),
+		},
+		{ heading: "Layout", entries: [editEntry(state)] },
+	];
+}
+
+/** The dot on the menu icon: an update to apply, building, or failed; none otherwise. */
+export function updateBadge(status: UpdateStatus): "available" | "building" | "failed" | null {
+	switch (status.state) {
+		case "dev":
+		case "idle":
+			return null;
+		default:
+			return status.state;
+	}
+}

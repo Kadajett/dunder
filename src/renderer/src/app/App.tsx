@@ -45,7 +45,7 @@ export function App() {
 			) : (
 				<ClassicView model={model} />
 			)}
-			<TopBar model={model} snapshot={snapshot} />
+			<TopBar snapshot={snapshot} />
 			<HudPanels model={model} snapshot={snapshot} />
 			<ActivityFeed />
 			<ChiefOfStaffDock model={model} />

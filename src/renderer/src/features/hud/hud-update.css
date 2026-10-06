@@ -1,15 +1,18 @@
-/* Stable-mode update pill, its popovers and the agent-request countdown banner. */
-.update {
-	position: relative;
+/* Stable-mode update section of the top-bar menu, and the agent-request countdown banner. */
+.update-section {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--panel-edge);
 }
 
-.update-pill {
+.update-heading {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 10px 13px;
-	font: 700 12.5px var(--font-ui);
-	white-space: nowrap;
+}
+
+.update-heading.update-failed {
+	color: #b0391a;
 }
 
 .update-dot {
@@ -18,17 +21,6 @@
 	border-radius: 50%;
 	background: var(--status-working);
 	box-shadow: 0 0 0 3px #3fae6a33;
-}
-
-.update-pill.update-failed {
-	border-color: #e7b7a6;
-	background: #fdeee8;
-	color: #b0391a;
-}
-
-.update-building {
-	color: var(--ink-soft);
-	cursor: progress;
 }
 
 .update-spinner {
@@ -46,41 +38,15 @@
 	}
 }
 
-.update-backdrop {
-	position: fixed;
-	inset: 0;
-	border: 0;
-	background: transparent;
-	cursor: default;
-}
-
-.update-popover {
-	position: absolute;
-	top: calc(100% + 8px);
-	right: 0;
-	width: 380px;
-	padding: 12px;
-	border-radius: 12px;
-	background: var(--panel);
-	box-shadow:
-		0 1px 0 #e5dccb,
-		0 14px 32px #6b553a33;
-}
-
-.update-heading {
-	margin: 0 0 8px;
-	font: 700 13px var(--font-ui);
-}
-
 .update-note {
-	margin: 8px 0;
+	margin: 6px 8px;
 	font: 400 12px var(--font-ui);
 	color: var(--ink-soft);
 }
 
 .update-commits {
-	max-height: 220px;
-	margin: 0;
+	max-height: 180px;
+	margin: 0 8px;
 	padding: 0;
 	overflow: auto;
 	list-style: none;
@@ -98,8 +64,18 @@
 }
 
 .update-log {
-	max-height: 240px;
-	margin: 0;
+	margin: 6px 8px;
+	font: 600 12px var(--font-ui);
+	color: var(--ink-soft);
+}
+
+.update-log summary {
+	cursor: pointer;
+}
+
+.update-log pre {
+	max-height: 200px;
+	margin: 6px 0 0;
 	padding: 8px;
 	overflow: auto;
 	border-radius: 8px;
@@ -109,14 +85,17 @@
 	white-space: pre-wrap;
 }
 
-.update-actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: 8px;
-	margin-top: 10px;
+.update-section .update-primary {
+	width: calc(100% - 16px);
+	margin: 6px 8px 2px;
+	padding: 8px 12px;
+	border: 1px solid #2f7d55;
+	border-radius: 8px;
+	background: #2f7d55;
+	color: #fff;
+	font: 600 12.5px var(--font-ui);
 }
 
-.update-actions button,
 .update-banner button {
 	padding: 6px 12px;
 	border: 1px solid var(--panel-edge);
@@ -125,7 +104,6 @@
 	font: 600 12px var(--font-ui);
 }
 
-.update-actions .update-primary,
 .update-banner .update-banner-apply {
 	border-color: #2f7d55;
 	background: #2f7d55;

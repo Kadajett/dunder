@@ -28,6 +28,7 @@ Build an **Electron desktop app** that shows a **fully customizable 3D isometric
   - clock with day and part of day;
   - **Classic / Office view toggle**;
   - user avatar.
+  - Dunder deliberately departs from the reference here (Jeremy, 2026-10-06): the bar is only the company switcher, the Trust Inbox icon with its count, the clock and one menu (Clients, Brain, Team, Office/Classic, edit mode, app updates). The stat tiles live in the Team panel and the AI-spend wall placard; there is no avatar.
 - **Bottom left:** the live **Activity Feed** (timestamped `Agent: action` cards, collapsible, with a count).
 - **Bottom right:** a chat dock for the **Chief of Staff** agent (avatar, name, role, online dot).
 - **Floating callouts** on objects (e.g. "4 bundles in your tray").

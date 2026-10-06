@@ -1,22 +1,3 @@
-.edit-toggle {
-	height: 40px;
-	padding: 0 16px;
-	color: #3b3127;
-	font: 700 13px var(--font-ui);
-	white-space: nowrap;
-	cursor: pointer;
-}
-
-.edit-toggle[aria-pressed="true"] {
-	border-color: #e0a526;
-	background: #f7d98f;
-}
-
-.edit-toggle:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-
 .edit-dock {
 	position: absolute;
 	top: 88px;

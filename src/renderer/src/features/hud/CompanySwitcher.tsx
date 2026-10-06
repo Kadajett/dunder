@@ -17,8 +17,9 @@ const log = createLogger("companies");
 type MenuMode = "list" | "create" | "rename";
 
 /**
- * The company chip: logo, name and subtitle of the company on screen. Its
- * menu switches between companies, creates one and renames the current one.
+ * The company chip: logo and name of the company on screen, with the herdr
+ * connection as a dot. Its menu switches between companies, creates one and
+ * renames the current one.
  */
 export function CompanySwitcher({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 	const [mode, setMode] = useState<MenuMode | undefined>();
@@ -31,17 +32,12 @@ export function CompanySwitcher({ snapshot }: { readonly snapshot: SessionSnapsh
 				type="button"
 				className="hud-chip hud-company-chip"
 				aria-expanded={mode !== undefined}
-				title={session}
+				title={company.subtitle ? `${company.subtitle} · ${session}` : session}
 				onClick={() => setMode((value) => (value ? undefined : "list"))}
 			>
 				<span className="hud-logo">{company.name.charAt(0)}</span>
-				<span className="hud-company-text">
-					<strong>{company.name}</strong>
-					<small>
-						<i className={`status-dot status-${snapshot ? "working" : "unknown"}`} />
-						{company.subtitle || session}
-					</small>
-				</span>
+				<strong className="hud-company-name">{company.name}</strong>
+				<i className={`status-dot status-${snapshot ? "working" : "unknown"}`} />
 				<span className="hud-caret" aria-hidden="true">
 					▾
 				</span>

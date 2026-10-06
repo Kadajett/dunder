@@ -9,6 +9,7 @@ import type { LiveAgent } from "../../office/model/live-agents";
 import type { OfficeModel } from "../../office/model/office-model";
 import { ModelPicker } from "../../office/models/ModelPicker";
 import { useModels } from "../../office/models/models-store";
+import { StatTiles } from "../StatTiles";
 import { openAgentScreen } from "./open-agent";
 
 const STATUS_LABEL = {
@@ -84,7 +85,7 @@ function TeamCard(props: {
 	);
 }
 
-/** Team: every agent in the office with status, room, model and role. */
+/** Team: live figures, then every agent in the office with status, room, model and role. */
 export function TeamPanel({ model }: { readonly model: OfficeModel }) {
 	const roster = useRosterStore((state) => state.roster);
 	const hiredByName = useMemo(
@@ -100,6 +101,7 @@ export function TeamPanel({ model }: { readonly model: OfficeModel }) {
 	if (model.agents.length === 0) {
 		return (
 			<>
+				<StatTiles model={model} />
 				{hire}
 				<p className="hud-panel-empty">No agents in the office session yet.</p>
 			</>
@@ -107,6 +109,7 @@ export function TeamPanel({ model }: { readonly model: OfficeModel }) {
 	}
 	return (
 		<>
+			<StatTiles model={model} />
 			{hire}
 			{model.agents.map((agent) => (
 				<TeamCard
