@@ -8,6 +8,7 @@ import {
 	messageToDraft,
 	modelDiffDrafts,
 	pushItem,
+	staffOutcomeToDraft,
 	workoutToDraft,
 } from "./feed-model";
 
@@ -63,6 +64,13 @@ export function connectFeed(): () => void {
 		);
 	if ("calisthenics" in office)
 		offs.push(office.calisthenics.onWorkout((workout) => add(workoutToDraft(workout))));
+	if ("staff" in office)
+		offs.push(
+			office.staff.onOutcome((outcome) => {
+				const draft = staffOutcomeToDraft(outcome);
+				if (draft) add(draft);
+			}),
+		);
 	if ("models" in office) {
 		let models: Readonly<Record<string, AgentModel>> | null = null;
 		void office.models.live().then((live) => {

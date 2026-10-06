@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Roster, rosterSchema } from "@shared/company/roster";
@@ -52,6 +52,7 @@ async function supervisor(live: () => readonly LiveEntry[] = () => [], seed?: Se
 			promptDir: join(dir, "prompts"),
 			protocolPath: join(dir, "protocol.md"),
 			paneEnv: { PATH: "/office/bin:/usr/bin" },
+			briefDir: join(dir, "briefs"),
 		},
 		cli: fakeCli(live),
 		sessionExists: (path) => path === "/s/jonas.jsonl",
@@ -110,6 +111,8 @@ describe("WorkforceSupervisor", () => {
 		expect(await savedNames()).toHaveLength(2);
 		expect(calls.filter((c) => c[1] === "start")).toEqual([]);
 
+		await mkdir(join(dir, "briefs"));
+		await writeFile(join(dir, "briefs", "jonas.md"), "Own the CRM import.\n");
 		clock += MISSING_GRACE_MS;
 		sup.handleSnapshot(snapshot({ workspaces, panes: [pane("w1:p2")], agents: jonasGone.agents }));
 		await sup.settled();
@@ -145,6 +148,8 @@ describe("WorkforceSupervisor", () => {
 		const prompt = await readFile(join(dir, "prompts", "jonas.md"), "utf8");
 		expect(prompt).toContain("# Office protocol");
 		expect(prompt).toContain("You are jonas, the office's generalist, working in the sales room.");
+		// `office-staff hire --brief`: the worker's own brief follows who they are.
+		expect(prompt.trimEnd().endsWith("Own the CRM import.")).toBe(true);
 	});
 
 	it("exports the office env into a reused bare-shell pane before starting the worker there", async () => {

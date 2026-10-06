@@ -19,6 +19,11 @@ export interface WorkforcePaths {
 	readonly appRoot: string;
 }
 
+/** Per-worker extra briefs (`office-staff hire --brief`), read at every spawn. */
+export function agentBriefDir(userData: string): string {
+	return join(userData, "agent-briefs");
+}
+
 /** The workforce supervisor wired to the real office session. */
 export function createWorkforce(
 	paths: WorkforcePaths,
@@ -36,6 +41,7 @@ export function createWorkforce(
 			protocolPath: join(briefs, "office-protocol.md"),
 			paneEnv: { PATH: path },
 			rolePrompts: { ...rolePrompts, [CHIEF_ROLE]: join(briefs, "chief-of-staff.md") },
+			briefDir: agentBriefDir(paths.userData),
 		},
 		cli: (args, timeoutMs) => runHerdr(officeArgs(args), timeoutMs),
 		sessionExists: existsSync,
