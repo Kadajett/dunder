@@ -82,6 +82,24 @@ describe("Switchboard", () => {
 		board.stop();
 	});
 
+	it("names the sender of backlog mail read before the first snapshot, with a reply hint", async () => {
+		const call = vi.fn(async () => ({ type: "agent_prompted" }));
+		const { board, emitted, send, dir } = setup(call);
+		// Written while the app was down: the tail replays it before herdr's first snapshot.
+		send("w1:p1", "ava", "the CRM is ready for review");
+		await board.start();
+		await vi.waitFor(() => statSync(join(dir, "state.json")));
+		expect(emitted).toEqual([]);
+		board.updateSnapshot(office({ nora: "idle", ava: "idle" }));
+		await vi.waitFor(() => expect(emitted.at(-1)?.state).toBe("delivered"));
+		expect(emitted.map((m) => m.from)).toEqual(["nora", "nora"]);
+		expect(call).toHaveBeenCalledWith("agent.prompt", {
+			target: "ava",
+			text: expect.stringContaining('office-say nora "<your reply>"'),
+		});
+		board.stop();
+	});
+
 	it("retries when herdr reports the recipient blocked, and skips malformed lines", async () => {
 		const call = vi
 			.fn<(method: string, params: unknown) => Promise<unknown>>()
