@@ -1,6 +1,7 @@
 import type { Layout } from "@shared/layout/schema";
 import type { LiveAgent } from "../model/live-agents";
 import { ZoneCard } from "./Labels";
+import { useHoveredZone, ZoneCaption } from "./ZoneCaption";
 
 interface ZoneLine {
 	readonly subtitle?: string | undefined;
@@ -26,9 +27,13 @@ export function ZoneCards(props: {
 	readonly agents: readonly LiveAgent[];
 }) {
 	const { layout, agents } = props;
+	const hovered = useHoveredZone(layout.zones);
 	return (
 		<>
 			{layout.zones.map((zone) => {
+				if (zone.labelMode === "hover") {
+					return <ZoneCaption key={zone.id} zone={zone} visible={hovered === zone.id} />;
+				}
 				const at = zone.labelAt ?? zone.rug?.center;
 				if (!at) return null;
 				return (

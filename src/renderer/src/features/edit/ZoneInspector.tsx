@@ -5,7 +5,7 @@ import { bindWorkspace } from "./edit-actions";
 import { useEdit } from "./edit-store";
 import { applyField, NumberField, TextField } from "./fields";
 
-/** Zone: its card text, the herdr workspace its desks seat agents from, and its rug. */
+/** Zone: its label text and mode, the herdr workspace its desks seat agents from, and its rug. */
 export function ZoneInspector({ zone }: { readonly zone: Zone }) {
 	const [binding, setBinding] = useState(false);
 	const patch = (field: string, change: ZonePatch) =>
@@ -31,6 +31,20 @@ export function ZoneInspector({ zone }: { readonly zone: Zone }) {
 				placeholder={zone.workspaceLabel ? "(shows live head count)" : ""}
 				onChange={(subtitle) => patch("subtitle", { subtitle })}
 			/>
+			<label className="edit-field">
+				<span>Label</span>
+				<select
+					value={zone.labelMode ?? "always"}
+					onChange={(event) =>
+						patch("label-mode", {
+							labelMode: event.target.value === "hover" ? "hover" : "always",
+						})
+					}
+				>
+					<option value="always">Card, always shown</option>
+					<option value="hover">Small caption on hover</option>
+				</select>
+			</label>
 			<TextField
 				label="herdr workspace"
 				value={label}
