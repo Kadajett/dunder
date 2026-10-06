@@ -43,6 +43,16 @@
 	white-space: nowrap;
 }
 
+/*
+ * Chief chat open: centre the bar in the free area left of it. 404px and 884px
+ * mirror CHIEF_DOCK_RESERVE and its minimum free width in focus-layout.ts.
+ */
+@media (min-width: 884px) {
+	.focus-layer[data-dock="open"] .focus-bar {
+		left: calc((100% - 404px) / 2);
+	}
+}
+
 .focus-back {
 	border: 0;
 	border-radius: 8px;

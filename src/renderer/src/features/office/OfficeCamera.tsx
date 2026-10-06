@@ -4,16 +4,19 @@ import type { Room } from "@shared/layout/schema";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { type OrthographicCamera, Vector3 } from "three";
 import type { MapControls as MapControlsImpl } from "three-stdlib";
+import { useChief } from "../chief/chief-store";
 import { fitOrthographic, VIEW_DIRECTION } from "./camera-fit";
 import {
 	applyPose,
 	type CameraPose,
 	capturePose,
 	easeInOutCubic,
+	focusLookAt,
 	focusPose,
 	lerpPose,
 	projectScreen,
 } from "./focus/camera-pose";
+import { focusArea } from "./focus/focus-layout";
 import { useFocus } from "./focus/focus-store";
 
 const CAMERA_DISTANCE = 60;
@@ -57,6 +60,8 @@ export function OfficeCamera({ room }: { readonly room: Room }) {
 	const points = useMemo(() => roomPoints(room), [room]);
 	const target = useFocus((state) => state.target);
 	const phase = useFocus((state) => state.phase);
+	// The open Chief of Staff chat takes the right edge; focused screens frame beside it.
+	const dockOpen = useChief((state) => state.expanded);
 	const tween = useRef<Tween | null>(null);
 	const saved = useRef<CameraPose | null>(null);
 	const savedTarget = useRef<Vector3 | null>(null);
@@ -80,21 +85,26 @@ export function OfficeCamera({ room }: { readonly room: Room }) {
 		const focus = useFocus.getState();
 		const orbit = controls.current;
 		if (phase === "entering" && target) {
-			saved.current = capturePose(camera);
-			savedTarget.current = orbit?.target.clone() ?? null;
-			const { x, y, z } = target.screen.center;
+			// Re-run mid-tween (dock toggled): retarget, but keep the overview pose saved first.
+			if (!tween.current) {
+				saved.current = capturePose(camera);
+				savedTarget.current = orbit?.target.clone() ?? null;
+			}
+			const to = focusPose(target.screen, size, focusArea(size, dockOpen));
 			tween.current = {
 				from: capturePose(camera),
-				to: focusPose(target.screen, size),
+				to,
 				started: performance.now(),
 				done: () => {
-					orbit?.target.set(x, y, z);
+					orbit?.target.copy(focusLookAt(to));
 					focus.settled(projectScreen(target.screen, camera, size));
 				},
 			};
 		} else if (phase === "focused" && target && !tween.current) {
-			// Window resized while focused: re-frame and move the terminal with it.
-			applyPose(camera, focusPose(target.screen, size));
+			// Window resized or dock toggled while focused: re-frame and move the terminal with it.
+			const pose = focusPose(target.screen, size, focusArea(size, dockOpen));
+			applyPose(camera, pose);
+			orbit?.target.copy(focusLookAt(pose));
 			focus.settled(projectScreen(target.screen, camera, size));
 		} else if (phase === "leaving" && saved.current) {
 			const back = saved.current;
@@ -109,7 +119,7 @@ export function OfficeCamera({ room }: { readonly room: Room }) {
 				},
 			};
 		}
-	}, [camera, phase, target, size]);
+	}, [camera, phase, target, size, dockOpen]);
 
 	useFrame(() => {
 		const active = tween.current;

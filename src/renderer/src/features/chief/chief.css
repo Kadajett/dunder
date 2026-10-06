@@ -13,6 +13,14 @@
 	--chief-dot: var(--status-idle);
 }
 
+/*
+ * A focused screen (.focus-layer, z 1000) is framed beside the dock, so the dock
+ * stays above its click-to-leave backdrop and remains usable.
+ */
+.office-app:has(.focus-layer) .chief {
+	z-index: 1010;
+}
+
 .chief[data-presence="idle"],
 .chief[data-presence="done"] {
 	--chief-dot: var(--status-working);

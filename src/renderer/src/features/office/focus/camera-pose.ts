@@ -29,20 +29,34 @@ export function capturePose(camera: OrthographicCamera): CameraPose {
 	};
 }
 
-/** Head-on pose that makes the screen fill `fill` of the viewport. */
+/** Share of the framing area the focused screen fills along its tighter axis. */
+const FOCUS_FILL = 0.7;
+
+type Viewport = { readonly width: number; readonly height: number };
+
+/**
+ * Head-on pose that makes the screen fill 70% of `area` (default: the whole
+ * viewport) and centres it there. Off-centre areas slide the camera sideways
+ * without turning it, so the screen stays head-on.
+ */
 export function focusPose(
 	screen: ScreenPlacement,
-	viewport: { readonly width: number; readonly height: number },
-	fill = 0.7,
+	viewport: Viewport,
+	area: ScreenRect = { left: 0, top: 0, ...viewport },
 ): CameraPose {
 	const center = new Vector3(screen.center.x, screen.center.y, screen.center.z);
 	const normal = new Vector3(screen.normal.x, 0, screen.normal.z);
-	const position = center.clone().addScaledVector(normal, FOCUS_DISTANCE);
-	const rotation = new Matrix4().lookAt(position, center, new Vector3(0, 1, 0));
+	const headOn = center.clone().addScaledVector(normal, FOCUS_DISTANCE);
+	const rotation = new Matrix4().lookAt(headOn, center, new Vector3(0, 1, 0));
 	const zoom = Math.min(
-		(viewport.width * fill) / screen.width,
-		(viewport.height * fill) / screen.height,
+		(area.width * FOCUS_FILL) / screen.width,
+		(area.height * FOCUS_FILL) / screen.height,
 	);
+	// Pixels the screen centre must move (right, down) to land on the area's centre.
+	const dx = area.left + area.width / 2 - viewport.width / 2;
+	const dy = area.top + area.height / 2 - viewport.height / 2;
+	const right = new Vector3(normal.z, 0, -normal.x);
+	const position = headOn.addScaledVector(right, -dx / zoom).add(new Vector3(0, dy / zoom, 0));
 	return {
 		position,
 		quaternion: new Quaternion().setFromRotationMatrix(rotation),
@@ -50,6 +64,12 @@ export function focusPose(
 		near: FOCUS_DISTANCE - CLIP_IN_FRONT,
 		far: FOCUS_DISTANCE + 40,
 	};
+}
+
+/** The point a focus pose looks at, on the screen's plane; orbit controls must aim there. */
+export function focusLookAt(pose: CameraPose): Vector3 {
+	const forward = new Vector3(0, 0, -1).applyQuaternion(pose.quaternion);
+	return pose.position.clone().addScaledVector(forward, FOCUS_DISTANCE);
 }
 
 export function easeInOutCubic(t: number): number {
