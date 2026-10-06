@@ -1,4 +1,6 @@
+import type { Roster } from "@shared/company/roster";
 import { type BridgeStatus, IPC } from "@shared/ipc";
+import type { WeatherFeed } from "@shared/tv";
 import {
 	type IpcMainEvent,
 	type IpcMainInvokeEvent,
@@ -7,7 +9,9 @@ import {
 	type WebContents,
 } from "electron";
 import { z } from "zod";
+import type { Calisthenics } from "./calisthenics/service";
 import type { OfficeBridge } from "./herdr/office-bridge";
+import type { SwitchboardService } from "./switchboard/service";
 import { createCoalescingSink, type WindowSink } from "./terminal/screen-sink";
 import type { ScreensService } from "./terminal/screens-service";
 
@@ -61,6 +65,10 @@ export interface IpcDeps {
 	readonly bridge: () => OfficeBridge | undefined;
 	readonly status: () => BridgeStatus;
 	readonly screens: ScreensService;
+	readonly weather: () => WeatherFeed;
+	readonly calisthenics: Calisthenics;
+	readonly switchboard: Pick<SwitchboardService, "recent">;
+	readonly roster: () => Roster | undefined;
 }
 
 /** Register every renderer-facing handler. Renderer payloads are untrusted. */
@@ -69,6 +77,13 @@ export function registerIpc(deps: IpcDeps): void {
 	const tracked = new WeakSet<WebContents>();
 	ipcMain.handle(IPC.getSnapshot, () => deps.bridge()?.latest() ?? null);
 	ipcMain.handle(IPC.getStatus, () => deps.status());
+	ipcMain.handle(IPC.getWeather, () => deps.weather());
+	ipcMain.handle(IPC.switchboardRecent, () => deps.switchboard.recent());
+	ipcMain.handle(IPC.getRoster, () => deps.roster() ?? null);
+	ipcMain.handle(IPC.calisthenicsActive, () => deps.calisthenics.active());
+	ipcMain.handle(IPC.calisthenicsStart, () => {
+		deps.calisthenics.startNow();
+	});
 	ipcMain.on(IPC.screensConnect, (event: IpcMainEvent) => {
 		const contents = event.sender;
 		const ownerId = contents.id;

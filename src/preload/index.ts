@@ -49,7 +49,29 @@ const api: OfficeApi = {
 	onSnapshot: (listener) => listen(IPC.snapshot, listener),
 	onEvent: (listener) => listen(IPC.event, listener),
 	onStatus: (listener) => listen(IPC.status, listener),
+	getWeather: () => ipcRenderer.invoke(IPC.getWeather),
+	onWeather: (listener) => listen(IPC.weather, listener),
 	screens: createScreensApi(),
+	calisthenics: {
+		onWorkout: (listener) => listen(IPC.calisthenicsWorkout, listener),
+		active: () => ipcRenderer.invoke(IPC.calisthenicsActive),
+		startNow: () => ipcRenderer.invoke(IPC.calisthenicsStart),
+	},
+	switchboard: {
+		recent: () => ipcRenderer.invoke(IPC.switchboardRecent),
+		onMessage: (listener) => listen(IPC.switchboardMessage, listener),
+	},
+	roster: {
+		get: () => ipcRenderer.invoke(IPC.getRoster),
+		onChange: (listener) => listen(IPC.roster, listener),
+	},
+	models: {
+		catalog: () => ipcRenderer.invoke(IPC.modelsCatalog),
+		live: () => ipcRenderer.invoke(IPC.modelsLive),
+		onLive: (listener) => listen(IPC.modelsLiveChanged, listener),
+		setModel: (agentName, selector, thinking) =>
+			ipcRenderer.invoke(IPC.modelsSet, { agentName, selector, thinking }),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

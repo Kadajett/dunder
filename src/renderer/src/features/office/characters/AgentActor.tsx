@@ -1,10 +1,19 @@
 import { useFrame } from "@react-three/fiber";
 import { avatarStyleFor } from "@shared/avatar/style";
+import { WORKOUT_SECONDS, type Workout } from "@shared/calisthenics";
 import type { AgentStatus } from "@shared/herdr/schema";
 import type { Vec2 } from "@shared/layout/schema";
-import { useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import type { Group } from "three";
-import { type Brain, type BrainWorld, initialBrain, stepBrain } from "../behaviour/brain";
+import { useAgentWorkout } from "../../calisthenics/workout-store";
+import {
+	type Brain,
+	type BrainWorld,
+	initialBrain,
+	stepBrain,
+	type WorkoutWindow,
+} from "../behaviour/brain";
+import { useConversations, visitFor } from "../conversations/conversation-store";
 import { NameTag } from "../labels/Labels";
 import type { LiveAgent } from "../model/live-agents";
 import { type Placement, STATION_SCALE } from "../scene/station";
@@ -26,6 +35,7 @@ const POSE: Record<Brain["mode"], MiiPose> = {
 	seated: "seated",
 	walking: "walking",
 	hanging: "standing",
+	exercising: "exercising",
 };
 
 interface Walk {
@@ -93,14 +103,23 @@ function bodyTarget(brain: Brain, seat: Placement, walk: Walk, distance: number)
 	return { position: rest.position, heading: rest.rotationY, walk, arrived: false };
 }
 
+/** The workout on the frame clock (seconds); all participants share its wall-clock start. */
+function workoutWindow(workout: Workout | undefined, now: number): WorkoutWindow | undefined {
+	if (!workout) return undefined;
+	const start = now - (Date.now() - workout.startedAt) / 1_000;
+	return { start, end: start + WORKOUT_SECONDS };
+}
+
 export interface AgentActorProps {
 	readonly agent: LiveAgent;
 	readonly world: BrainWorld;
 	readonly phase: number;
+	/** Extra content that travels with the body (e.g. a speech bubble), in body-local space. */
+	readonly overlay?: ReactNode;
 }
 
-/** A live agent's body: sits and works at its desk, wanders when idle. */
-export function AgentActor({ agent, world, phase }: AgentActorProps) {
+/** A live agent's body: sits and works at its desk, wanders when idle, joins workouts. */
+export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 	const style = useMemo(() => avatarStyleFor(agent.name), [agent.name]);
 	const brain = useRef<Brain>(initialBrain(0, world.random));
 	const [mode, setMode] = useState<Brain["mode"]>(brain.current.mode);
@@ -109,6 +128,9 @@ export function AgentActor({ agent, world, phase }: AgentActorProps) {
 	const thinkAt = useRef(0);
 	const status = useRef(agent.status);
 	status.current = agent.status;
+	const workout = useAgentWorkout(agent.name);
+	const workoutRef = useRef(workout);
+	workoutRef.current = workout;
 
 	const change = (next: Brain): void => {
 		if (next === brain.current) return;
@@ -137,9 +159,23 @@ export function AgentActor({ agent, world, phase }: AgentActorProps) {
 		if (now < thinkAt.current) return;
 		thinkAt.current = now + THINK_EVERY;
 		const position = { x: group.position.x, z: group.position.z };
-		change(
-			stepBrain(brain.current, { type: "tick", status: status.current, now, position }, world),
+		const signal = workoutWindow(workoutRef.current, now);
+		const clock = { nowMs: Date.now(), brainNow: now };
+		const visit = visitFor(
+			useConversations.getState().heard,
+			agent.name,
+			clock,
+			world.colleagueSpot,
 		);
+		const tick = {
+			type: "tick",
+			status: status.current,
+			now,
+			position,
+			workout: signal,
+			visit,
+		} as const;
+		change(stepBrain(brain.current, tick, world));
 	});
 
 	const activity = mode === "seated" ? SEATED_ACTIVITY[agent.status] : "idle";
@@ -150,12 +186,20 @@ export function AgentActor({ agent, world, phase }: AgentActorProps) {
 			rotation={[0, world.seat.rotationY, 0]}
 			scale={STATION_SCALE}
 		>
-			<MiiCharacter style={style} pose={POSE[mode]} activity={activity} phase={phase} />
+			<MiiCharacter
+				style={style}
+				pose={POSE[mode]}
+				activity={activity}
+				phase={phase}
+				workoutStartedAt={workout?.startedAt ?? 0}
+			/>
 			<NameTag
 				position={[0, mode === "seated" ? 1.62 : 1.85, 0]}
 				name={agent.name}
 				status={agent.status}
+				paneId={agent.paneId}
 			/>
+			{overlay}
 		</group>
 	);
 }

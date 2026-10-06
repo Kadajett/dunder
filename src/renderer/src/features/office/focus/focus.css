@@ -1,0 +1,72 @@
+/* Focus mode: a real terminal over the clicked monitor. */
+.focus-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 1000;
+}
+
+.focus-backdrop {
+	position: absolute;
+	inset: 0;
+	border: 0;
+	padding: 0;
+	background: radial-gradient(ellipse at center, #1d1b2200 55%, #1d1b2259 100%);
+	cursor: zoom-out;
+}
+
+.focus-layer[data-phase="entering"] .focus-backdrop,
+.focus-layer[data-phase="leaving"] .focus-backdrop {
+	cursor: progress;
+}
+
+.focus-screen {
+	position: absolute;
+	border-radius: 3px;
+	overflow: hidden;
+	box-shadow: 0 0 0 2px #00000059;
+}
+
+.focus-bar {
+	position: absolute;
+	left: 50%;
+	bottom: 22px;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 8px 10px 8px 8px;
+	border-radius: 12px;
+	background: #24221ff0;
+	color: #f6efe2;
+	font: 500 12px var(--font-ui);
+	box-shadow: 0 8px 24px #00000040;
+	white-space: nowrap;
+}
+
+.focus-back {
+	border: 0;
+	border-radius: 8px;
+	padding: 7px 12px;
+	background: #f6efe2;
+	color: var(--ink);
+	font: 700 12px var(--font-ui);
+	cursor: pointer;
+}
+
+.focus-title strong {
+	font-family: var(--font-mono);
+	letter-spacing: 0.06em;
+}
+
+.focus-hint {
+	color: #bfb6a6;
+	font: 400 11px var(--font-mono);
+}
+
+.focus-hint kbd {
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: #3a3631;
+	color: #f6efe2;
+	font: 600 11px var(--font-mono);
+}

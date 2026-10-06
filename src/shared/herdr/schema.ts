@@ -32,6 +32,10 @@ export const tabInfoSchema = z.object({
 });
 export type TabInfo = z.infer<typeof tabInfoSchema>;
 
+/** Where an agent keeps its conversation; omp reports `{kind: "path", value: "<session .jsonl>"}`. */
+export const agentSessionSchema = z.object({ kind: z.string(), value: z.string() });
+export type AgentSession = z.infer<typeof agentSessionSchema>;
+
 export const paneInfoSchema = z.object({
 	pane_id: z.string(),
 	tab_id: z.string(),
@@ -44,12 +48,19 @@ export const paneInfoSchema = z.object({
 	cwd: optionalString,
 	foreground_cwd: optionalString,
 	terminal_title_stripped: optionalString,
+	agent_session: agentSessionSchema.nullish().transform((value) => value ?? undefined),
 });
 export type PaneInfo = z.infer<typeof paneInfoSchema>;
 
 export const agentInfoSchema = paneInfoSchema.extend({
-	/** Agent kind label, e.g. `omp`, `claude`, `codex`. */
-	agent: z.string(),
+	/**
+	 * Agent kind label, e.g. `omp`, `claude`, `codex`. herdr can list an agent
+	 * briefly before its kind is known (e.g. while it restarts in place).
+	 */
+	agent: z
+		.string()
+		.nullish()
+		.transform((value) => value ?? "unknown"),
 	/** Unique live agent name; absent until named. */
 	name: optionalString,
 	interactive_ready: z.boolean().optional(),

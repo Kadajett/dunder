@@ -1,15 +1,18 @@
-import type { HerdrEvent, SessionSnapshot } from "@shared/herdr/schema";
+import type { HerdrEvent } from "@shared/herdr/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HerdrApi, SubscriptionHandlers } from "./api-client";
 import { OfficeBridge } from "./office-bridge";
 
-const snapshot = (status: "idle" | "working"): { snapshot: SessionSnapshot } => ({
+/** A raw `session.snapshot` result, as herdr sends it. */
+const snapshot = (status: "idle" | "working") => ({
+	type: "session_snapshot",
 	snapshot: {
 		version: "0.9.3",
 		protocol: 22,
 		workspaces: [],
 		tabs: [],
 		panes: [],
+		layouts: [],
 		agents: [
 			{
 				pane_id: "w1:p1",
@@ -20,10 +23,6 @@ const snapshot = (status: "idle" | "working"): { snapshot: SessionSnapshot } => 
 				agent_status: status,
 				agent: "omp",
 				name: "nora",
-				label: undefined,
-				cwd: undefined,
-				foreground_cwd: undefined,
-				terminal_title_stripped: undefined,
 			},
 		],
 	},
@@ -73,7 +72,7 @@ describe("OfficeBridge", () => {
 		});
 		// Output updates every 50 ms would starve a 100 ms debounce forever.
 		for (let i = 0; i < 10; i += 1) {
-			herdr.emit({ event: "pane.updated", data: {} });
+			herdr.emit({ event: "pane_updated", data: {} });
 			await vi.advanceTimersByTimeAsync(50);
 		}
 		expect(seen).toContain("working");

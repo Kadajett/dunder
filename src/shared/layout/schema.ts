@@ -26,7 +26,7 @@ export const decorKinds = [
 	"notice-board",
 	"water-cooler",
 	"printer",
-	"revenue-board",
+	"wall-tv",
 ] as const;
 export type DecorKind = (typeof decorKinds)[number];
 

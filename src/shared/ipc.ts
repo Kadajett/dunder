@@ -1,6 +1,11 @@
+import type { CalisthenicsApi } from "./calisthenics";
+import type { RosterApi } from "./company/roster";
 import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
+import type { ModelsApi } from "./models";
 import type { ScreensApi, Unsubscribe } from "./screens";
+import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
+import type { WeatherFeed } from "./tv";
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -18,6 +23,25 @@ export const IPC = {
 	terminalOpen: "terminal:open",
 	terminalCommand: "terminal:command",
 	terminalClose: "terminal:close",
+	/** Wall TV: latest SF forecast (invoke) and pushed updates (main → renderer). */
+	getWeather: "tv:get-weather",
+	weather: "tv:weather",
+	/** main → renderer: a workout started. */
+	calisthenicsWorkout: "calisthenics:workout",
+	calisthenicsActive: "calisthenics:active",
+	/** renderer → main: the wall bell was rung. */
+	calisthenicsStart: "calisthenics:start",
+	/** Agent-to-agent mail: recent history (invoke) and live updates (main → renderer). */
+	switchboardRecent: "switchboard:recent",
+	switchboardMessage: "switchboard:message",
+	/** Workforce roster: current roster (invoke) and every change (main → renderer). */
+	getRoster: "roster:get",
+	roster: "roster:changed",
+	/** Agent models: omp catalog and live models (invoke), live changes (main → renderer), switch (invoke). */
+	modelsCatalog: "models:catalog",
+	modelsLive: "models:live",
+	modelsLiveChanged: "models:live-changed",
+	modelsSet: "models:set",
 } as const;
 
 export type BridgeStatus =
@@ -43,5 +67,14 @@ export interface OfficeApi {
 	onSnapshot(listener: (snapshot: SessionSnapshot) => void): Unsubscribe;
 	onEvent(listener: (event: HerdrEvent) => void): Unsubscribe;
 	onStatus(listener: (status: BridgeStatus) => void): Unsubscribe;
+	getWeather(): Promise<WeatherFeed>;
+	onWeather(listener: (feed: WeatherFeed) => void): Unsubscribe;
 	readonly screens: ScreensApi;
+	readonly calisthenics: CalisthenicsApi;
+	readonly switchboard: {
+		recent(): Promise<readonly OfficeMessage[]>;
+		onMessage(listener: (message: OfficeMessage) => void): Unsubscribe;
+	};
+	readonly roster: RosterApi;
+	readonly models: ModelsApi;
 }

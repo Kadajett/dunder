@@ -34,8 +34,9 @@ export class OfficeBridge {
 		this.#stream = createEventStream({
 			api,
 			onEvent: (event) => {
-				// pane.updated fires on every output change; it only means "re-snapshot soon".
-				if (event.event !== "pane.updated") listener.event(event);
+				// pane_updated fires on every output change; it only means "re-snapshot soon".
+				// (Subscriptions use dotted names; pushed events arrive underscored.)
+				if (event.event !== "pane_updated") listener.event(event);
 				// Throttle, never debounce: a busy agent emits updates faster than any
 				// debounce window, which would starve status changes until it went quiet.
 				if (this.#refreshTimer) return;

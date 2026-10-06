@@ -1,7 +1,8 @@
 import { createRef, type RefObject } from "react";
 import type { Group } from "three";
 
-export type MiiPose = "seated" | "standing" | "walking";
+/** `exercising` follows the group workout routine (see `exercise.ts`) instead of the clock. */
+export type MiiPose = "seated" | "standing" | "walking" | "exercising";
 export type MiiActivity = "typing" | "idle" | "waving";
 
 /* Body dimensions (metres). Hips are the rig root; everything above hangs off them. */

@@ -1,43 +1,7 @@
 import type { AgentStatus } from "@shared/herdr/schema";
 import type { Desk } from "@shared/layout/schema";
+import { Monitor } from "./Monitor";
 import { DEG, SEAT_Z, STATION_SCALE } from "./station";
-
-const SCREEN_COLOR: Record<AgentStatus | "empty", string> = {
-	working: "#3fae8a",
-	idle: "#34495e",
-	done: "#3f6fc0",
-	blocked: "#d0643a",
-	unknown: "#2a2f38",
-	empty: "#1b1d22",
-};
-
-function Monitor({ status }: { readonly status: AgentStatus | "empty" }) {
-	const glow = status === "working" || status === "blocked" ? 0.9 : 0.45;
-	return (
-		<group position={[0, 0.77, -0.16]}>
-			<mesh position={[0, 0.01, -0.02]} castShadow>
-				<boxGeometry args={[0.26, 0.02, 0.18]} />
-				<meshStandardMaterial color="#2b2d33" flatShading />
-			</mesh>
-			<mesh position={[0, 0.14, -0.04]} castShadow>
-				<boxGeometry args={[0.06, 0.26, 0.05]} />
-				<meshStandardMaterial color="#2b2d33" flatShading />
-			</mesh>
-			<mesh position={[0, 0.38, 0]} castShadow>
-				<boxGeometry args={[0.74, 0.46, 0.06]} />
-				<meshStandardMaterial color="#2a2c31" flatShading />
-			</mesh>
-			<mesh position={[0, 0.385, 0.031]}>
-				<planeGeometry args={[0.66, 0.38]} />
-				<meshStandardMaterial
-					color={SCREEN_COLOR[status]}
-					emissive={SCREEN_COLOR[status]}
-					emissiveIntensity={glow}
-				/>
-			</mesh>
-		</group>
-	);
-}
 
 function Chair({ color }: { readonly color: string }) {
 	return (
@@ -98,10 +62,14 @@ function DeskBody() {
 export interface DeskStationProps {
 	readonly desk: Desk;
 	readonly status: AgentStatus | "empty";
+	readonly paneId: string | undefined;
+	/** False while this desk's screen is focused and a real terminal covers it. */
+	readonly screenLive: boolean;
+	readonly onOpenScreen: (() => void) | undefined;
 }
 
-/** One workstation: desk, monitor and chair. Its agent is drawn by `AgentActor`. */
-export function DeskStation({ desk, status }: DeskStationProps) {
+/** One workstation: desk, live monitor and chair. Its agent is drawn by `AgentActor`. */
+export function DeskStation({ desk, status, paneId, screenLive, onOpenScreen }: DeskStationProps) {
 	return (
 		<group
 			position={[desk.position.x, 0, desk.position.z]}
@@ -109,7 +77,7 @@ export function DeskStation({ desk, status }: DeskStationProps) {
 			scale={STATION_SCALE}
 		>
 			<DeskBody />
-			<Monitor status={status} />
+			<Monitor status={status} paneId={paneId} live={screenLive} onOpen={onOpenScreen} />
 			<Chair color={desk.chairColor} />
 		</group>
 	);

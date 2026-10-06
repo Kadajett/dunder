@@ -1,0 +1,60 @@
+/* Speech bubbles: agents talking to each other. */
+.speech-bubble {
+	position: relative;
+	transform: translateY(-50%);
+	max-width: 240px;
+	width: max-content;
+	padding: 7px 11px 8px;
+	border-radius: 12px;
+	background: #fffdf8;
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 8px 18px #6b553a33;
+	color: var(--ink);
+	font: 500 11.5px / 1.35 var(--font-ui);
+	user-select: none;
+}
+
+.speech-bubble::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: -7px;
+	width: 14px;
+	height: 14px;
+	background: #fffdf8;
+	transform: translateX(-50%) rotate(45deg);
+	border-radius: 2px;
+}
+
+.speech-bubble p {
+	position: relative;
+	z-index: 1;
+	margin: 2px 0 0;
+}
+
+.speech-to {
+	position: relative;
+	z-index: 1;
+	font: 700 9.5px var(--font-mono);
+	letter-spacing: 0.08em;
+	color: #8a6644;
+}
+
+.speech-waiting {
+	background: #f4efe6;
+	border: 1px dashed #c9bba3;
+}
+
+.speech-waiting::after {
+	width: 8px;
+	height: 8px;
+	bottom: -12px;
+	border-radius: 50%;
+	background: #f4efe6;
+}
+
+.speech-thought {
+	color: var(--ink-soft);
+	font-style: italic;
+}

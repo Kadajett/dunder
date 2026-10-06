@@ -18,7 +18,7 @@ const DECOR_FOOTPRINT: Record<DecorKind, readonly [number, number]> = {
 	printer: [0.7, 0.6],
 	"wall-bell": [0, 0],
 	"wall-clock": [0, 0],
-	"revenue-board": [0, 0],
+	"wall-tv": [0, 0],
 };
 
 /** Desk body footprint in desk-local space (the chair area stays walkable). */

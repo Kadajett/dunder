@@ -3,6 +3,7 @@ import type { AvatarStyle } from "@shared/avatar/style";
 import { useMemo } from "react";
 import { Glasses, Headwear } from "./accessories";
 import { animateRig } from "./animate";
+import { animateExercise } from "./exercise";
 import { Face } from "./face";
 import { GEO, SKULL_SCALE } from "./geometry";
 import { Hair } from "./hair";
@@ -35,6 +36,8 @@ export interface MiiCharacterProps {
 	activity: MiiActivity;
 	/** Seconds added to the animation clock so neighbours don't move in lockstep. */
 	phase?: number;
+	/** Epoch ms of the workout signal; the `exercising` pose is a function of time since then. */
+	workoutStartedAt?: number;
 }
 
 type Side = 0 | 1;
@@ -116,9 +119,19 @@ function Head({ style }: { style: AvatarStyle }) {
  * A Mii-style office worker: big round head, dot eyes, small rounded body.
  * Feet rest on y = 0 when standing (≈1.45 m tall); faces local +z.
  */
-export function MiiCharacter({ style, pose, activity, phase = 0 }: MiiCharacterProps) {
+export function MiiCharacter({
+	style,
+	pose,
+	activity,
+	phase = 0,
+	workoutStartedAt = 0,
+}: MiiCharacterProps) {
 	const rig = useMemo(createRig, []);
-	useFrame(({ clock }) => animateRig(rig, pose, activity, clock.elapsedTime + phase));
+	useFrame(({ clock }) => {
+		// Exercise ignores `phase`: every participant moves in sync with the shared signal.
+		if (pose === "exercising") animateExercise(rig, (Date.now() - workoutStartedAt) / 1_000);
+		else animateRig(rig, pose, activity, clock.elapsedTime + phase);
+	});
 	const sleeve = sleeveFor(style.outfit);
 	const pants = pantsColorFor(style);
 	return (

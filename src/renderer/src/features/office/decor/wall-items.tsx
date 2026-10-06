@@ -1,6 +1,10 @@
 import { Text } from "@react-three/drei";
-import { useEffect, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useRef, useState } from "react";
+import type { Group } from "three";
+import { ringBell } from "../../calisthenics/workout-store";
 import { FONTS } from "../fonts";
+import { Clickable } from "../interaction/Clickable";
 import { PALETTE } from "./palette";
 import { Ball, Block, Cylinder } from "./parts";
 import type { DecorProps } from "./props";
@@ -10,34 +14,67 @@ import type { DecorProps } from "./props";
 const FACE_FORWARD: [number, number, number] = [Math.PI / 2, 0, 0];
 const TAU = Math.PI * 2;
 
-/** Brass bell hanging from a wooden wall bracket; `label` is painted on the wall beneath. */
+/** Seconds a rung bell keeps swinging. */
+const SWING_SECONDS = 2.5;
+
+/**
+ * Brass bell hanging from a wooden wall bracket; `label` is painted on the wall beneath.
+ * Ringing it (a click) calls everyone to a workout.
+ */
 export function WallBell({ label }: DecorProps) {
 	const brass = { color: PALETTE.brass, metalness: 0.55, roughness: 0.35 } as const;
 	const hangZ = 0.3;
+	const bell = useRef<Group>(null);
+	const clock = useThree((state) => state.clock);
+	const rungAt = useRef(Number.NEGATIVE_INFINITY);
+	useFrame(() => {
+		const group = bell.current;
+		if (!group) return;
+		// Damped swing after a ring, settling by itself.
+		const t = clock.elapsedTime - rungAt.current;
+		group.rotation.z = t < SWING_SECONDS ? 0.45 * Math.exp(-1.8 * t) * Math.sin(16 * t) : 0;
+	});
+	const ring = (): void => {
+		rungAt.current = clock.elapsedTime;
+		ringBell();
+	};
 	return (
-		<group>
+		<Clickable onSelect={ring}>
+			{/* Generous invisible hit area: the bell itself is small from the isometric camera. */}
+			<mesh position={[0, -0.12, 0.2]}>
+				<boxGeometry args={[0.7, 0.8, 0.4]} />
+				<meshBasicMaterial transparent opacity={0} depthWrite={false} />
+			</mesh>
 			<Block size={[0.26, 0.4, 0.04]} position={[0, 0, 0.02]} color={PALETTE.woodDark} />
 			<Block size={[0.05, 0.05, 0.3]} position={[0, 0.14, 0.19]} color={PALETTE.woodDark} />
 			<Block size={[0.04, 0.12, 0.04]} position={[0, 0.06, 0.06]} color={PALETTE.woodDark} />
-			<group position={[0, 0, hangZ]}>
-				<Cylinder radiusTop={0.012} height={0.06} segments={6} position={[0, 0.09, 0]} {...brass} />
-				<Ball radius={0.065} segments={10} position={[0, 0.045, 0]} {...brass} />
-				<Cylinder
-					radiusTop={0.065}
-					radiusBottom={0.14}
-					height={0.18}
-					segments={12}
-					position={[0, -0.04, 0]}
-					{...brass}
-				/>
-				<Cylinder
-					radiusTop={0.15}
-					height={0.025}
-					segments={12}
-					position={[0, -0.13, 0]}
-					{...brass}
-				/>
-				<Ball radius={0.032} segments={8} position={[0, -0.165, 0]} {...brass} />
+			<group ref={bell} position={[0, 0.12, hangZ]}>
+				<group position={[0, -0.12, 0]}>
+					<Cylinder
+						radiusTop={0.012}
+						height={0.06}
+						segments={6}
+						position={[0, 0.09, 0]}
+						{...brass}
+					/>
+					<Ball radius={0.065} segments={10} position={[0, 0.045, 0]} {...brass} />
+					<Cylinder
+						radiusTop={0.065}
+						radiusBottom={0.14}
+						height={0.18}
+						segments={12}
+						position={[0, -0.04, 0]}
+						{...brass}
+					/>
+					<Cylinder
+						radiusTop={0.15}
+						height={0.025}
+						segments={12}
+						position={[0, -0.13, 0]}
+						{...brass}
+					/>
+					<Ball radius={0.032} segments={8} position={[0, -0.165, 0]} {...brass} />
+				</group>
 			</group>
 			{label ? (
 				<Text
@@ -52,7 +89,7 @@ export function WallBell({ label }: DecorProps) {
 					{label.toUpperCase()}
 				</Text>
 			) : null}
-		</group>
+		</Clickable>
 	);
 }
 
@@ -129,61 +166,6 @@ export function WallClock() {
 				color={PALETTE.brass}
 				noShadow
 			/>
-		</group>
-	);
-}
-
-const REVENUE_DEFAULT = "REVENUE · JULY";
-const TEXT_Z = 0.064;
-
-/**
- * Dark wall panel ≈ 2.2 × 1.2. `label` line 1 is the headline; optional extra lines
- * (newline-separated) set the big figure and the mono detail lines under it.
- */
-export function RevenueBoard({ label }: DecorProps) {
-	const [headline = REVENUE_DEFAULT, figure = "€0", ...details] = (label ?? REVENUE_DEFAULT).split(
-		"\n",
-	);
-	const lines = details.length > 0 ? details : ["pipeline · closing this month"];
-	return (
-		<group>
-			<Block size={[2.2, 1.2, 0.05]} position={[0, 0, 0.025]} color={PALETTE.charcoal} />
-			<Block size={[2.06, 1.06, 0.01]} position={[0, 0, 0.055]} color="#353a42" />
-			<Text
-				font={FONTS.monoBold}
-				fontSize={0.1}
-				letterSpacing={0.25}
-				color={PALETTE.cream}
-				anchorX="center"
-				anchorY="middle"
-				position={[0, 0.36, TEXT_Z]}
-			>
-				{headline}
-			</Text>
-			<Text
-				font={FONTS.display}
-				fontSize={0.36}
-				color={PALETTE.ledGreen}
-				anchorX="center"
-				anchorY="middle"
-				position={[0, 0.02, TEXT_Z]}
-			>
-				{figure}
-			</Text>
-			{lines.slice(0, 3).map((line, row) => (
-				<Text
-					key={line}
-					font={FONTS.mono}
-					fontSize={0.075}
-					letterSpacing={0.05}
-					color="#9aa3ad"
-					anchorX="center"
-					anchorY="middle"
-					position={[0, -0.3 - row * 0.12, TEXT_Z]}
-				>
-					{line}
-				</Text>
-			))}
 		</group>
 	);
 }

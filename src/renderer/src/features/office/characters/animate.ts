@@ -41,12 +41,12 @@ function animateLegs(rig: Rig, pose: MiiPose, t: number): void {
 		const foot = rig.feet[i]?.current;
 		if (!thigh || !knee || !shin || !foot) continue;
 		legPose(pose, i, t);
-		thigh.rotation.x = leg.hip;
-		knee.rotation.x = leg.knee;
+		thigh.rotation.set(leg.hip, 0, 0);
+		knee.rotation.set(leg.knee, 0, 0);
 		shin.scale.y = shinScale;
 		foot.position.y = -SHIN * shinScale;
 		// Keep soles parallel to the floor.
-		foot.rotation.x = -(leg.hip + leg.knee);
+		foot.rotation.set(-(leg.hip + leg.knee), 0, 0);
 	}
 }
 
@@ -87,7 +87,10 @@ function armPose(pose: MiiPose, activity: MiiActivity, i: number, t: number): vo
 	}
 }
 
-/** Poses every joint for time `t` (seconds, already offset by the character's phase). */
+/**
+ * Poses every joint for time `t` (seconds, already offset by the character's
+ * phase). The `exercising` pose is driven by `animateExercise` instead.
+ */
 export function animateRig(rig: Rig, pose: MiiPose, activity: MiiActivity, t: number): void {
 	animateLegs(rig, pose, t);
 	animateUpper(rig, pose, activity, t);
@@ -95,7 +98,6 @@ export function animateRig(rig: Rig, pose: MiiPose, activity: MiiActivity, t: nu
 		const group = rig.arms[i]?.current;
 		if (!group) continue;
 		armPose(pose, activity, i, t);
-		group.rotation.x = arm.x;
-		group.rotation.z = arm.z;
+		group.rotation.set(arm.x, 0, arm.z);
 	}
 }

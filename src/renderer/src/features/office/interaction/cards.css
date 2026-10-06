@@ -1,0 +1,162 @@
+/* World cards: what you clicked (an agent, the server rack, the mailroom…). */
+.world-card {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	z-index: 500;
+	width: 330px;
+	padding: 14px 16px 16px;
+	border-radius: 14px;
+	background: #fffdf8f5;
+	box-shadow:
+		0 1px 0 #e5dccb,
+		0 14px 32px #6b553a33;
+	font: 400 12px var(--font-ui);
+	color: var(--ink);
+}
+
+.world-card header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.world-card header strong {
+	flex: 1;
+	font: 700 13px var(--font-mono);
+	letter-spacing: 0.08em;
+}
+
+.card-close {
+	border: 0;
+	background: transparent;
+	color: var(--ink-soft);
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.card-status {
+	margin: 6px 0 10px;
+	color: var(--ink-soft);
+}
+
+.card-row {
+	display: flex;
+	justify-content: space-between;
+	padding: 4px 0;
+	border-top: 1px solid #efe6d6;
+}
+
+.card-row span {
+	color: var(--ink-soft);
+}
+
+.card-row code {
+	font: 500 11px var(--font-mono);
+}
+
+.card-action {
+	width: 100%;
+	margin-top: 12px;
+	padding: 9px;
+	border: 0;
+	border-radius: 9px;
+	background: var(--ink);
+	color: #f6efe2;
+	font: 700 12px var(--font-ui);
+	cursor: pointer;
+}
+
+.card-empty {
+	color: var(--ink-soft);
+	font-style: italic;
+}
+
+.mail-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	max-height: 360px;
+	overflow-y: auto;
+}
+
+.mail-list li {
+	padding: 7px 0;
+	border-top: 1px solid #efe6d6;
+}
+
+.mail-list li strong {
+	font: 700 11px var(--font-mono);
+}
+
+.mail-list li p {
+	margin: 3px 0 0;
+	color: var(--ink);
+}
+
+.mail-state {
+	float: right;
+	font: 500 10px var(--font-mono);
+	color: var(--ink-soft);
+}
+
+.mail-list li[data-state="failed"] .mail-state {
+	color: var(--status-blocked);
+}
+
+.card-action-secondary {
+	background: #efe6d6;
+	color: var(--ink);
+}
+
+.card-action:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+/* Model picker inside the agent card. */
+.model-picker {
+	margin-top: 8px;
+}
+
+.model-picker input[type="search"],
+.model-picker select {
+	width: 100%;
+	margin-top: 6px;
+	padding: 6px 8px;
+	border: 1px solid #e2d8c6;
+	border-radius: 8px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: 400 11px var(--font-mono);
+}
+
+.model-picker-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.model-picker-row label {
+	flex: none;
+	color: var(--ink-soft);
+	font-size: 11px;
+}
+
+.model-result {
+	margin: 8px 0 0;
+	font-size: 11px;
+}
+
+.model-rejected {
+	color: var(--status-blocked);
+}
+
+.model-queued {
+	color: #8a6644;
+}
+
+.model-applied {
+	color: var(--status-working);
+}
