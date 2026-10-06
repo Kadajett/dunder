@@ -4,7 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { formatClock } from "../feed/feed-model";
 import { ChiefAvatar } from "./ChiefAvatar";
 import { isWorking, presenceLabel } from "./chat-model";
-import { sendToChief, useChiefChat } from "./chat-store";
+import { rehydrateChief, sendToChief, useChiefChat } from "./chat-store";
 import "./chief-chat.css";
 
 function Bubble({ message }: { readonly message: ChiefMessage }) {
@@ -86,6 +86,8 @@ export function ChiefChat({ name, role, presence, style, onClose }: ChiefChatPro
 	const messages = useChiefChat((state) => state.messages);
 	const notice = useChiefChat((state) => state.notice);
 	const list = useRef<HTMLOListElement>(null);
+	// Opening the chat re-reads the history, so it never shows less than is on disk.
+	useEffect(rehydrateChief, []);
 	const working = isWorking(presence);
 	const newest = messages.at(-1);
 	// Keep the newest message (or the working indicator) in view as they arrive.
