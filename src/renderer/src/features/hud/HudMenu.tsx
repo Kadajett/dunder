@@ -2,9 +2,10 @@ import type { UpdateStatus } from "@shared/app-update";
 import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useEdit } from "../edit/edit-store";
 import { toggleEditMode } from "../edit/edit-toggle";
+import { useWhiteboard } from "../whiteboard/whiteboard-store";
 import { UpdateMenuSection } from "./HudUpdate";
 import { type MenuAction, type MenuEntry, menuSections, updateBadge } from "./hud-menu";
-import { MenuGlyph, PanelIcon } from "./icons";
+import { BoardGlyph, MenuGlyph, PanelIcon } from "./icons";
 import { useHud } from "./view-store";
 
 const ITEMS = '[role^="menuitem"]:not(:disabled)';
@@ -20,6 +21,9 @@ function runAction(action: MenuAction): void {
 			return;
 		case "edit":
 			toggleEditMode();
+			return;
+		case "whiteboard":
+			useWhiteboard.getState().setOpen(true);
 			return;
 	}
 }
@@ -59,6 +63,7 @@ function MenuItem({
 			onClick={() => onRun(action)}
 		>
 			{action.kind === "panel" ? <PanelIcon panel={action.panel} /> : null}
+			{action.kind === "whiteboard" ? <BoardGlyph /> : null}
 			<span>{entry.label}</span>
 			{entry.hint ? <small>{entry.hint}</small> : null}
 			{entry.checked ? <span className="hud-check">✓</span> : null}

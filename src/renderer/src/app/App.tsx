@@ -18,6 +18,7 @@ import { useOfficeModel } from "../features/office/model/office-model";
 import { connectModels } from "../features/office/models/models-store";
 import { OfficeView } from "../features/office/OfficeView";
 import { TvFullscreen } from "../features/office/tv/TvFullscreen";
+import { WhiteboardOverlay } from "../features/whiteboard/WhiteboardOverlay";
 
 /**
  * The app is the office: the 3D room (or its Classic grid) with the HUD on
@@ -50,6 +51,7 @@ export function App() {
 			<ActivityFeed />
 			<ChiefOfStaffDock model={model} />
 			<HireDialog snapshot={snapshot} />
+			<WhiteboardOverlay />
 			{status.state === "connected" ? null : (
 				<div className="bridge-banner" data-state={status.state}>
 					herdr session “office”: {status.state === "error" ? status.message : status.state}

@@ -2,8 +2,10 @@ import { deleteItem, rotateItem } from "@shared/layout/ops";
 import { useEffect } from "react";
 import { type EditState, useEdit } from "./edit-store";
 
+/** Typing in a field, or in a layer that handles its own keys (`data-own-keys`, e.g. the whiteboard). */
 function typingIn(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;
+	if (target.closest("[data-own-keys]")) return true;
 	return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
