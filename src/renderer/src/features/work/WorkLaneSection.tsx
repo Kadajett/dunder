@@ -76,6 +76,7 @@ export function WorkLaneSection({
 }: WorkLaneSectionProps) {
 	const { lane, cards } = group;
 	const collapsed = useWork((state) => state.collapsed[lane]);
+	const filter = useWork((state) => state.agentFilter);
 	const { dropping, handlers } = useLaneDrop(lane, dragging, onDrag);
 	return (
 		<section
@@ -97,6 +98,9 @@ export function WorkLaneSection({
 						/>
 					))}
 				</ol>
+			) : null}
+			{!collapsed && cards.length === 0 && filter ? (
+				<p className="work-lane__empty">nothing for {filter}</p>
 			) : null}
 		</section>
 	);

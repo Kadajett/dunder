@@ -1,5 +1,4 @@
 import "../../office/interaction/cards.css";
-import "./team.css";
 import { avatarStyleFor } from "@shared/avatar/style";
 import type { RosterAgent } from "@shared/company/roster";
 import { type AgentModel, shortModelName } from "@shared/models";
@@ -77,14 +76,7 @@ function TeamCard(props: {
 				<span className="hud-mii" style={{ background: color }}>
 					<i className={`status-dot status-${agent.status}`} />
 				</span>
-				<button
-					type="button"
-					className="hud-team-name"
-					title={`Show ${agent.name}'s beads on the work board`}
-					onClick={() => useWork.getState().showAgent(agent.name)}
-				>
-					{agent.name}
-				</button>
+				<strong>{agent.name}</strong>
 				<span className="hud-card-meta">{STATUS_LABEL[agent.status]}</span>
 			</div>
 			{hired?.role ? <p className="hud-card-line">{hired.role}</p> : null}
@@ -111,6 +103,14 @@ function TeamCard(props: {
 					onClick={() => seat && openAgentScreen(seat)}
 				>
 					Open screen
+				</button>
+				<button
+					type="button"
+					className="secondary"
+					title={`Open the work board on ${agent.name}'s beads only`}
+					onClick={() => useWork.getState().showAgent(agent.name)}
+				>
+					Beads
 				</button>
 			</div>
 			<InterruptControl name={agent.name} status={agent.status} />
