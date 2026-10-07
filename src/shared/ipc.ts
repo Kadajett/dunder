@@ -134,6 +134,9 @@ export const IPC = {
 	voiceAvailable: "voice:available",
 	voiceTranscribe: "voice:transcribe",
 	voiceSpeak: "voice:speak",
+	/** The live call kept across an update relaunch: save it, take it back once (invoke). */
+	voiceSaveCall: "voice:save-call",
+	voiceResumeCall: "voice:resume-call",
 	/** The card after an update: get, rate a bead, dismiss (invoke). */
 	whatsNewGet: "whats-new:get",
 	whatsNewRate: "whats-new:rate",

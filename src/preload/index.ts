@@ -182,6 +182,8 @@ const api: OfficeApi = {
 		available: () => ipcRenderer.invoke(IPC.voiceAvailable),
 		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),
 		speak: (text) => ipcRenderer.invoke(IPC.voiceSpeak, text),
+		saveCall: (call) => ipcRenderer.invoke(IPC.voiceSaveCall, call),
+		resumeCall: () => ipcRenderer.invoke(IPC.voiceResumeCall),
 	},
 	whatsNew: {
 		get: () => ipcRenderer.invoke(IPC.whatsNewGet),

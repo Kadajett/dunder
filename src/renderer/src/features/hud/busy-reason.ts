@@ -1,5 +1,4 @@
 export interface BusyInputs {
-	readonly onCall: boolean;
 	/** Dunder's window has focus. */
 	readonly focused: boolean;
 	/** What the camera is focused on: a terminal, the pool table, or nothing. */
@@ -10,12 +9,11 @@ export interface BusyInputs {
 }
 
 /**
- * Why an agent's update should wait, or null when Jeremy is free. A call
- * counts even with the window in the background; the rest only while
- * Dunder is the window he is using.
+ * Why an agent's update should wait, or null when Jeremy is free: only while
+ * Dunder is the window he is using. A call never holds an update: it picks
+ * up again after the relaunch (office-ey5).
  */
 export function busyReason(inputs: BusyInputs): string | null {
-	if (inputs.onCall) return "on a call";
 	if (!inputs.focused) return null;
 	if (inputs.focus === "screen") return "in a terminal";
 	if (inputs.focus === "table") return "at the pool table";

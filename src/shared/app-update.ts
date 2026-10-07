@@ -32,7 +32,7 @@ export interface UpdateHeld {
 	readonly reason: string;
 	/** Earlier requests folded in. */
 	readonly extra: number;
-	/** What he is doing ("on a call"), or null once he is free. */
+	/** What he is doing ("in a terminal"), or null once he is free. */
 	readonly busy: string | null;
 	/** When the countdown starts (epoch ms); set only while he is free. */
 	readonly startsAt: number | null;

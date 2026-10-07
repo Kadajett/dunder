@@ -1,11 +1,12 @@
 import type { ChiefMessage, ChiefPresence } from "@shared/chief";
 import { createLogger } from "@shared/log/logger";
-import type { VoiceAvailability } from "@shared/voice";
+import type { CallResume, VoiceAvailability } from "@shared/voice";
 import { create } from "zustand";
 import { chime } from "../../audio/chime";
 import { sendToChief } from "../chat-store";
 import { playMp3, stopPlayback } from "./call-audio";
 import { closeMic, openMic, savedMicId, saveMicId, setMicMuted, setMicPlaying } from "./call-mic";
+import { resumedHint, resumedNote } from "./call-resume";
 import {
 	type CallPhase,
 	NEW_TURN,
@@ -39,8 +40,10 @@ interface CallState {
 	/** A gentle note, e.g. "Didn't catch that". */
 	readonly hint: string | null;
 	readonly watch: TurnWatch | null;
-	/** When the call started; earlier messages never count. */
+	/** When this round of the call's turns started; earlier messages never count. */
 	readonly since: number;
+	/** When Jeremy picked up (kept across an update relaunch). */
+	readonly startedAt: number;
 }
 
 const IDLE = {
@@ -54,6 +57,7 @@ const IDLE = {
 	hint: null,
 	watch: null,
 	since: 0,
+	startedAt: 0,
 } as const satisfies Omit<CallState, "availability">;
 
 export const useCall = create<CallState>(() => ({ availability: null, ...IDLE }));
@@ -93,9 +97,30 @@ export async function loadVoiceAvailability(): Promise<void> {
 
 export function startCall(): void {
 	if (useCall.getState().active || !voiceApi()) return;
-	useCall.setState({ ...IDLE, active: true, since: Date.now() });
+	const now = Date.now();
+	useCall.setState({ ...IDLE, active: true, since: now, startedAt: now });
 	unsubscribe = window.office.chief.onMessage(noteMessage);
 	void switchMic(savedMicId());
+}
+
+/**
+ * Pick the call back up after an update relaunched the app: same mic, same
+ * mute, no click. Max hears that it dropped, and says he's back.
+ */
+export async function resumeCall(resume: CallResume, now: number): Promise<void> {
+	if (useCall.getState().active || !voiceApi()) return;
+	const hint = resumedHint(resume, now);
+	useCall.setState({
+		...IDLE,
+		active: true,
+		since: now,
+		startedAt: resume.startedAt,
+		muted: resume.muted,
+		hint,
+	});
+	unsubscribe = window.office.chief.onMessage(noteMessage);
+	await switchMic(resume.deviceId);
+	if (useCall.getState().active) await sendTurn(resumedNote(resume, now), null);
 }
 
 export function hangUp(): void {
@@ -187,10 +212,16 @@ async function handleUtterance(wav: Uint8Array): Promise<void> {
 	await sendTurn(result.value);
 }
 
-async function sendTurn(text: string): Promise<void> {
+/** `heard`: what the strip shows as Jeremy's words (null for the app's own notes to Max). */
+async function sendTurn(text: string, heard: string | null = text): Promise<void> {
 	// Watch from before the send: he can start working before the send returns.
 	cancelGrace();
-	useCall.setState({ watch: NEW_TURN, heard: text, error: null, hint: null });
+	useCall.setState({
+		watch: NEW_TURN,
+		heard,
+		error: null,
+		hint: heard === null ? useCall.getState().hint : null,
+	});
 	const result = await sendToChief(text, { call: true });
 	if (result.state === "rejected") {
 		useCall.setState({
