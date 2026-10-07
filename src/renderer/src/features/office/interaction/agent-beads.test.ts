@@ -16,6 +16,8 @@ function card(id: string, assignee: string | null, lane: WorkCard["lane"]): Work
 		description: `Description for ${id}`,
 		acceptance: `Acceptance for ${id}`,
 		updatedAt: "",
+		spend: null,
+		epicSpend: null,
 	};
 }
 
