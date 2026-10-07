@@ -31,6 +31,11 @@ export interface LaneGroup {
 	readonly cards: readonly WorkCard[];
 }
 
+/** One agent's cards (the bar's agent filter). */
+export function forAgent(cards: readonly WorkCard[], agent: string): readonly WorkCard[] {
+	return cards.filter((card) => card.assignee === agent);
+}
+
 /** Every lane in bar order (empty ones too), each keeping the cards' given order. */
 export function groupByLane(cards: readonly WorkCard[]): readonly LaneGroup[] {
 	return workLanes.map((lane) => ({ lane, cards: cards.filter((card) => card.lane === lane) }));

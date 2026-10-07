@@ -1,7 +1,7 @@
 import type { WorkCard } from "@shared/work-board";
 import { useMemo, useState } from "react";
 import { WorkLaneSection } from "./WorkLaneSection";
-import { boardSummary, groupByLane, pillText } from "./work-model";
+import { boardSummary, forAgent, groupByLane, pillText } from "./work-model";
 import { useWork, useWorkCards } from "./work-store";
 import "./work.css";
 
@@ -39,15 +39,35 @@ function WorkBody({ cards }: { readonly cards: readonly WorkCard[] | undefined }
 	return <p className="work-bar__note">Loading the board…</p>;
 }
 
+/** "theo ×" at the top of the bar while it shows one agent's beads: clears the filter. */
+function FilterPill({ agent }: { readonly agent: string }) {
+	const filterAgent = useWork((state) => state.filterAgent);
+	return (
+		<button
+			type="button"
+			className="work-filter"
+			title={`Showing only ${agent}'s beads: show everyone's`}
+			onClick={() => filterAgent(null)}
+		>
+			{agent} <span aria-hidden="true">×</span>
+		</button>
+	);
+}
+
 /**
- * The left bar: the app repo's Beads by lane (In progress, Blocked, Ready,
- * Done), with add, reprioritise, move and assign. Collapses to a summary pill.
- * Mount `connectWork` once alongside it; hiding in focus mode is the caller's.
+ * The left bar: the app repo's Beads by lane (In progress, Review, Blocked,
+ * Ready, Done), with add, reprioritise, move and assign, optionally for one
+ * agent only. Collapses to a summary pill. Mount `connectWork` once alongside
+ * it; hiding in focus mode is the caller's.
  */
 export function WorkBar() {
 	const open = useWork((state) => state.open);
 	const setOpen = useWork((state) => state.setOpen);
-	const cards = useWorkCards();
+	const agent = useWork((state) => state.agentFilter);
+	const filterAgent = useWork((state) => state.filterAgent);
+	const all = useWorkCards();
+	const cards = useMemo(() => (all && agent ? forAgent(all, agent) : all), [all, agent]);
+	const summary = cards ? `${agent ? `${agent}: ` : ""}${boardSummary(cards)}` : "Beads";
 	if (!open)
 		return (
 			<button
@@ -58,19 +78,26 @@ export function WorkBar() {
 				onClick={() => setOpen(true)}
 			>
 				<span className="work-pill__dot" />
-				<span>{pillText(cards)}</span>
+				<span>{agent && cards ? `Work · ${summary}` : pillText(cards)}</span>
 				<span className="work-pill__chevron" aria-hidden="true">
 					▸
 				</span>
 			</button>
 		);
 	return (
-		<aside className="work-bar" aria-label="Work board">
+		<aside
+			className="work-bar"
+			aria-label="Work board"
+			onKeyDown={(event) => {
+				if (event.key === "Escape" && agent) filterAgent(null);
+			}}
+		>
 			<header className="work-bar__head">
 				<div>
 					<h2>Work</h2>
-					<p>{cards ? boardSummary(cards) : "Beads"}</p>
+					<p>{summary}</p>
 				</div>
+				{agent ? <FilterPill agent={agent} /> : null}
 				<button
 					type="button"
 					className="work-bar__collapse"

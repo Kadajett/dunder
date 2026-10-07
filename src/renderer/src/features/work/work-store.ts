@@ -45,13 +45,19 @@ interface WorkState {
 	readonly expanded: string | null;
 	/** Asks Jeremy just answered or dismissed: hidden until bd confirms (or back with an error). */
 	readonly answering: readonly string[];
+	/** Show only this agent's beads (a clicked assignee chip); not kept across restarts. */
+	readonly agentFilter: string | null;
 	receive(board: WorkBoard): void;
 	setOpen(open: boolean): void;
 	toggleLane(lane: WorkLane): void;
 	dismissError(key: string): void;
 	expand(id: string | null): void;
-	/** Open the bar on `id`: the bar open, its lane unfolded, the card expanded. */
+	/** Open the bar on `id`: the bar open, its lane unfolded, the card expanded (out of a filter that hides it). */
 	reveal(id: string): void;
+	/** Filter to `agent`, or clear the filter with null. */
+	filterAgent(agent: string | null): void;
+	/** Open the bar on one agent's beads (from its Team card). */
+	showAgent(agent: string): void;
 }
 
 function withoutKey(errors: Readonly<Record<string, string>>, key: string) {
@@ -66,6 +72,7 @@ export const useWork = create<WorkState>((set) => ({
 	creating: [],
 	errors: {},
 	open: globalThis.localStorage?.getItem(OPEN_KEY) !== "closed",
+	agentFilter: null,
 	collapsed: { in_progress: false, review: false, blocked: false, ready: false, done: true },
 	expanded: null,
 	answering: [],
@@ -91,13 +98,17 @@ export const useWork = create<WorkState>((set) => ({
 	reveal: (id) =>
 		set((state) => {
 			globalThis.localStorage?.setItem(OPEN_KEY, "open");
-			const lane =
-				state.board?.state === "ok"
-					? state.board.cards.find((card) => card.id === id)?.lane
-					: undefined;
-			const collapsed = lane ? { ...state.collapsed, [lane]: false } : state.collapsed;
-			return { open: true, expanded: id, collapsed };
+			const card =
+				state.board?.state === "ok" ? state.board.cards.find((each) => each.id === id) : undefined;
+			const collapsed = card ? { ...state.collapsed, [card.lane]: false } : state.collapsed;
+			const agentFilter = card && card.assignee === state.agentFilter ? state.agentFilter : null;
+			return { open: true, expanded: id, collapsed, agentFilter };
 		}),
+	filterAgent: (agentFilter) => set({ agentFilter }),
+	showAgent: (agent) => {
+		globalThis.localStorage?.setItem(OPEN_KEY, "open");
+		set({ open: true, agentFilter: agent });
+	},
 }));
 
 /** The cards as shown: main's board with the writes bd hasn't reflected yet. Undefined unless the board is ok. */
