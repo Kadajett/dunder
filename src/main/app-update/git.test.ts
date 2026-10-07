@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { checkCheckout, parseCommitLog } from "./git";
+import { checkCheckout, dependenciesChanged, parseCommitLog } from "./git";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -17,9 +17,9 @@ function repo() {
 	const git = (...args: string[]) =>
 		execFileSync("git", [...config, ...args], { cwd: dir, encoding: "utf8" }).trim();
 	git("init", "-q");
-	const commit = (subject: string) => {
-		writeFileSync(join(dir, "file.txt"), subject);
-		git("add", "file.txt");
+	const commit = (subject: string, file = "file.txt") => {
+		writeFileSync(join(dir, file), subject);
+		git("add", file);
 		git("commit", "-q", "-m", subject);
 		return git("rev-parse", "HEAD");
 	};
@@ -57,5 +57,25 @@ describe("checkCheckout", () => {
 		const { dir, commit } = repo();
 		const head = commit("one");
 		expect(await checkCheckout(dir, "f".repeat(40))).toEqual({ head, commits: [] });
+	});
+});
+
+describe("dependenciesChanged", () => {
+	it("is true only when package.json or package-lock.json changed since the build", async () => {
+		const { dir, commit } = repo();
+		const built = commit("one");
+		const unchanged = commit("two");
+		expect(await dependenciesChanged(dir, built, unchanged)).toBe(false);
+		const lock = commit("{}", "package-lock.json");
+		expect(await dependenciesChanged(dir, unchanged, lock)).toBe(true);
+		const manifest = commit("{}", "package.json");
+		expect(await dependenciesChanged(dir, lock, manifest)).toBe(true);
+	});
+
+	it("is true when the built commit is unknown", async () => {
+		const { dir, commit } = repo();
+		const head = commit("one");
+		expect(await dependenciesChanged(dir, undefined, head)).toBe(true);
+		expect(await dependenciesChanged(dir, "f".repeat(40), head)).toBe(true);
 	});
 });

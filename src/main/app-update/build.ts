@@ -55,18 +55,31 @@ async function promote(root: string): Promise<void> {
 	await rm(previous, { recursive: true, force: true });
 }
 
-/** Run `npm run build` into the staging dir; resolves with the exit code (null when killed). */
-function runNpmBuild(root: string, log: LogTail, onLog: () => void): Promise<number | null> {
+/** Runs npm with these args in the checkout, streaming output into the log; resolves with the exit code (null when it did not finish). */
+export type NpmRunner = (
+	root: string,
+	args: readonly string[],
+	log: LogTail,
+	onLog: () => void,
+) => Promise<number | null>;
+
+/** Spawn npm; a run longer than BUILD_TIMEOUT_MS is killed. */
+export function runNpm(
+	root: string,
+	args: readonly string[],
+	log: LogTail,
+	onLog: () => void,
+): Promise<number | null> {
 	const done = Promise.withResolvers<number | null>();
-	const child = spawn("npm", ["run", "build", "--", "--outDir", STAGING_DIR], {
+	const child = spawn("npm", [...args], {
 		cwd: root,
 		env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
 		stdio: ["ignore", "pipe", "pipe"],
-		// Own process group, so a timeout kills npm and the vite build under it.
+		// Own process group, so a timeout kills npm and everything under it.
 		detached: true,
 	});
 	const timer = setTimeout(() => {
-		log.push(`\nbuild timed out after ${BUILD_TIMEOUT_MS / 60_000} minutes\n`);
+		log.push(`\nnpm ${args[0] ?? ""} timed out after ${BUILD_TIMEOUT_MS / 60_000} minutes\n`);
 		if (child.pid) process.kill(-child.pid, "SIGTERM");
 	}, BUILD_TIMEOUT_MS);
 	const append = (chunk: Buffer): void => {
@@ -83,15 +96,42 @@ function runNpmBuild(root: string, log: LogTail, onLog: () => void): Promise<num
 	return done.promise.finally(() => clearTimeout(timer));
 }
 
-/** Build the app checkout for production and install it as `out/`. */
-export async function buildApp(root: string, onLog: (tail: string) => void): Promise<BuildResult> {
+export const INSTALL_ARGS = ["install", "--no-audit", "--no-fund"] as const;
+const BUILD_ARGS = ["run", "build", "--", "--outDir", STAGING_DIR] as const;
+
+function exitReason(code: number | null): string {
+	return code === null ? "did not finish" : `exited with ${code}`;
+}
+
+export interface BuildOptions {
+	/** Run `npm install` first: the dependencies changed since the running build. */
+	readonly install: boolean;
+	readonly run?: NpmRunner;
+}
+
+/** Build the app checkout for production (installing dependencies first if asked) and install it as `out/`. */
+export async function buildApp(
+	root: string,
+	onLog: (tail: string) => void,
+	{ install, run = runNpm }: BuildOptions,
+): Promise<BuildResult> {
 	const log = new LogTail();
-	await rm(join(root, STAGING_DIR), { recursive: true, force: true });
-	const code = await runNpmBuild(root, log, () => onLog(log.text()));
-	if (code !== 0) {
-		const error = code === null ? "the build did not finish" : `the build exited with ${code}`;
-		return { ok: false, error, logTail: log.text() };
+	const emit = (): void => onLog(log.text());
+	if (install) {
+		log.push("Dependencies changed: npm install\n");
+		emit();
+		const code = await run(root, INSTALL_ARGS, log, emit);
+		if (code !== 0) {
+			return {
+				ok: false,
+				error: `npm install failed: it ${exitReason(code)}`,
+				logTail: log.text(),
+			};
+		}
 	}
+	await rm(join(root, STAGING_DIR), { recursive: true, force: true });
+	const code = await run(root, BUILD_ARGS, log, emit);
+	if (code !== 0) return { ok: false, error: `the build ${exitReason(code)}`, logTail: log.text() };
 	try {
 		await promote(root);
 	} catch (error) {

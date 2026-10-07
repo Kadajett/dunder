@@ -55,3 +55,21 @@ export function isAncestor(root: string, from: string, to: string): Promise<bool
 		() => false,
 	);
 }
+
+/**
+ * Whether package.json / package-lock.json differ between the running build
+ * and `head`. Unknown `built` (dev build, rewritten history) counts as changed:
+ * an extra `npm install` is harmless, a missing one breaks the build.
+ */
+export async function dependenciesChanged(
+	root: string,
+	built: string | undefined,
+	head: string,
+): Promise<boolean> {
+	if (!built) return true;
+	const files = ["package.json", "package-lock.json"];
+	return runGit(root, ["diff", "--name-only", built, head, "--", ...files]).then(
+		(stdout) => stdout.trim() !== "",
+		() => true,
+	);
+}
