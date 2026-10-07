@@ -4,6 +4,8 @@ Dunder is a desktop app that puts your AI coding agents in a 3D isometric office
 
 Under the hood every agent runs in [herdr](https://herdr.dev), the terminal multiplexer, inside a dedicated herdr session called `office`. Dunder only reads and drives that session, so your other herdr sessions stay untouched. Lay out rooms, desks and decor yourself, run several companies side by side, and hire or let go of agents from reception.
 
+The Team panel keeps **Open screen** on each card; use the ⋯ menu for Beads, Open in editor, Switch model and Interrupt with its confirmation.
+
 ![The Dunder office: agents at their desks, live monitors, panels and the activity feed](docs/screenshots/m3-hud-office.png)
 
 ## Install

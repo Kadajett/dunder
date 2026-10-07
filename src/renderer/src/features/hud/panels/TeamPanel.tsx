@@ -1,4 +1,5 @@
 import "../../office/interaction/cards.css";
+import "./TeamPanel.css";
 import { avatarStyleFor } from "@shared/avatar/style";
 import type { RosterAgent } from "@shared/company/roster";
 import { type AgentModel, shortModelName } from "@shared/models";
@@ -10,14 +11,12 @@ import { useHire } from "../../hire/hire-store";
 import { useRosterStore } from "../../hire/roster-store";
 import type { LiveAgent } from "../../office/model/live-agents";
 import type { OfficeModel } from "../../office/model/office-model";
-import { ModelPicker } from "../../office/models/ModelPicker";
 import { useModels } from "../../office/models/models-store";
 import { poolStatusOf, usePool } from "../../pool/pool-store";
-import { useWork, useWorkCards } from "../../work/work-store";
-import { OpenInEditor } from "../../worktrees/OpenInEditor";
+import { useWorkCards } from "../../work/work-store";
 import { StatTiles } from "../StatTiles";
-import { InterruptControl } from "./InterruptControl";
 import { openAgentScreen } from "./open-agent";
+import { TeamCardActions } from "./TeamCardActions";
 
 const STATUS_LABEL = {
 	working: "working",
@@ -89,13 +88,7 @@ function TeamCard(props: {
 				<Row label="model" value={modelLabel(agent.kind, live)} />
 				<Row label="desk" value={seat?.desk.id ?? "no desk"} />
 			</div>
-			{agent.kind === "omp" && "models" in window.office ? (
-				<details>
-					<summary>Switch model</summary>
-					<ModelPicker agentName={agent.name} />
-				</details>
-			) : null}
-			<div className="hud-card-actions">
+			<div className="hud-card-actions team-card-actions">
 				<button
 					type="button"
 					className="secondary"
@@ -104,17 +97,8 @@ function TeamCard(props: {
 				>
 					Open screen
 				</button>
-				<button
-					type="button"
-					className="secondary"
-					title={`Open the work board on ${agent.name}'s beads only`}
-					onClick={() => useWork.getState().showAgent(agent.name)}
-				>
-					Beads
-				</button>
+				<TeamCardActions agent={agent} beads={beads} />
 			</div>
-			<InterruptControl name={agent.name} status={agent.status} />
-			<OpenInEditor agent={agent.name} beads={beads} />
 		</article>
 	);
 }
