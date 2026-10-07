@@ -3,6 +3,7 @@ import {
 	MAX_LISTED_COMMITS,
 	UPDATE_COUNTDOWN_MS,
 	UPDATE_FREE_MS,
+	type UpdateBatched,
 	type UpdateCommit,
 	type UpdateCountdown,
 	type UpdateHeld,
@@ -49,24 +50,39 @@ export function afterCheck(
 export interface UpdateRequest {
 	readonly by: string;
 	readonly reason: string;
+	/** The batch window's end (epoch ms): the request waits for it. Absent with no window, or for a hotfix. */
+	readonly batchUntil?: number;
 }
 
 type Plan =
 	| { readonly countdown: UpdateCountdown }
 	| { readonly held: UpdateHeld }
+	| { readonly batched: UpdateBatched }
 	| Record<never, never>;
 
 function planOf(status: ApplicableStatus): Plan {
 	if (status.countdown) return { countdown: status.countdown };
 	if (status.held) return { held: status.held };
+	if (status.batched) return { batched: status.batched };
 	return {};
 }
 
-/** The same status, counting down, held, or neither (never both). */
+/** The same status, counting down, held, batched, or none of them (never two). */
 function withPlan(status: ApplicableStatus, plan: Plan): ApplicableStatus {
-	const { countdown: _countdown, held: _held, ...rest } = status;
+	const { countdown: _countdown, held: _held, batched: _batched, ...rest } = status;
 	return { ...rest, ...plan };
 }
+
+/** Start waiting for Jeremy: held while he is busy, else the countdown starts. */
+const waitFor = (
+	status: ApplicableStatus,
+	{ by, reason, extra }: Pick<UpdateCountdown, "by" | "reason" | "extra">,
+	busy: string | null,
+	now: number,
+): ApplicableStatus =>
+	busy === null
+		? withPlan(status, countdownOf({ by, reason, extra }, now))
+		: withPlan(status, { held: { by, reason, extra, busy, startsAt: null } });
 
 const countdownOf = (
 	{ by, reason, extra }: Pick<UpdateCountdown, "by" | "reason" | "extra">,
@@ -76,26 +92,29 @@ const countdownOf = (
 });
 
 /**
- * A fresh agent request (only when there is something to apply). While
- * Jeremy is busy it is held; otherwise the countdown starts (or restarts).
- * A request on top of a waiting one is folded in: the latest names it, the
- * rest are counted, and the update applies once.
+ * A fresh agent request (only when there is something to apply). Inside the
+ * batch window it waits for the window's end. Otherwise it is held while
+ * Jeremy is busy, or the countdown starts (or restarts). A request on top of
+ * a waiting one is folded in: the latest names it, the rest are counted, and
+ * the update applies once.
  */
 export function requestUpdate(
 	current: UpdateStatus,
-	request: UpdateRequest,
+	{ by, reason, batchUntil }: UpdateRequest,
 	busy: string | null,
 	now: number,
 ): UpdateStatus {
 	// The build Jeremy rolled back from: only he can choose to go back to it.
 	if (!canApply(current) || current.rolledBack) return current;
-	const earlier = current.held ?? current.countdown;
+	const earlier = current.held ?? current.countdown ?? current.batched;
 	const extra = earlier ? earlier.extra + 1 : 0;
-	if (busy !== null)
-		return withPlan(current, { held: { ...request, extra, busy, startsAt: null } });
+	const waiting = current.held ?? current.countdown;
+	if (batchUntil !== undefined && now < batchUntil && !waiting)
+		return withPlan(current, { batched: { by, reason, extra, nextAt: batchUntil } });
 	// Already waiting out his free time: keep waiting, with the new request folded in.
-	if (current.held) return withPlan(current, { held: { ...current.held, ...request, extra } });
-	return withPlan(current, countdownOf({ ...request, extra }, now));
+	if (current.held && busy === null)
+		return withPlan(current, { held: { ...current.held, by, reason, extra } });
+	return waitFor(current, { by, reason, extra }, busy, now);
 }
 
 /**
@@ -115,23 +134,31 @@ export function busyChanged(current: UpdateStatus, busy: string | null, now: num
 	});
 }
 
-/** Time passed: a held update whose free time is up starts the normal countdown. */
-export function afterWait(current: UpdateStatus, now: number): UpdateStatus {
-	if (!canApply(current) || !current.held) return current;
+/**
+ * Time passed: a held update whose free time is up starts the normal
+ * countdown, and a batch whose window ended starts the normal flow (held
+ * while Jeremy is `busy`, else the countdown).
+ */
+export function afterWait(current: UpdateStatus, now: number, busy: string | null): UpdateStatus {
+	if (!canApply(current)) return current;
+	if (current.batched)
+		return current.batched.nextAt > now ? current : waitFor(current, current.batched, busy, now);
+	if (!current.held) return current;
 	const { startsAt } = current.held;
 	if (startsAt === null || startsAt > now) return current;
 	return withPlan(current, countdownOf(current.held, now));
 }
 
-/** When something is next due: the countdown's apply, or a held update's start; null when nothing is. */
+/** When something is next due: the countdown's apply, a held update's start, or a batch's window end; null when nothing is. */
 export function nextDeadline(status: UpdateStatus): number | null {
 	if (!canApply(status)) return null;
-	return status.countdown?.applyAt ?? status.held?.startsAt ?? null;
+	return status.countdown?.applyAt ?? status.held?.startsAt ?? status.batched?.nextAt ?? null;
 }
 
-/** Jeremy cancelled the countdown or skipped the held update. */
+/** Jeremy cancelled the countdown, or skipped the held update or the batch. */
 export function withoutCountdown(current: UpdateStatus): UpdateStatus {
-	if (!canApply(current) || (!current.countdown && !current.held)) return current;
+	if (!canApply(current) || (!current.countdown && !current.held && !current.batched))
+		return current;
 	return withPlan(current, {});
 }
 

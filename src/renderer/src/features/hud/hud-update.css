@@ -186,6 +186,18 @@
 	color: #fff;
 }
 
+/* Agents' updates waiting for the batch window: even quieter, nothing calls for a decision. */
+.update-held--batched .update-dot {
+	background: #b8ab94;
+	box-shadow: none;
+}
+
+.update-held--batched .update-held-apply {
+	border-color: var(--panel-edge);
+	background: transparent;
+	color: var(--ink);
+}
+
 /* 'Roll back to <sha>': quiet until clicked, then a confirm naming what it doesn't undo. */
 .update-rollback-item {
 	display: flex;

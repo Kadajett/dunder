@@ -22,6 +22,7 @@ const STATES = [
 	"09b-pool-table-fresh",
 	"10-hire",
 	"11-everything",
+	"12-update-batched",
 ];
 const OUT_DIR = "docs/screenshots/hud";
 const WIDTH = 1600;

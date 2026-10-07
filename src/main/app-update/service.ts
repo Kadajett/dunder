@@ -9,6 +9,7 @@ import type { SessionSnapshot } from "@shared/herdr/schema";
 import { createLogger } from "@shared/log/logger";
 import { z } from "zod";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { batchUntil, loadBatchMs } from "./batching";
 import type { BuildResult } from "./build";
 import { freshRequests } from "./requests";
 import {
@@ -37,6 +38,8 @@ const stateSchema = z.object({
 	offset: z.number().int().nonnegative(),
 	/** The build Jeremy rolled back from: not offered by agents until HEAD moves past it. */
 	rolledBackFrom: z.string().optional(),
+	/** When an update (or rollback) last applied: agents' updates batch for the interval after it. */
+	lastAppliedAt: z.number().optional(),
 });
 type UpdaterState = z.infer<typeof stateSchema>;
 const log = createLogger("app-update");
@@ -47,6 +50,8 @@ export interface AppUpdaterDeps {
 	/** Where `office-update` appends requests, and where the read offset is kept. */
 	readonly requestsPath: string;
 	readonly statePath: string;
+	/** `update-batching.json`: the batch interval (default 2 h; 0 turns batching off). */
+	readonly settingsPath: string;
 	emit(status: UpdateStatus): void;
 	check(): Promise<UpdateCheck>;
 	build(onLog: (tail: string) => void): Promise<BuildResult>;
@@ -80,6 +85,8 @@ export class AppUpdater {
 	#state: UpdaterState = { offset: 0 };
 	/** State writes in order: an offset write must never interleave with the rollback's. */
 	#saving: Promise<void> = Promise.resolve();
+	/** Agents' updates apply at most this often (ms); 0: no batching. */
+	#batchMs = 0;
 
 	constructor(deps: AppUpdaterDeps) {
 		this.#deps = deps;
@@ -107,6 +114,7 @@ export class AppUpdater {
 			(text) => stateSchema.safeParse(JSON.parse(text)).data ?? { offset: 0 },
 			() => ({ offset: 0 }),
 		);
+		this.#batchMs = await loadBatchMs(this.#deps.settingsPath);
 		this.#poll = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
 		void this.check();
 		this.#tail = await tailMailbox({
@@ -137,7 +145,10 @@ export class AppUpdater {
 					const pinned = this.#state.rolledBackFrom;
 					this.#set(afterCheck(this.#status, this.#deps.built ?? "", check, pinned));
 					// A newer commit landed (or he updated anyway): agents may update again.
-					if (pinned && check.head !== pinned) void this.#saveState({ offset: this.#state.offset });
+					if (pinned && check.head !== pinned) {
+						const { rolledBackFrom: _left, ...state } = this.#state;
+						void this.#saveState(state);
+					}
 				},
 				// git briefly unavailable (e.g. mid-rebase lock): keep the last status, try next tick.
 				(error: unknown) => log.warn("update check failed", { error }),
@@ -148,19 +159,30 @@ export class AppUpdater {
 		return this.#checking;
 	}
 
-	/** New lines from the requests file: the newest fresh request counts down, or waits while Jeremy is busy. */
+	/**
+	 * New lines from the requests file: the newest fresh request waits for the
+	 * batch window, or counts down (held while Jeremy is busy). A hotfix among
+	 * them skips the window.
+	 */
 	async receive(lines: readonly string[]): Promise<void> {
 		if (!this.#snapshot) {
 			this.#early.push(...lines);
 			return;
 		}
-		const request = freshRequests(lines, this.#now()).at(-1);
+		const fresh = freshRequests(lines, this.#now());
+		const request = fresh.at(-1);
 		if (!request || this.#status.state === "dev") return;
 		// The agent usually asks right after merging: look before deciding there is nothing new.
 		await this.check();
 		const by =
 			this.#snapshot?.agents.find((agent) => agent.pane_id === request.fromPane)?.name ?? "someone";
-		this.#set(requestUpdate(this.#status, { by, reason: request.reason }, this.#busy, this.#now()));
+		// A hotfix among them skips the window (the hold while busy and the countdown still apply).
+		const until = fresh.some((line) => line.hotfix)
+			? null
+			: batchUntil(this.#state.lastAppliedAt, this.#batchMs);
+		const named = { by, reason: request.reason, ...(until === null ? {} : { batchUntil: until }) };
+		const next = requestUpdate(this.#status, named, this.#busy, this.#now());
+		this.#set(next);
 	}
 
 	/** Jeremy is busy (why) or free (null); a countdown pauses while he is busy. */
@@ -194,6 +216,8 @@ export class AppUpdater {
 			return;
 		}
 		this.#set({ state: "building", logTail: "Built. Relaunching on the new build…" });
+		// The window restarts with every update, whoever asked for it.
+		await this.#saveState({ ...this.#state, lastAppliedAt: this.#now() });
 		this.#deps.relaunch();
 	}
 
@@ -228,7 +252,7 @@ export class AppUpdater {
 			this.#set(before);
 			return { ok: false, error: error instanceof Error ? error.message : String(error) };
 		}
-		await this.#saveState({ ...this.#state, rolledBackFrom: bad });
+		await this.#saveState({ ...this.#state, rolledBackFrom: bad, lastAppliedAt: this.#now() });
 		this.#deps.relaunch();
 		return { ok: true };
 	}
@@ -272,7 +296,7 @@ export class AppUpdater {
 			void this.apply(applyReason(status.countdown));
 			return;
 		}
-		const next = afterWait(status, now);
+		const next = afterWait(status, now, this.#busy);
 		if (next === status) this.#schedule();
 		else this.#set(next);
 	}

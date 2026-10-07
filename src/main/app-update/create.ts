@@ -30,6 +30,7 @@ export function createAppUpdater(options: AppUpdateOptions): AppUpdater {
 		built,
 		requestsPath: officeUpdateRequestsPath(process.env, homedir()),
 		statePath: join(options.userData, "app-update.json"),
+		settingsPath: join(options.userData, "update-batching.json"),
 		emit: options.emit,
 		check: () => checkCheckout(root, built ?? "HEAD"),
 		build: async (onLog) => {
