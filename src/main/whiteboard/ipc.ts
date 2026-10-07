@@ -4,6 +4,7 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import { runBd } from "../beads/bd";
 import { parseScene } from "./board-doc";
+import { readExcalidrawFont } from "./font-assets";
 import { createIdeaBead } from "./idea-bead";
 import type { WhiteboardService } from "./service";
 
@@ -12,6 +13,7 @@ const putSchema = z.object({
 	baseRevision: z.number().int().nonnegative(),
 	scene: z.unknown(),
 });
+const fontAssetSchema = z.string().regex(/^fonts\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9._-]+\.woff2$/);
 
 const ideaSchema = z.object({
 	text: z.string().trim().min(1).max(WHITEBOARD_TEXT_MAX),
@@ -28,4 +30,7 @@ export function registerWhiteboardIpc(whiteboard: WhiteboardService, cwd: string
 	ipcMain.handle(IPC.whiteboardMakeIdea, async (_event, payload: unknown) => {
 		return createIdeaBead(runBd, cwd, ideaSchema.parse(payload));
 	});
+	ipcMain.handle(IPC.whiteboardFont, (_event, payload: unknown) =>
+		readExcalidrawFont(fontAssetSchema.parse(payload)),
+	);
 }

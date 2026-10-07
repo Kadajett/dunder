@@ -51,5 +51,10 @@ export const fakeWhiteboard: WhiteboardApi = {
 	makeIdea: async () => {
 		throw new Error("scene-shot cannot create Beads");
 	},
+	readFont: async (assetPath) => {
+		const response = await fetch(`/excalidraw-assets/${assetPath}`);
+		if (!response.ok) throw new Error(`font fixture returned ${response.status}`);
+		return new Uint8Array(await response.arrayBuffer());
+	},
 	onChanged: () => () => undefined,
 };

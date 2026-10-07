@@ -27,7 +27,8 @@
 		"release:bump": "node scripts/release/bump.mts",
 		"scene:shot": "node scripts/scene-shot/shot.mts",
 		"hud:shot": "node scripts/scene-shot/hud-shot.mts",
-		"scene:profile": "vite --config scripts/scene-shot/vite.config.ts --port 5179 --strictPort --logLevel info"
+		"scene:profile": "vite --config scripts/scene-shot/vite.config.ts --port 5179 --strictPort --logLevel info",
+		"whiteboard:fonts": "node scripts/whiteboard-font-check.mts"
 	},
 	"dependencies": {
 		"@excalidraw/excalidraw": "0.18.1",

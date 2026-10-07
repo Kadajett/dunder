@@ -81,6 +81,7 @@ export interface WhiteboardApi {
 	get(): Promise<WhiteboardBoard>;
 	put(request: WhiteboardPutRequest): Promise<WhiteboardPutResult>;
 	makeIdea(request: MakeIdeaRequest): Promise<string>;
+	readFont(assetPath: string): Promise<Uint8Array>;
 	onChanged(listener: (change: WhiteboardChange) => void): Unsubscribe;
 }
 

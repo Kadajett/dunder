@@ -41,7 +41,10 @@ npm run office   # production build, supervised: survives edits, relaunches on u
 npm run check    # typecheck, lint and unit tests
 npm run scene:shot     # headless screenshot of the 3D scene (no Electron, stubbed IPC) + side-by-side vs the reference
 npm run scene:profile  # the same stubbed scene served at http://localhost:5179/profile.html with a frame probe
+npm run whiteboard:fonts # production whiteboard render; asserts fonts stay on the local origin
 ```
+
+`whiteboard:fonts` builds the whiteboard render fixture with the packaged font assets, runs it in headless Chrome, and fails if any request leaves the local origin.
 
 `scene:shot` serves `scripts/scene-shot/page` with Vite and renders it in headless Chrome (a system Chrome/Chromium, Playwright's cached headless shell, or `$SCENE_SHOT_CHROME`). It writes `docs/screenshots/m5-office.png`, `docs/screenshots/m5-vs-reference.png` and `docs/screenshots/characters-lineup.png` (every crew member plus each hairstyle, face part, accessory, outfit and headwear, under the office's lights and camera angle, at overview zoom and in close-up). Use it instead of a second app instance, which would start its own workforce on the live `office` session.
 

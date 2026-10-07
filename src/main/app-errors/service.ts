@@ -1,7 +1,7 @@
 import type { AppError, AppErrorReport } from "@shared/app-errors";
 import { createLogger } from "@shared/log/logger";
 import type { WebContents } from "electron";
-import { consoleErrorWorthKeeping, recordError } from "./error-log";
+import { consoleErrorWorthKeeping, isThirdPartyConsoleSource, recordError } from "./error-log";
 
 const log = createLogger("renderer");
 
@@ -62,8 +62,15 @@ export class AppErrorsService {
 
 /** Feed the page's console errors (third-party libraries' too) and renderer crashes into `errors`. */
 export function watchPageErrors(contents: WebContents, errors: AppErrorsService): void {
-	contents.on("console-message", ({ level, message }) => {
-		if (consoleErrorWorthKeeping(level, message)) {
+	contents.on("console-message", ({ level, message, sourceId }) => {
+		if (level === "error" && isThirdPartyConsoleSource(sourceId)) {
+			log.warn("third-party renderer console error", {
+				message: message.slice(0, 2_000),
+				sourceId,
+			});
+			return;
+		}
+		if (consoleErrorWorthKeeping(level, message, sourceId)) {
 			errors.report({ message: message.slice(0, 2_000), where: "console" });
 		}
 	});
