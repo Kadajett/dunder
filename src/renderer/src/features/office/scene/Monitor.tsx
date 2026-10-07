@@ -25,26 +25,34 @@ export interface MonitorProps {
 	/** Hidden while this screen is focused (a real terminal covers it). */
 	readonly live: boolean;
 	readonly onOpen: (() => void) | undefined;
+	readonly onHoverAgent: (() => void) | undefined;
 }
 
 /** A desk monitor showing its agent's live terminal; click to open the screen. */
-export function Monitor({ status, paneId, live, onOpen }: MonitorProps) {
+export function Monitor({ status, paneId, live, onOpen, onHoverAgent }: MonitorProps) {
 	const [hovered, setHovered] = useState(false);
 	useCursor(hovered && onOpen !== undefined);
 	const { texture } = useScreenTexture(paneId, { visible: live });
-	const handlers = onOpen
-		? {
-				onClick: (event: ThreeEvent<MouseEvent>) => {
-					event.stopPropagation();
-					onOpen();
-				},
-				onPointerOver: (event: ThreeEvent<PointerEvent>) => {
-					event.stopPropagation();
-					setHovered(true);
-				},
-				onPointerOut: () => setHovered(false),
-			}
-		: {};
+	const handlers = {
+		...(onOpen
+			? {
+					onClick: (event: ThreeEvent<MouseEvent>) => {
+						event.stopPropagation();
+						onOpen();
+					},
+				}
+			: {}),
+		...(onOpen || onHoverAgent
+			? {
+					onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+						event.stopPropagation();
+						setHovered(true);
+						onHoverAgent?.();
+					},
+					onPointerOut: () => setHovered(false),
+				}
+			: {}),
+	};
 	return (
 		<group position={[0, MONITOR.y, MONITOR.z]} {...handlers}>
 			<mesh position={[0, 0.01, -0.02]} castShadow>

@@ -77,12 +77,20 @@ export interface DeskStationProps {
 	readonly paneId: string | undefined;
 	/** False while this desk's screen is focused and a real terminal covers it. */
 	readonly screenLive: boolean;
+	readonly onHoverAgent: (() => void) | undefined;
 	/** Opens this desk's screen (or, at your desk, the Chief of Staff); the desk itself is clickable too. */
 	readonly onOpenScreen: (() => void) | undefined;
 }
 
 /** One workstation: desk, live monitor and chair. Its agent is drawn by `AgentActor`. */
-export function DeskStation({ desk, status, paneId, screenLive, onOpenScreen }: DeskStationProps) {
+export function DeskStation({
+	desk,
+	status,
+	paneId,
+	screenLive,
+	onHoverAgent,
+	onOpenScreen,
+}: DeskStationProps) {
 	const [hovered, setHovered] = useState(false);
 	const lit = hovered && onOpenScreen !== undefined;
 	useCursor(lit);
@@ -108,7 +116,13 @@ export function DeskStation({ desk, status, paneId, screenLive, onOpenScreen }: 
 			<group {...handlers}>
 				<DeskBody hovered={lit} />
 			</group>
-			<Monitor status={status} paneId={paneId} live={screenLive} onOpen={onOpenScreen} />
+			<Monitor
+				status={status}
+				paneId={paneId}
+				live={screenLive}
+				onOpen={onOpenScreen}
+				onHoverAgent={onHoverAgent}
+			/>
 			<Chair color={desk.chairColor} />
 		</group>
 	);
