@@ -1,4 +1,8 @@
-import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
+import {
+	type AgentStatus,
+	type SessionSnapshot,
+	sessionSnapshotSchema,
+} from "@shared/herdr/schema";
 import type { OfficeApi } from "@shared/ipc";
 import { type MailQueue, previewOf, type QueuedNote } from "@shared/mail-queue";
 import type { OfficeMessage } from "@shared/switchboard";
@@ -12,16 +16,19 @@ import { fakeWhiteboard } from "./fake-board";
  * renderer module, because some read `window.office` at load time.
  */
 
-/** Who sits where in the reference screenshot: workspace label → agents. */
-const CREW: Record<string, ReadonlyArray<readonly [string, "working" | "idle"]>> = {
+/**
+ * Who sits where in the reference screenshot: workspace label → agents, with
+ * one of each status so the shots show every kind of body language.
+ */
+const CREW: Record<string, ReadonlyArray<readonly [string, AgentStatus]>> = {
 	sales: [
-		["nora", "working"],
+		["nora", "done"],
 		["jonas", "working"],
 		["emma", "idle"],
 	],
 	delivery: [
 		["ava", "working"],
-		["ben", "working"],
+		["ben", "blocked"],
 		["finn", "idle"],
 		["leo", "working"],
 	],

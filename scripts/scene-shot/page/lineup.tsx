@@ -1,7 +1,9 @@
 import "@fontsource/inter/600.css";
 import { Canvas } from "@react-three/fiber";
 import { fitOrthographic, VIEW_DIRECTION } from "@renderer/features/office/camera-fit";
+import { activityFor } from "@renderer/features/office/characters/AgentActor";
 import { MiiCharacter } from "@renderer/features/office/characters/MiiCharacter";
+import { SpeechBubble } from "@renderer/features/office/conversations/SpeechBubble";
 import { roomPoints } from "@renderer/features/office/OfficeCamera";
 import { Lights } from "@renderer/features/office/scene/Lights";
 import { STATION_SCALE } from "@renderer/features/office/scene/station";
@@ -20,6 +22,7 @@ import {
 	outfitStyles,
 	skinTones,
 } from "@shared/avatar/style";
+import type { AgentStatus } from "@shared/herdr/schema";
 import { DEFAULT_LAYOUT } from "@shared/layout/default-layout";
 import { createRoot } from "react-dom/client";
 import { Vector3 } from "three";
@@ -58,9 +61,19 @@ function variant(hair: (typeof hairStyles)[number], index: number): AvatarStyle 
 interface Member {
 	readonly label: string;
 	readonly style: AvatarStyle;
+	/** Seated with this status's body language (and marks) instead of standing idle. */
+	readonly status?: AgentStatus;
 }
 
 const crew: Member[] = CREW.map((name) => ({ label: name, style: avatarStyleFor(name) }));
+
+/** One seated agent per status, as the office shows them at their desks. */
+const STATUSES: readonly AgentStatus[] = ["working", "idle", "blocked", "done"];
+const statuses: Member[] = STATUSES.map((status, index) => ({
+	label: status,
+	style: avatarStyleFor(CREW[index] ?? "nora"),
+	status,
+}));
 const variants: Member[] = hairStyles.map((hair, index) => {
 	const style = variant(hair, index);
 	const extras = [style.glasses, style.headwear?.style].filter(Boolean).join(" ");
@@ -129,18 +142,59 @@ const ACROSS = new Vector3(1, 0, -1).normalize();
 /** Mid-body height: the camera aims here. */
 const AIM_Y = 0.8 * STATION_SCALE;
 
+/** A plain stool for the seated status row: the chair seat top is at 0.46 m. */
+function Stool() {
+	return (
+		<group>
+			<mesh position={[0, 0.43, 0]} castShadow>
+				<boxGeometry args={[0.45, 0.06, 0.45]} />
+				<meshStandardMaterial color="#5c6470" flatShading />
+			</mesh>
+			<mesh position={[0, 0.2, 0]} castShadow>
+				<boxGeometry args={[0.07, 0.4, 0.07]} />
+				<meshStandardMaterial color="#2b2d33" flatShading />
+			</mesh>
+		</group>
+	);
+}
+
+/** One figure in a row: standing idle, or seated on a stool showing its status. */
+function Figure({ member, index }: { readonly member: Member; readonly index: number }) {
+	const { style, status } = member;
+	if (!status)
+		return <MiiCharacter style={style} pose="standing" activity="idle" phase={index * 0.7} />;
+	return (
+		<>
+			<Stool />
+			<MiiCharacter
+				style={style}
+				pose="seated"
+				activity={activityFor("seated", status)}
+				phase={index * 0.7}
+			/>
+			<SpeechBubble
+				agentName={member.label}
+				// Lower than the office's 2.35 so the marks stay inside this short canvas.
+				height={2.1}
+				hovered={false}
+				blocked={status === "blocked"}
+			/>
+		</>
+	);
+}
+
 function Row({ members }: { readonly members: Member[] }) {
 	const middle = (members.length - 1) / 2;
 	return (
 		<>
-			{members.map(({ label, style }, index) => (
+			{members.map((member, index) => (
 				<group
-					key={label}
+					key={member.label}
 					position={ACROSS.clone().multiplyScalar((index - middle) * SPACING)}
 					rotation={[0, Math.PI / 4, 0]}
 					scale={STATION_SCALE}
 				>
-					<MiiCharacter style={style} pose="standing" activity="idle" phase={index * 0.7} />
+					<Figure member={member} index={index} />
 				</group>
 			))}
 		</>
@@ -203,6 +257,12 @@ function Page() {
 			<Lineup members={crew} zoom={OVERVIEW_ZOOM} labels={false} />
 			<h2>Crew close-up (4×)</h2>
 			<Lineup members={crew} zoom={CLOSE_UP_ZOOM} labels />
+			<h2>
+				Status at a desk: working types, idle looks around, blocked slumps under a red !, done
+				stretches
+			</h2>
+			<Lineup members={statuses} zoom={OVERVIEW_ZOOM} labels={false} />
+			<Lineup members={statuses} zoom={CLOSE_UP_ZOOM} labels />
 			<h2>Every hairstyle at office overview zoom</h2>
 			<Lineup members={hairdos} zoom={OVERVIEW_ZOOM} labels={false} />
 			<h2>Every hairstyle (4×)</h2>

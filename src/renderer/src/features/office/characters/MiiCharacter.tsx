@@ -28,7 +28,7 @@ export interface MiiCharacterProps {
 	style: AvatarStyle;
 	/** `seated` puts the hips at y ≈ 0.48 over a 0.46 m chair seat, hands on a keyboard ahead. */
 	pose: MiiPose;
-	/** `waving` raises the camera-side arm: the agent is blocked and needs the human. */
+	/** Body language over the pose: typing, idling, slumped (blocked) or stretching (done). */
 	activity: MiiActivity;
 	/** Seconds added to the animation clock so neighbours don't move in lockstep. */
 	phase?: number;

@@ -20,19 +20,31 @@ import { useConversations, visitFor } from "../conversations/conversation-store"
 import { NameRing } from "../labels/NameRing";
 import type { LiveAgent } from "../model/live-agents";
 import { type Placement, STATION_SCALE } from "../scene/station";
-import { MiiCharacter, type MiiPose } from "./MiiCharacter";
+import { type MiiActivity, MiiCharacter, type MiiPose } from "./MiiCharacter";
 
 const WALK_SPEED = 1.35;
 const TURN_RATE = 10;
 const THINK_EVERY = 0.75;
 
-const SEATED_ACTIVITY: Record<AgentStatus, "typing" | "idle" | "waving"> = {
+/** Each status reads from across the room: typing, slumped (blocked), stretching (done). */
+const STATUS_ACTIVITY: Record<AgentStatus, MiiActivity> = {
 	working: "typing",
-	blocked: "waving",
+	blocked: "slumped",
 	idle: "idle",
-	done: "idle",
+	done: "stretching",
 	unknown: "idle",
 };
+
+/**
+ * Body language for a status in a mode: at the pool table the cue, typing
+ * needs the desk, walking and workouts drive the body themselves.
+ */
+export function activityFor(mode: Brain["mode"], status: AgentStatus): MiiActivity {
+	if (mode === "playing") return "cue";
+	if (mode === "walking" || mode === "exercising") return "idle";
+	const activity = STATUS_ACTIVITY[status];
+	return activity === "typing" && mode !== "seated" ? "idle" : activity;
+}
 
 const POSE: Record<Brain["mode"], MiiPose> = {
 	seated: "seated",
@@ -195,8 +207,7 @@ export function AgentActor({ agent, world, phase, poolTable, overlay }: AgentAct
 		change(stepBrain(brain.current, tick, world));
 	});
 
-	const activity =
-		mode === "seated" ? SEATED_ACTIVITY[agent.status] : mode === "playing" ? "cue" : "idle";
+	const activity = activityFor(mode, agent.status);
 	return (
 		<>
 			<group
