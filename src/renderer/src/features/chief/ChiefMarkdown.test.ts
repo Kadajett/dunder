@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ChiefMarkdown } from "./ChiefMarkdown";
+import { ChiefMarkdown, ReplyMarkdown } from "./ChiefMarkdown";
 
 const render = (text: string): string =>
 	renderToStaticMarkup(createElement(ChiefMarkdown, { text }));
@@ -51,5 +51,19 @@ describe("ChiefMarkdown", () => {
 		const html = render("![chart](https://example.com/c.png)");
 		expect(html).not.toContain("<img");
 		expect(html).toContain("[chart]");
+	});
+
+	it("turns bead ids in text and inline code into chips, leaving code blocks and links alone", () => {
+		const html = renderToStaticMarkup(
+			createElement(ReplyMarkdown, {
+				text: "Ship `office-dkh` after office-zz9.\n\nSee https://example.com/office-dkh\n\n```\nbd close office-dkh\n```",
+				prefixes: ["office"],
+			}),
+		);
+		expect(html.match(/class="bead-chip"/g)).toHaveLength(2);
+		expect(html).toMatch(/data-code="true"[^>]*>office-dkh<\/button>/);
+		expect(html).toMatch(/data-code="false"[^>]*>office-zz9<\/button>/);
+		expect(html).toContain('<a href="https://example.com/office-dkh"');
+		expect(html).toContain("<pre><code>bd close office-dkh\n</code></pre>");
 	});
 });
