@@ -1,7 +1,8 @@
 import { createLogger } from "@shared/log/logger";
-import type { WorkBoard, WorkLane, WorkPriority, WorkResult } from "@shared/work-board";
+import type { HumanAsk, WorkBoard, WorkLane, WorkPriority, WorkResult } from "@shared/work-board";
 import { z } from "zod";
 import type { BdRunner } from "../beads/bd";
+import { buildAsks } from "./asks";
 import { buildCards, parseBeads } from "./cards";
 
 const log = createLogger("work-board");
@@ -19,6 +20,8 @@ export interface WorkBoardDeps {
 	/** Run `callback` once after `ms`; returns a cancel. */
 	readonly setTimer: (callback: () => void, ms: number) => () => void;
 	readonly emit: (board: WorkBoard) => void;
+	/** Tell an agent something as an office message (delivered once it is free). */
+	readonly notify: (agent: string, text: string) => void;
 }
 
 const showSchema = z.array(z.object({ status: z.string() })).min(1);
@@ -108,6 +111,40 @@ export class WorkBoardService {
 		return this.#write([["update", id, `--assignee=${assignee ?? ""}`]]);
 	}
 
+	/**
+	 * Answer an ask: the response becomes a comment, then the ask closes. (bd's
+	 * own `human respond` does the same but fails with "storage is nil" in bd 1.1.2.)
+	 */
+	async respond(id: string, response: string): Promise<WorkResult> {
+		const ask = this.#ask(id);
+		const result = await this.#write([
+			["comments", "add", id, "--", response],
+			["close", id, "--reason=Responded"],
+		]);
+		if (result.ok && ask?.asker)
+			this.#deps.notify(
+				ask.asker,
+				`Jeremy answered your ask ${id} ("${ask.question}"): ${response}`,
+			);
+		return result;
+	}
+
+	/** Close an ask unanswered (bd's `human dismiss` has the same bd 1.1.2 bug). */
+	async dismiss(id: string): Promise<WorkResult> {
+		const ask = this.#ask(id);
+		const result = await this.#write([["close", id, "--reason=Dismissed"]]);
+		if (result.ok && ask?.asker)
+			this.#deps.notify(
+				ask.asker,
+				`Jeremy dismissed your ask ${id} ("${ask.question}") without an answer.`,
+			);
+		return result;
+	}
+
+	#ask(id: string): HumanAsk | undefined {
+		return this.#board?.state === "ok" ? this.#board.asks.find((ask) => ask.id === id) : undefined;
+	}
+
 	async #tick(): Promise<void> {
 		await this.refresh();
 		if (this.#started)
@@ -161,13 +198,14 @@ export class WorkBoardService {
 				"-n",
 				"0",
 			]);
+			const openBeads = parseBeads(open);
 			const cards = buildCards({
-				open: parseBeads(open),
+				open: openBeads,
 				blocked: parseBeads(blocked),
 				ready: parseBeads(ready),
 				closed: parseBeads(closed),
 			});
-			return { state: "ok", cards };
+			return { state: "ok", cards, asks: buildAsks(openBeads) };
 		} catch (error) {
 			return { state: "unavailable", reason: reasonOf(error) };
 		}

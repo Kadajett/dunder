@@ -32,9 +32,32 @@ export interface WorkCard {
 	readonly updatedAt: string;
 }
 
+/**
+ * Something only Jeremy can do or decide, flagged by an agent as a bead with
+ * the `human` label (`bd create "<ask>" -l human -a <agent> --deps blocks:<bead>`).
+ * These never show as cards; the Trust Inbox lists them.
+ */
+export interface HumanAsk {
+	/** The ask's own bead id. */
+	readonly id: string;
+	/** The one-line ask (the bead title). */
+	readonly question: string;
+	readonly detail: string;
+	/** The agent who asked (the ask's assignee), who hears the answer; null when unknown. */
+	readonly asker: string | null;
+	/** Open beads waiting on the answer. */
+	readonly blocks: readonly { readonly id: string; readonly title: string }[];
+	readonly createdAt: string;
+}
+
 export type WorkBoard =
 	/** Cards grouped by lane in `workLanes` order; within a lane by priority, then most recently updated. */
-	| { readonly state: "ok"; readonly cards: readonly WorkCard[] }
+	| {
+			readonly state: "ok";
+			readonly cards: readonly WorkCard[];
+			/** Open asks, most urgent (priority) first, then oldest. */
+			readonly asks: readonly HumanAsk[];
+	  }
 	/** bd is missing or failing; the bar says so instead of showing stale cards. */
 	| { readonly state: "unavailable"; readonly reason: string };
 
@@ -53,6 +76,8 @@ export const workAssigneeSchema = z
 	.string()
 	.regex(/^[a-z][a-z0-9_-]{0,31}$/)
 	.nullable();
+export const WORK_RESPONSE_MAX = 2_000;
+export const workResponseSchema = z.string().trim().min(1).max(WORK_RESPONSE_MAX);
 
 /** `window.office.work`. Every write is a bd command run by main; the board refreshes after it. */
 export interface WorkBoardApi {
@@ -65,4 +90,8 @@ export interface WorkBoardApi {
 	/** Ready = status open; Done = bd close; out of Done reopens first. */
 	move(id: string, lane: WorkLane): Promise<WorkResult>;
 	assign(id: string, assignee: string | null): Promise<WorkResult>;
+	/** Answer an ask: the text becomes a comment, the ask closes, the asking agent is told. */
+	respond(id: string, response: string): Promise<WorkResult>;
+	/** Close an ask without an answer; the asking agent is told. */
+	dismiss(id: string): Promise<WorkResult>;
 }

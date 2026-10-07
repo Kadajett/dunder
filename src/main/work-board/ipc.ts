@@ -11,4 +11,6 @@ export function registerWorkBoardIpc(board: WorkBoardService): void {
 	ipcMain.handle(IPC.workPriority, (_event, payload: unknown) => handlers.setPriority(payload));
 	ipcMain.handle(IPC.workMove, (_event, payload: unknown) => handlers.move(payload));
 	ipcMain.handle(IPC.workAssign, (_event, payload: unknown) => handlers.assign(payload));
+	ipcMain.handle(IPC.workRespond, (_event, payload: unknown) => handlers.respond(payload));
+	ipcMain.handle(IPC.workDismiss, (_event, payload: unknown) => handlers.dismiss(payload));
 }

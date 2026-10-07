@@ -11,8 +11,12 @@ const READS = [
 	["list", "--json", "--status=closed", `--closed-after=${SINCE}`, "-n", "0"],
 ];
 
-function bead(id: string, status: string): Record<string, unknown> {
-	return { id, title: id, status, priority: 2, updated_at: "2026-10-06T10:00:00Z" };
+function bead(
+	id: string,
+	status: string,
+	extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+	return { id, title: id, status, priority: 2, updated_at: "2026-10-06T10:00:00Z", ...extra };
 }
 
 const READ_COMMANDS = ["list", "blocked", "ready"];
@@ -21,6 +25,7 @@ const READ_COMMANDS = ["list", "blocked", "ready"];
 function harness(statuses: Record<string, string> = {}) {
 	const calls: string[][] = [];
 	const emitted: WorkBoard[] = [];
+	const notes: [string, string][] = [];
 	const timers: { callback: () => void; ms: number }[] = [];
 	const fake = { open: [bead("a-1", "open")], fail: "", failWrite: "" };
 	const read = (args: readonly string[]): unknown[] => {
@@ -47,9 +52,10 @@ function harness(statuses: Record<string, string> = {}) {
 			return () => timers.splice(timers.indexOf(timer), 1);
 		},
 		emit: (board) => emitted.push(board),
+		notify: (agent, text) => notes.push([agent, text]),
 	});
 	const writes = () => calls.filter(([, command]) => !READ_COMMANDS.includes(command ?? ""));
-	return { service, calls, emitted, timers, fake, writes };
+	return { service, calls, emitted, timers, fake, writes, notes };
 }
 
 describe("WorkBoardService reads", () => {
@@ -58,7 +64,7 @@ describe("WorkBoardService reads", () => {
 		await service.refresh();
 		expect(calls).toEqual(READS.map((args) => ["/repo", ...args]));
 		expect(emitted).toEqual([
-			{ state: "ok", cards: [expect.objectContaining({ id: "a-1", lane: "ready" })] },
+			{ state: "ok", cards: [expect.objectContaining({ id: "a-1", lane: "ready" })], asks: [] },
 		]);
 		await service.refresh();
 		expect(emitted).toHaveLength(1);
@@ -148,6 +154,42 @@ describe("WorkBoardService writes", () => {
 			reason: "Error: issue a-1 not found",
 		});
 		expect(calls).toHaveLength(1 + READS.length);
+	});
+
+	it("answers an ask as a comment plus a close and tells the agent who asked; dismissing closes it", async () => {
+		const { service, fake, writes, notes } = harness();
+		fake.open = [
+			bead("ask-1", "open", {
+				labels: ["human"],
+				assignee: "nora",
+				title: "npm login + NPM_TOKEN",
+			}),
+			bead("ask-2", "open", { labels: ["human"], assignee: "mika", title: "ElevenLabs OK?" }),
+		];
+		await service.refresh();
+		await service.respond("ask-1", "--done, token set");
+		await service.dismiss("ask-2");
+		expect(writes()).toEqual([
+			["/repo", "comments", "add", "ask-1", "--", "--done, token set"],
+			["/repo", "close", "ask-1", "--reason=Responded"],
+			["/repo", "close", "ask-2", "--reason=Dismissed"],
+		]);
+		expect(notes).toEqual([
+			["nora", 'Jeremy answered your ask ask-1 ("npm login + NPM_TOKEN"): --done, token set'],
+			["mika", 'Jeremy dismissed your ask ask-2 ("ElevenLabs OK?") without an answer.'],
+		]);
+	});
+
+	it("tells nobody when bd refuses the answer", async () => {
+		const { service, fake, notes } = harness();
+		fake.open = [bead("ask-1", "open", { labels: ["human"], assignee: "nora" })];
+		await service.refresh();
+		fake.failWrite = "Error: issue ask-1 not found";
+		expect(await service.respond("ask-1", "ok")).toEqual({
+			ok: false,
+			reason: "Error: issue ask-1 not found",
+		});
+		expect(notes).toEqual([]);
 	});
 });
 

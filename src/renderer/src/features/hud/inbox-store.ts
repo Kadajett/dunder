@@ -3,6 +3,7 @@ import { createLogger } from "@shared/log/logger";
 import type { SeenDone } from "@shared/office-stats";
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
+import { useHumanAsks } from "../work/asks-store";
 import { type InboxAgent, inboxAgents, type TrustItem, trustInbox } from "./trust-inbox";
 
 const log = createLogger("trust-inbox");
@@ -23,12 +24,13 @@ function loadSeen(): void {
 	);
 }
 
-/** What needs the user right now (Trust Inbox), from the live snapshot. */
+/** What needs the user right now (Trust Inbox): the live snapshot plus the asks on the work board. */
 export function useTrustInbox(snapshot: SessionSnapshot | null): TrustItem[] {
 	useEffect(loadSeen, []);
 	const seen = useSeen((state) => state.seen);
+	const asks = useHumanAsks();
 	const agents = useMemo(() => inboxAgents(snapshot), [snapshot]);
-	return useMemo(() => trustInbox(agents, seen), [agents, seen]);
+	return useMemo(() => trustInbox(agents, seen, asks), [agents, seen, asks]);
 }
 
 /**

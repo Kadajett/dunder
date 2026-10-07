@@ -25,7 +25,7 @@ function card(id: string, lane: WorkCard["lane"]): WorkCard {
 	};
 }
 
-const board = (...cards: WorkCard[]): WorkBoard => ({ state: "ok", cards });
+const board = (...cards: WorkCard[]): WorkBoard => ({ state: "ok", cards, asks: [] });
 
 /** A promise settled by the test, so in-flight writes can be observed. */
 interface Deferred<T> {
@@ -71,6 +71,8 @@ function fakeApi(): FakeApi {
 		setPriority: write,
 		move: write,
 		assign: write,
+		respond: write,
+		dismiss: write,
 	};
 	return { api, writes, read, push: (next) => listener(next) };
 }

@@ -114,6 +114,8 @@ export const IPC = {
 	workPriority: "work:priority",
 	workMove: "work:move",
 	workAssign: "work:assign",
+	workRespond: "work:respond",
+	workDismiss: "work:dismiss",
 } as const;
 
 export type BridgeStatus =
