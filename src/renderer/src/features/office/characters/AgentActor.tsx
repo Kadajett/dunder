@@ -1,12 +1,14 @@
 import { useFrame } from "@react-three/fiber";
 import { WORKOUT_SECONDS, type Workout } from "@shared/calisthenics";
+import { CHIEF_NAME, CHIEF_ROLE } from "@shared/chief";
 import type { AgentStatus } from "@shared/herdr/schema";
 import type { Vec2 } from "@shared/layout/schema";
 import { type ReactNode, useRef, useState } from "react";
 import type { Group } from "three";
 import { inBrainstorm } from "../../brainstorm/brainstorm-store";
 import { useAgentWorkout } from "../../calisthenics/workout-store";
-import { useAgentStyle } from "../../hire/roster-store";
+import { useCall } from "../../chief/call/call-store";
+import { useAgentStyle, useRosterStore } from "../../hire/roster-store";
 import { usePool } from "../../pool/pool-store";
 import { standingSpots, type TablePlacement } from "../../pool/table-space";
 import {
@@ -20,6 +22,7 @@ import { useConversations, visitFor } from "../conversations/conversation-store"
 import { NameRing } from "../labels/NameRing";
 import type { LiveAgent } from "../model/live-agents";
 import { type Placement, STATION_SCALE } from "../scene/station";
+import { phoneHand } from "./held-phone";
 import { type MiiActivity, MiiCharacter, type MiiPose } from "./MiiCharacter";
 
 const WALK_SPEED = 1.35;
@@ -36,12 +39,16 @@ const STATUS_ACTIVITY: Record<AgentStatus, MiiActivity> = {
 };
 
 /**
- * Body language for a status in a mode: at the pool table the cue, typing
- * needs the desk, walking and workouts drive the body themselves.
+ * Body language for a status in a mode: at the pool table the cue, on a call
+ * (the chief, while Jeremy calls him) the handset, typing needs the desk,
+ * walking and workouts drive the body themselves.
  */
-export function activityFor(mode: Brain["mode"], status: AgentStatus): MiiActivity {
+export function activityFor(mode: Brain["mode"], status: AgentStatus, onCall = false): MiiActivity {
 	if (mode === "playing") return "cue";
-	if (mode === "walking" || mode === "exercising") return "idle";
+	if (mode === "exercising") return "idle";
+	// On a call with Jeremy, the handset wins over desk work and the status poses.
+	if (onCall) return "phone";
+	if (mode === "walking") return "idle";
 	const activity = STATUS_ACTIVITY[status];
 	return activity === "typing" && mode !== "seated" ? "idle" : activity;
 }
@@ -98,6 +105,15 @@ function angleDelta(from: number, to: number): number {
 	return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
+/** True while Jeremy is on a voice call and `name` is the chief of staff taking it. */
+function useOnCall(name: string): boolean {
+	const active = useCall((s) => s.active);
+	const role = useRosterStore(
+		(state) => state.roster?.agents.find((agent) => agent.name === name)?.role,
+	);
+	return active && (role === undefined ? name === CHIEF_NAME : role === CHIEF_ROLE);
+}
+
 interface BodyTarget {
 	readonly position: Vec2 | undefined;
 	readonly heading: number | undefined;
@@ -140,6 +156,7 @@ export interface AgentActorProps {
 /** A live agent's body: sits and works at its desk, wanders when idle, joins workouts, plays pool. */
 export function AgentActor({ agent, world, phase, poolTable, overlay }: AgentActorProps) {
 	const style = useAgentStyle(agent.name);
+	const onCall = useOnCall(agent.name);
 	const brain = useRef<Brain>(initialBrain(0, world.random));
 	const [mode, setMode] = useState<Brain["mode"]>(brain.current.mode);
 	const body = useRef<Group>(null);
@@ -207,7 +224,9 @@ export function AgentActor({ agent, world, phase, poolTable, overlay }: AgentAct
 		change(stepBrain(brain.current, tick, world));
 	});
 
-	const activity = activityFor(mode, agent.status);
+	const activity = activityFor(mode, agent.status, onCall);
+	// Off the seat the body turns as it goes; its heading at the last mode change is close enough.
+	const heading = mode === "seated" ? world.seat.rotationY : body.current?.rotation.y;
 	return (
 		<>
 			<group
@@ -222,6 +241,7 @@ export function AgentActor({ agent, world, phase, poolTable, overlay }: AgentAct
 					activity={activity}
 					phase={phase}
 					workoutStartedAt={workout?.startedAt ?? 0}
+					phoneHand={phoneHand(heading ?? world.seat.rotationY)}
 				/>
 				{overlay}
 			</group>

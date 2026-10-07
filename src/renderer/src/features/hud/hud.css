@@ -201,3 +201,37 @@
 	flex: none;
 	opacity: 0.75;
 }
+
+/* Transient: only while Jeremy is on a voice call with the chief. */
+.hud-call-chip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 40px;
+	padding: 0 12px;
+	font: 600 12.5px var(--font-ui);
+	color: var(--ink);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.hud-call-name {
+	text-transform: capitalize;
+}
+
+.hud-call-dot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #e0473a;
+	box-shadow: 0 0 0 3px #e0473a33;
+	animation: hud-call-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hud-call-pulse {
+	50% {
+		opacity: 0.35;
+		box-shadow: 0 0 0 6px #e0473a11;
+	}
+}

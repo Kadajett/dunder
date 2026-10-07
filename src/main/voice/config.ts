@@ -1,11 +1,15 @@
-import { VOICE_ID_VAR, VOICE_KEY_VAR, VOICE_SECRETS_FILE } from "@shared/voice";
+import { VOICE_ID_VAR, VOICE_KEY_VAR, VOICE_LANGUAGE_VAR, VOICE_SECRETS_FILE } from "@shared/voice";
 
 /** George: a warm, calm male premade voice, used when ELEVENLABS_VOICE_ID is unset. */
 export const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
+/** Scribe's language unless ELEVENLABS_STT_LANGUAGE says otherwise (ISO 639-1/3). */
+export const DEFAULT_LANGUAGE = "en";
 
 export interface VoiceConfig {
 	readonly key: string;
 	readonly voiceId: string;
+	/** What Jeremy speaks; Scribe is told rather than left to guess. */
+	readonly language: string;
 }
 
 export type VoiceSetup =
@@ -39,5 +43,12 @@ export async function readVoiceSetup(
 	const pick = (name: string): string | undefined => env[name]?.trim() || secrets.get(name);
 	const key = pick(VOICE_KEY_VAR);
 	if (!key) return { ok: false, reason: MISSING_KEY_REASON };
-	return { ok: true, config: { key, voiceId: pick(VOICE_ID_VAR) ?? DEFAULT_VOICE_ID } };
+	return {
+		ok: true,
+		config: {
+			key,
+			voiceId: pick(VOICE_ID_VAR) ?? DEFAULT_VOICE_ID,
+			language: pick(VOICE_LANGUAGE_VAR) ?? DEFAULT_LANGUAGE,
+		},
+	};
 }

@@ -1,4 +1,5 @@
 import { CUE_ARM_LEAN } from "./held-cue";
+import { PHONE_ARM, PHONE_ARM_MIRRORED } from "./held-phone";
 import {
 	type ArmAngles,
 	type MiiActivity,
@@ -88,6 +89,9 @@ function headPose(activity: MiiActivity, walking: boolean, t: number): void {
 		const s = stretchAmount(t);
 		look.x = lerp(look.x, -0.3, s);
 		look.y *= 1 - s;
+	} else if (activity === "phone") {
+		// Square to the handset, so the head never swings through it.
+		look.y = 0;
 	}
 }
 
@@ -133,9 +137,20 @@ function restingArm(pose: MiiPose, activity: MiiActivity, i: number, t: number):
 	}
 }
 
-/** Writes the angles of arm `i` (0 = +x side) into the shared `arm` scratch object. */
-function armPose(pose: MiiPose, activity: MiiActivity, i: number, t: number): void {
+/** Phone arm angles, indexed like the rig: 0 = +x arm, 1 = -x arm. */
+const PHONE_ARMS: readonly [ArmAngles, ArmAngles] = [PHONE_ARM, PHONE_ARM_MIRRORED];
+
+/**
+ * Writes the angles of arm `i` (0 = +x side) into the shared `arm` scratch
+ * object. On the phone, arm `phoneHand` holds the handset to the ear.
+ */
+function armPose({ pose, activity, phoneHand }: RigMotion, i: number, t: number): void {
 	const side = i === 0 ? 1 : -1;
+	if (activity === "phone" && i === phoneHand) {
+		arm.x = PHONE_ARMS[i].x;
+		arm.z = PHONE_ARMS[i].z;
+		return;
+	}
 	if (activity === "slumped") {
 		// Hands dropped into the lap, a little apart.
 		arm.x = pose === "seated" ? -0.55 : 0;
@@ -149,17 +164,24 @@ function armPose(pose: MiiPose, activity: MiiActivity, i: number, t: number): vo
 	arm.z = lerp(arm.z, side * ARMS_UP, s);
 }
 
+/** What the rig is doing: the pose, the activity on top, and (on the phone) which arm holds the handset. */
+export interface RigMotion {
+	readonly pose: MiiPose;
+	readonly activity: MiiActivity;
+	readonly phoneHand: 0 | 1;
+}
+
 /**
  * Poses every joint for time `t` (seconds, already offset by the character's
  * phase). The `exercising` pose is driven by `animateExercise` instead.
  */
-export function animateRig(rig: Rig, pose: MiiPose, activity: MiiActivity, t: number): void {
-	animateLegs(rig, pose, t);
-	animateUpper(rig, pose, activity, t);
+export function animateRig(rig: Rig, motion: RigMotion, t: number): void {
+	animateLegs(rig, motion.pose, t);
+	animateUpper(rig, motion.pose, motion.activity, t);
 	for (let i = 0; i < 2; i++) {
 		const group = rig.arms[i]?.current;
 		if (!group) continue;
-		armPose(pose, activity, i, t);
+		armPose(motion, i, t);
 		group.rotation.set(arm.x, 0, arm.z);
 	}
 }

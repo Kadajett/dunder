@@ -5,6 +5,7 @@ import { animateRig } from "./animate";
 import { Block, Blocks } from "./Block";
 import { animateExercise } from "./exercise";
 import { HELD_CUE } from "./held-cue";
+import { HELD_PHONE, HELD_PHONE_MIRRORED } from "./held-phone";
 import { pantsColorFor } from "./outfits";
 import { armPart, facePart, headPart, upperPart } from "./parts";
 import {
@@ -34,6 +35,8 @@ export interface MiiCharacterProps {
 	phase?: number;
 	/** Epoch ms of the workout signal; the `exercising` pose is a function of time since then. */
 	workoutStartedAt?: number;
+	/** The arm (rig index) holding the handset during `phone`: pick the camera-side one (`phoneHand`). */
+	phoneHand?: Side;
 }
 
 type Side = 0 | 1;
@@ -75,12 +78,14 @@ export function MiiCharacter({
 	activity,
 	phase = 0,
 	workoutStartedAt = 0,
+	phoneHand = 0,
 }: MiiCharacterProps) {
 	const rig = useMemo(createRig, []);
+	const motion = useMemo(() => ({ pose, activity, phoneHand }), [pose, activity, phoneHand]);
 	useFrame(({ clock }) => {
 		// Exercise ignores `phase`: every participant moves in sync with the shared signal.
 		if (pose === "exercising") animateExercise(rig, (Date.now() - workoutStartedAt) / 1_000);
-		else animateRig(rig, pose, activity, clock.elapsedTime + phase);
+		else animateRig(rig, motion, clock.elapsedTime + phase);
 	});
 	const head = useMemo(() => headPart(style), [style]);
 	const face = useMemo(() => facePart(style), [style]);
@@ -106,6 +111,9 @@ export function MiiCharacter({
 						>
 							<Blocks items={arm} />
 							{index === 0 && activity === "cue" ? <Blocks items={HELD_CUE} /> : null}
+							{index === phoneHand && activity === "phone" ? (
+								<Blocks items={index === 0 ? HELD_PHONE : HELD_PHONE_MIRRORED} />
+							) : null}
 						</group>
 					))}
 				</group>

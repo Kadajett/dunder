@@ -4,6 +4,7 @@ import { SPOKEN_MAX } from "./chief";
 /** Where main looks for the ElevenLabs key; the tooltip and errors name it. */
 export const VOICE_KEY_VAR = "ELEVENLABS_API_KEY";
 export const VOICE_ID_VAR = "ELEVENLABS_VOICE_ID";
+export const VOICE_LANGUAGE_VAR = "ELEVENLABS_STT_LANGUAGE";
 export const VOICE_SECRETS_FILE = "~/.config/friday-personal/secrets.env";
 
 /** One push-to-talk turn caps at 60 s; this is far above what that records. */
