@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ModelOption } from "../models";
 import { avatarStyleSchema } from "./avatar-style-schema";
-import { harnessSchema } from "./roster";
+import { type Harness, harnessSchema } from "./roster";
 
 /** Role suggestions in the hire dialog; any free-text role is fine too. */
 export const ROLE_PRESETS = [
@@ -87,11 +87,23 @@ export type WorkforceResult =
 	| { readonly ok: true }
 	| { readonly ok: false; readonly error: string };
 
+/**
+ * Whether a new worker on a harness could answer: `ready`; `not-ready` with
+ * why and what to run (the hire is refused); `unknown` when the check itself
+ * failed (the hire goes ahead).
+ */
+export type HarnessCheck =
+	| { readonly state: "ready" }
+	| { readonly state: "not-ready"; readonly reason: string }
+	| { readonly state: "unknown"; readonly reason: string };
+
 /** `window.office.workforce`: hire, fire and restart roster workers. */
 export interface WorkforceApi {
 	/** Defaults for the hire dialog: the project directory new workers start in. */
 	defaults(): Promise<{ readonly cwd: string }>;
-	/** Validates, puts the worker on the roster with this look for good, and starts it. */
+	/** Whether a worker on this harness could answer right now (CLI there, logged in). */
+	checkHarness(harness: Harness): Promise<HarnessCheck>;
+	/** Validates, checks the harness, puts the worker on the roster with this look for good, and starts it. */
 	hire(request: HireRequest): Promise<WorkforceResult>;
 	/** Marks the worker fired (never respawned) and closes its pane. */
 	fire(name: string): Promise<WorkforceResult>;

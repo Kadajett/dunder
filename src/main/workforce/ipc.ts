@@ -1,4 +1,4 @@
-import { agentNameSchema } from "@shared/company/roster";
+import { agentNameSchema, harnessSchema } from "@shared/company/roster";
 import type { WorkforceResult } from "@shared/company/workforce";
 import { IPC } from "@shared/ipc";
 import { ipcMain } from "electron";
@@ -10,6 +10,9 @@ const BAD_NAME: WorkforceResult = { ok: false, error: "invalid agent name" };
 export function registerWorkforceIpc(staffing: Staffing, defaultCwd: string): void {
 	ipcMain.handle(IPC.workforceDefaults, () => ({ cwd: defaultCwd }));
 	ipcMain.handle(IPC.workforceHire, (_event, request: unknown) => staffing.hire(request));
+	ipcMain.handle(IPC.workforceCheckHarness, (_event, harness: unknown) =>
+		staffing.checkHarness(harnessSchema.parse(harness)),
+	);
 	ipcMain.handle(IPC.workforceFire, (_event, name: unknown) => {
 		const parsed = agentNameSchema.safeParse(name);
 		return parsed.success ? staffing.fire(parsed.data) : BAD_NAME;

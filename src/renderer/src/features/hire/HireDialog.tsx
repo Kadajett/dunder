@@ -4,6 +4,7 @@ import type { SessionSnapshot } from "@shared/herdr/schema";
 import { useEffect, useMemo } from "react";
 import { draftStyle, rerolledLook } from "./draft-look";
 import { HireFields } from "./HireFields";
+import { useHarnessCheck } from "./harness-check-store";
 import { useHire } from "./hire-store";
 import { LookPicker } from "./LookPicker";
 import { MiiPreview } from "./MiiPreview";
@@ -24,6 +25,10 @@ function HireForm({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 	const { draft, update, close } = form;
 	const style = useMemo(() => draftStyle(draft), [draft]);
 	const status = statusLine(form);
+	const harnessCheck = useHarnessCheck(draft.harness);
+	// Main refuses it too; the button says so before he tries.
+	const harnessBlocks =
+		harnessCheck !== null && harnessCheck !== "checking" && harnessCheck.state === "not-ready";
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent): void => {
 			if (event.key === "Escape") close();
@@ -60,7 +65,12 @@ function HireForm({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 						</button>
 						<small>Their look is fixed once hired.</small>
 					</div>
-					<HireFields draft={draft} rooms={form.rooms} update={update} />
+					<HireFields
+						draft={draft}
+						rooms={form.rooms}
+						harnessCheck={harnessCheck}
+						update={update}
+					/>
 				</div>
 				{status ? (
 					<p className="hire-status" data-error={status.error}>
@@ -74,7 +84,7 @@ function HireForm({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 					<button
 						type="submit"
 						className="card-action"
-						disabled={!form.available || !form.check.ok || form.busy}
+						disabled={!form.available || !form.check.ok || form.busy || harnessBlocks}
 					>
 						{draft.name ? `Hire ${draft.name}` : "Hire"}
 					</button>
