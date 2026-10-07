@@ -1,6 +1,6 @@
 import type { WorkBoard } from "@shared/work-board";
 import { describe, expect, it } from "vitest";
-import { movePlan, WORK_POLL_MS, WorkBoardService } from "./service";
+import { movePlan, WORK_FULL_READ_MS, WORK_POLL_MS, WorkBoardService } from "./service";
 
 const NOW = Date.parse("2026-10-06T12:00:00Z");
 /** Closed beads are read for 30 days (epics' spend); Done still shows the last day. */
@@ -23,7 +23,8 @@ function bead(
 const READ_COMMANDS = ["list", "blocked", "ready"];
 
 /** A fake bd: answers reads from `fake.open`, `show` from `statuses`, records every argv. */
-function harness(statuses: Record<string, string> = {}) {
+function harness(statuses: Record<string, string> = {}, stamp?: { value: string }) {
+	let now = NOW;
 	const calls: string[][] = [];
 	const emitted: WorkBoard[] = [];
 	const notes: [string, string][] = [];
@@ -46,7 +47,7 @@ function harness(statuses: Record<string, string> = {}) {
 	const service = new WorkBoardService({
 		runBd,
 		cwd: "/repo",
-		now: () => NOW,
+		now: () => now,
 		setTimer: (callback, ms) => {
 			const timer = { callback, ms };
 			timers.push(timer);
@@ -55,9 +56,13 @@ function harness(statuses: Record<string, string> = {}) {
 		emit: (board) => emitted.push(board),
 		notify: (agent, text) => notes.push([agent, text]),
 		spendOf: () => null,
+		...(stamp ? { changeStamp: async () => stamp.value } : {}),
 	});
 	const writes = () => calls.filter(([, command]) => !READ_COMMANDS.includes(command ?? ""));
-	return { service, calls, emitted, timers, fake, writes, notes };
+	const advance = (ms: number) => {
+		now += ms;
+	};
+	return { service, calls, emitted, timers, fake, writes, notes, advance };
 }
 
 describe("WorkBoardService reads", () => {
@@ -138,6 +143,34 @@ describe("WorkBoardService reads", () => {
 		expect(timers.map((timer) => timer.ms)).toEqual([WORK_POLL_MS]);
 		service.stop();
 		expect(timers).toEqual([]);
+	});
+
+	it("with a change stamp, reads bd only when the stamp moves or a minute has passed", async () => {
+		const stamp = { value: "1" };
+		const { service, calls, timers, advance } = harness({}, stamp);
+		// Fakes answer at once, so one macrotask lets a whole check-and-read finish.
+		const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+		const poll = async (ms: number) => {
+			advance(ms);
+			timers.shift()?.callback();
+			await settle();
+		};
+		service.start();
+		await settle();
+		const perRead = calls.length;
+		expect(perRead).toBeGreaterThan(0);
+
+		await poll(WORK_POLL_MS);
+		expect(calls).toHaveLength(perRead);
+		stamp.value = "2";
+		await poll(WORK_POLL_MS);
+		expect(calls).toHaveLength(perRead * 2);
+		await poll(WORK_FULL_READ_MS - 1);
+		expect(calls).toHaveLength(perRead * 2);
+		await poll(1);
+		expect(calls).toHaveLength(perRead * 3);
+		expect(timers.map((timer) => timer.ms)).toEqual([WORK_POLL_MS]);
+		service.stop();
 	});
 });
 
