@@ -1,7 +1,9 @@
+import { askSnoozeKey } from "@shared/inbox-snooze";
 import { type HumanAsk, WORK_RESPONSE_MAX } from "@shared/work-board";
 import { useState } from "react";
 import { dismissAsk, respondToAsk, useAskError } from "../../work/asks-store";
 import { useWork } from "../../work/work-store";
+import { SnoozeMenu } from "./Snooze";
 
 function AnswerForm({ ask, onCancel }: { readonly ask: HumanAsk; readonly onCancel: () => void }) {
 	const [text, setText] = useState("");
@@ -77,6 +79,7 @@ export function AskCard({ ask }: { readonly ask: HumanAsk }) {
 					<button type="button" className="secondary" onClick={() => void dismissAsk(ask.id)}>
 						Dismiss
 					</button>
+					<SnoozeMenu snoozeKey={askSnoozeKey(ask.id)} />
 					{blocked ? (
 						<button type="button" className="secondary" onClick={() => reveal(blocked.id)}>
 							Show in work bar

@@ -1,7 +1,7 @@
 import { agent, snapshot, workspace } from "@shared/herdr/fixtures/snapshot";
 import type { AgentStatus } from "@shared/herdr/schema";
 import { describe, expect, it } from "vitest";
-import { inboxAgents, type TrustItem, trustInbox } from "./trust-inbox";
+import { inboxAgents, splitSnoozed, type TrustItem, trustInbox } from "./trust-inbox";
 
 function office(...agents: [string, string, AgentStatus, number][]) {
 	return inboxAgents(
@@ -126,5 +126,23 @@ describe("inboxAgents", () => {
 			}),
 		);
 		expect(nora).toMatchObject({ workspaceLabel: "sales", activity: "Send greeting to Ava" });
+	});
+});
+
+describe("splitSnoozed", () => {
+	it("takes snoozed asks and blocked agents (by name, whatever pane) out of the inbox; other kinds never snooze", () => {
+		const agents = office(["jonas", "w2:p9", "blocked", 7], ["nora", "w1:p1", "done", 4]);
+		const items = trustInbox({ agents, seen: {}, asks: [ask("o-1"), ask("o-2")] });
+		const snoozes = [
+			{ key: "blocked:jonas", until: 100 },
+			{ key: "ask:o-2", until: 200 },
+			{ key: "done:nora", until: 300 },
+		];
+		const { awake, snoozed } = splitSnoozed(items, snoozes);
+		expect(summary(awake)).toEqual(["ask:o-1", "done:nora"]);
+		expect(snoozed.map(({ item, until }) => [summary([item])[0], until])).toEqual([
+			["blocked:jonas", 100],
+			["ask:o-2", 200],
+		]);
 	});
 });

@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AlertTarget } from "@shared/alerts";
 import type { AgentInfo, SessionSnapshot } from "@shared/herdr/schema";
+import type { Snooze } from "@shared/inbox-snooze";
 import type { HumanAsk, WorkBoard } from "@shared/work-board";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AlertService } from "./service";
 import { BATCH_MS, batchNotice } from "./triggers";
 
@@ -32,8 +33,11 @@ const ask = (id: string, question: string): HumanAsk => ({
 const board = (...asks: HumanAsk[]): WorkBoard => ({ state: "ok", revision: 1, cards: [], asks });
 
 let settingsPath: string;
+let snoozesPath: string;
 beforeEach(async () => {
-	settingsPath = join(await mkdtemp(join(tmpdir(), "alerts-")), "alerts.json");
+	const dir = await mkdtemp(join(tmpdir(), "alerts-"));
+	settingsPath = join(dir, "alerts.json");
+	snoozesPath = join(dir, "inbox-snoozes.json");
 });
 
 function harness() {
@@ -43,8 +47,11 @@ function harness() {
 	const opened: AlertTarget[] = [];
 	let clickLast: () => void = () => undefined;
 	let chimes = 0;
+	const snoozes: (readonly Snooze[])[] = [];
 	const service = new AlertService({
 		settingsPath,
+		snoozesPath,
+		emitSnoozes: (list) => snoozes.push(list),
 		now: () => now,
 		isFocused: () => focused,
 		show: (notice, onClick) => {
@@ -58,6 +65,7 @@ function harness() {
 	});
 	return {
 		service,
+		snoozes,
 		shown,
 		opened,
 		chimes: () => chimes,
@@ -139,10 +147,64 @@ describe("AlertService", () => {
 	});
 });
 
+describe("snoozed items", () => {
+	afterEach(() => vi.useRealTimers());
+	const HOUR = 3_600_000;
+
+	it("never alert, and come back as new (alerting) when the snooze runs out", async () => {
+		vi.useFakeTimers();
+		const h = harness();
+		h.service.updateSnapshot(snapshot(agent("ava", "working")));
+		await h.service.snooze("blocked:ava", "1h");
+		h.service.updateSnapshot(snapshot(agent("ava", "blocked")));
+		expect(h.shown).toEqual([]);
+		h.at(HOUR - 1);
+		await vi.advanceTimersByTimeAsync(HOUR - 1);
+		expect(h.shown).toEqual([]);
+		h.at(HOUR);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(h.shown).toEqual(["ava needs you | is waiting on you"]);
+		expect(await h.service.snoozes()).toEqual([]);
+		expect(h.snoozes.at(-1)).toEqual([]);
+	});
+
+	it("drop when the agent unblocks or the ask closes, so the next block alerts as usual", async () => {
+		const h = harness();
+		h.service.updateSnapshot(snapshot(agent("ava", "blocked")));
+		h.service.updateBoard(board(ask("o-2", "Paste the NPM_TOKEN?")));
+		await h.service.snooze("blocked:ava", "4h");
+		await h.service.snooze("ask:o-2", "morning");
+		expect((await h.service.snoozes()).map((snooze) => snooze.key)).toEqual([
+			"blocked:ava",
+			"ask:o-2",
+		]);
+		h.service.updateBoard(board());
+		h.service.updateSnapshot(snapshot(agent("ava", "working")));
+		expect(await h.service.snoozes()).toEqual([]);
+		h.service.updateSnapshot(snapshot(agent("ava", "blocked")));
+		expect(h.shown).toEqual(["ava needs you | is waiting on you"]);
+	});
+
+	it("persist across restarts, and unsnooze brings the item back without an alert", async () => {
+		const first = harness();
+		await first.service.snooze("ask:o-2", "1h");
+		const second = harness();
+		expect(await second.service.snoozes()).toEqual([{ key: "ask:o-2", until: HOUR }]);
+		await second.service.unsnooze("ask:o-2");
+		expect(await harness().service.snoozes()).toEqual([]);
+		expect(second.shown).toEqual([]);
+	});
+});
+
 describe("batchNotice", () => {
 	it("clips a long body", () => {
 		const notice = batchNotice([
-			{ who: "ava", text: "x".repeat(200), target: { kind: "ask", id: "o-1" } },
+			{
+				who: "ava",
+				text: "x".repeat(200),
+				target: { kind: "ask", id: "o-1" },
+				snoozeKey: "ask:o-1",
+			},
 		]);
 		expect(notice.body).toHaveLength(120);
 		expect(notice.body.endsWith("…")).toBe(true);

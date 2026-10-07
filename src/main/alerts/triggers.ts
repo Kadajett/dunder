@@ -1,6 +1,7 @@
 import type { AlertTarget } from "@shared/alerts";
 import { agentActivity, agentName } from "@shared/herdr/agent-label";
 import type { AgentInfo } from "@shared/herdr/schema";
+import { askSnoozeKey, blockedSnoozeKey } from "@shared/inbox-snooze";
 import type { HumanAsk } from "@shared/work-board";
 
 /** Triggers this close together become one notification. */
@@ -14,6 +15,28 @@ export interface AlertItem {
 	/** The ask, or what the blocked agent was doing. */
 	readonly text: string;
 	readonly target: AlertTarget;
+	/** The inbox item's snooze key: a snoozed item never alerts. */
+	readonly snoozeKey: string;
+}
+
+/** The alert for a blocked agent. */
+export function blockedItem(agent: AgentInfo): AlertItem {
+	return {
+		who: agentName(agent),
+		text: agentActivity(agent) ?? "is waiting on you",
+		target: { kind: "blocked", paneId: agent.pane_id },
+		snoozeKey: blockedSnoozeKey(agentName(agent)),
+	};
+}
+
+/** The alert for an ask. */
+export function askItem(ask: HumanAsk): AlertItem {
+	return {
+		who: ask.asker ?? "An agent",
+		text: ask.question,
+		target: { kind: "ask", id: ask.id },
+		snoozeKey: askSnoozeKey(ask.id),
+	};
 }
 
 /** What has been seen so far; null until the first reading, which only primes it. */
@@ -33,11 +56,7 @@ export function blockedTriggers(
 	const now = new Set(blocked.map((agent) => agent.pane_id));
 	const before = seen.blocked;
 	const fresh = before === null ? [] : blocked.filter((agent) => !before.has(agent.pane_id));
-	const items = fresh.map((agent) => ({
-		who: agentName(agent),
-		text: agentActivity(agent) ?? "is waiting on you",
-		target: { kind: "blocked", paneId: agent.pane_id } as const,
-	}));
+	const items = fresh.map(blockedItem);
 	return { seen: { ...seen, blocked: now }, items };
 }
 
@@ -49,11 +68,7 @@ export function askTriggers(
 	const before = seen.asks;
 	const all = new Set([...(before ?? []), ...asks.map((ask) => ask.id)]);
 	const fresh = before === null ? [] : asks.filter((ask) => !before.has(ask.id));
-	const items = fresh.map((ask) => ({
-		who: ask.asker ?? "An agent",
-		text: ask.question,
-		target: { kind: "ask", id: ask.id } as const,
-	}));
+	const items = fresh.map(askItem);
 	return { seen: { ...seen, asks: all }, items };
 }
 
