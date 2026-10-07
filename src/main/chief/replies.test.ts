@@ -1,4 +1,4 @@
-import { CHIEF_PROMPT_PREFIX } from "@shared/chief";
+import { CALL_PROMPT_PREFIX, CHIEF_PROMPT_PREFIX } from "@shared/chief";
 import { describe, expect, it } from "vitest";
 import { extractReplies, INITIAL_REPLY_STATE } from "./replies";
 
@@ -35,6 +35,7 @@ describe("extractReplies", () => {
 				entryId: "a1",
 				text: "Nora is on the auth refactor.\n\nShe expects to finish today.",
 				at: Date.parse(T0),
+				call: false,
 			},
 		]);
 	});
@@ -104,5 +105,30 @@ describe("extractReplies", () => {
 			message("a0", "assistant", [text("Earlier.")]),
 		]);
 		expect(before.replies).toEqual([]);
+	});
+
+	it("listens to a call turn and marks its replies as call answers, until another turn starts", () => {
+		const lines = [
+			message("u1", "user", [text(`${CALL_PROMPT_PREFIX} is the board fixed?`)]),
+			message("a1", "assistant", [text("Yes.\nSpoken: Yes, it's fixed.")]),
+			jeremy("u2", "thanks"),
+			message("a2", "assistant", [text("Any time.")]),
+		];
+		const { state, replies } = extractReplies(INITIAL_REPLY_STATE, lines);
+		expect(replies.map((reply) => [reply.entryId, reply.call])).toEqual([
+			["a1", true],
+			["a2", false],
+		]);
+		expect(state).toEqual({ listening: true, call: false });
+	});
+
+	it("carries a call turn across chunked calls", () => {
+		const first = extractReplies(INITIAL_REPLY_STATE, [
+			message("u1", "user", [text(`${CALL_PROMPT_PREFIX} status?`)]),
+		]);
+		const second = extractReplies(first.state, [
+			message("a1", "assistant", [text("Spoken: All good.")]),
+		]);
+		expect(second.replies.map((reply) => reply.call)).toEqual([true]);
 	});
 });

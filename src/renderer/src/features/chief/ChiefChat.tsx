@@ -4,6 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { formatClock } from "../feed/feed-model";
 import { ChiefAvatar } from "./ChiefAvatar";
 import { ChiefMarkdown } from "./ChiefMarkdown";
+import { CallButton, CallStrip } from "./call/CallStrip";
 import { isWorking, presenceLabel } from "./chat-model";
 import { rehydrateChief, sendToChief, useChiefChat } from "./chat-store";
 import "./chief-chat.css";
@@ -11,14 +12,28 @@ import "./chief-chat.css";
 function Bubble({ message }: { readonly message: ChiefMessage }) {
 	const mine = message.author === "you";
 	const pending = mine && message.state !== undefined && message.state !== "sent";
+	// A reply that was only its spoken line shows just the caption.
+	const spokenOnly = message.spoken !== undefined && message.spoken === message.text;
 	return (
 		<li className={`chief-msg chief-msg--${mine ? "you" : "chief"}`}>
 			{/* Jeremy's own text stays plain (newlines kept by CSS); the chief writes Markdown. */}
-			<div className="chief-msg__bubble">
-				{mine ? message.text : <ChiefMarkdown text={message.text} />}
-			</div>
+			{!spokenOnly && (
+				<div className="chief-msg__bubble">
+					{mine ? message.text : <ChiefMarkdown text={message.text} />}
+				</div>
+			)}
+			{message.spoken !== undefined && (
+				<p className="chief-msg__spoken" title="Said aloud on the call">
+					🔊 {message.spoken}
+				</p>
+			)}
 			<div className="chief-msg__meta">
 				<time dateTime={new Date(message.at).toISOString()}>{formatClock(message.at)}</time>
+				{message.call && (
+					<span className="chief-msg__call" title="Said on a call">
+						📞 on a call
+					</span>
+				)}
 				{pending && (
 					<span className={`chief-msg__state chief-msg__state--${message.state}`}>
 						{message.state === "queued" ? "queued" : "not sent"}
@@ -120,6 +135,7 @@ export function ChiefChat({ name, role, presence, style, onClose }: ChiefChatPro
 						{role} · {presenceLabel(presence)}
 					</span>
 				</div>
+				<CallButton name={name} />
 				<button
 					type="button"
 					className="chief-chat__close"
@@ -150,6 +166,7 @@ export function ChiefChat({ name, role, presence, style, onClose }: ChiefChatPro
 				)}
 			</ol>
 			{shownNotice && <p className="chief-chat__notice">Not sent: {shownNotice}</p>}
+			<CallStrip name={name} />
 			<Composer name={name} />
 		</section>
 	);

@@ -15,6 +15,7 @@ import type { StaffApi } from "./staff";
 import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
 import type { WeatherFeed } from "./tv";
+import type { VoiceApi } from "./voice";
 import type { WhiteboardApi } from "./whiteboard";
 import type { WorkBoardApi } from "./work-board";
 
@@ -116,6 +117,10 @@ export const IPC = {
 	workAssign: "work:assign",
 	workRespond: "work:respond",
 	workDismiss: "work:dismiss",
+	/** Calls with the chief: ElevenLabs speech to text and text to speech (invoke). */
+	voiceAvailable: "voice:available",
+	voiceTranscribe: "voice:transcribe",
+	voiceSpeak: "voice:speak",
 } as const;
 
 export type BridgeStatus =
@@ -162,4 +167,5 @@ export interface OfficeApi {
 	readonly pool: PoolApi;
 	readonly brainstorm: BrainstormApi;
 	readonly work: WorkBoardApi;
+	readonly voice: VoiceApi;
 }

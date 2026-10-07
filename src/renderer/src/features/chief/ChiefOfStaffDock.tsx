@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import type { OfficeModel } from "../office/model/office-model";
 import { ChiefAvatar } from "./ChiefAvatar";
 import { ChiefChat } from "./ChiefChat";
+import { useCallWiring } from "./call/CallStrip";
+import { useCall } from "./call/call-store";
 import { displayName, presenceLabel } from "./chat-model";
 import { chiefAvailable, connectChief, useChiefChat } from "./chat-store";
 import { useChief } from "./chief-store";
@@ -20,6 +22,8 @@ function Dock({ model }: { readonly model: OfficeModel }) {
 	const presence: ChiefPresence = live?.status ?? status?.status ?? "offline";
 	const role = (status?.role ?? CHIEF_ROLE).replaceAll("-", " ").toUpperCase();
 	const style = status?.style ?? null;
+	useCallWiring(presence);
+	const onCall = useCall((state) => state.active);
 	return (
 		<section className="chief" data-presence={presence} aria-label="Chief of Staff">
 			{expanded && (
@@ -36,7 +40,7 @@ function Dock({ model }: { readonly model: OfficeModel }) {
 				<span className="chief__who">
 					<span className="chief__name">{displayName(name)}</span>
 					<span className="chief__meta">
-						{role} · {presenceLabel(presence)}
+						{role} · {onCall ? "ON A CALL" : presenceLabel(presence)}
 					</span>
 				</span>
 				<span className="chief__dot" />

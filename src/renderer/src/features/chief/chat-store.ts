@@ -116,10 +116,13 @@ export function rehydrateChief(): void {
  * Send Jeremy's text to the chief. The main process pushes the message itself
  * (with its delivery state); a refusal's reason is kept as the inline notice.
  */
-export async function sendToChief(text: string): Promise<ChiefSendResult> {
+export async function sendToChief(
+	text: string,
+	options?: { readonly call?: boolean },
+): Promise<ChiefSendResult> {
 	useChiefChat.setState({ sending: true, notice: null });
 	try {
-		const result = await window.office.chief.send(text);
+		const result = await window.office.chief.send(text, options);
 		if (result.state === "rejected")
 			useChiefChat.setState({ notice: result.reason ?? "Max couldn't take that message." });
 		return result;

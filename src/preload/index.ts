@@ -80,7 +80,7 @@ const api: OfficeApi = {
 		status: () => ipcRenderer.invoke(IPC.chiefStatus),
 		history: () => ipcRenderer.invoke(IPC.chiefHistory),
 		onMessage: (listener) => listen(IPC.chiefMessage, listener),
-		send: (text) => ipcRenderer.invoke(IPC.chiefSend, text),
+		send: (text, options) => ipcRenderer.invoke(IPC.chiefSend, text, options?.call === true),
 	},
 	stats: {
 		costToday: () => ipcRenderer.invoke(IPC.statsCostToday),
@@ -145,6 +145,11 @@ const api: OfficeApi = {
 		assign: (id, assignee) => ipcRenderer.invoke(IPC.workAssign, { id, assignee }),
 		respond: (id, response) => ipcRenderer.invoke(IPC.workRespond, { id, response }),
 		dismiss: (id) => ipcRenderer.invoke(IPC.workDismiss, id),
+	},
+	voice: {
+		available: () => ipcRenderer.invoke(IPC.voiceAvailable),
+		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),
+		speak: (text) => ipcRenderer.invoke(IPC.voiceSpeak, text),
 	},
 };
 

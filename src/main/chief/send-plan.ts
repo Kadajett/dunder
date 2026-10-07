@@ -1,4 +1,9 @@
-import { CHIEF_PROMPT_PREFIX, type ChiefPresence } from "@shared/chief";
+import {
+	CALL_PROMPT_PREFIX,
+	CHIEF_PROMPT_PREFIX,
+	type ChiefMessage,
+	type ChiefPresence,
+} from "@shared/chief";
 
 export type ChiefSendPlan =
 	| { readonly kind: "send" }
@@ -31,7 +36,14 @@ export function planChiefSend(name: string, presence: ChiefPresence): ChiefSendP
 	}
 }
 
-/** One prompt carrying every pending chat message, prefixed so his replies can be told apart. */
-export function chiefPrompt(texts: readonly string[]): string {
-	return `${CHIEF_PROMPT_PREFIX} ${texts.join("\n\n")}`;
+/**
+ * One prompt carrying every pending message, prefixed so his replies can be
+ * told apart. If any of them was said on a call, the whole prompt is a call
+ * turn, so one spoken line answers them all.
+ */
+export function chiefPrompt(messages: readonly Pick<ChiefMessage, "text" | "call">[]): string {
+	const prefix = messages.some((message) => message.call)
+		? CALL_PROMPT_PREFIX
+		: CHIEF_PROMPT_PREFIX;
+	return `${prefix} ${messages.map((message) => message.text).join("\n\n")}`;
 }

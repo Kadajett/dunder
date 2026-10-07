@@ -14,6 +14,7 @@ import type { OfficeCli } from "../workforce/spawner";
 import { loadChiefHistory, saveChiefHistory } from "./history-store";
 import { type ChiefReply, extractReplies, INITIAL_REPLY_STATE, type ReplyState } from "./replies";
 import { chiefPrompt, planChiefSend } from "./send-plan";
+import { splitSpoken } from "./spoken";
 
 const log = createLogger("chief");
 
@@ -113,7 +114,7 @@ export class ChiefService {
 		return [...this.#messages];
 	}
 
-	async send(text: string): Promise<ChiefSendResult> {
+	async send(text: string, call = false): Promise<ChiefSendResult> {
 		await this.#ready;
 		const status = this.status();
 		if (!status) return { state: "rejected", reason: "No Chief of Staff is on the roster" };
@@ -126,6 +127,7 @@ export class ChiefService {
 			at: this.#deps.now(),
 			state,
 			...(plan.kind !== "send" && { reason: plan.reason }),
+			...(call && { call: true }),
 		};
 		this.#append([message]);
 		if (plan.kind !== "send") return { state, reason: plan.reason };
@@ -177,7 +179,7 @@ export class ChiefService {
 	/** Type the messages into the chief; on failure they are marked rejected. Returns the failure. */
 	async #deliver(name: string, messages: readonly ChiefMessage[]): Promise<string | undefined> {
 		try {
-			const prompt = chiefPrompt(messages.map((message) => message.text));
+			const prompt = chiefPrompt(messages);
 			await this.#deps.cli(["agent", "prompt", name, prompt]);
 			return undefined;
 		} catch (error) {
@@ -209,8 +211,7 @@ export class ChiefService {
 		for (const reply of replies) {
 			const id = `${sessionFile}:${reply.entryId}`;
 			if (ids.has(id) || reply.at <= earliestYou || reply.at <= newestChief) continue;
-			const text = reply.text.slice(0, MESSAGE_TEXT_MAX);
-			added.push({ id, author: "chief", text, at: reply.at });
+			added.push(replyMessage(id, reply));
 			newestChief = reply.at;
 		}
 		if (added.length > 0) this.#append(added);
@@ -234,4 +235,19 @@ export class ChiefService {
 			log.warn("could not save the chat", { error }),
 		);
 	}
+}
+
+/** A reply as a chat message; a call answer's `Spoken:` line moves out of the text. */
+function replyMessage(id: string, reply: ChiefReply): ChiefMessage {
+	const message: ChiefMessage = {
+		id,
+		author: "chief",
+		text: reply.text.slice(0, MESSAGE_TEXT_MAX),
+		at: reply.at,
+	};
+	if (!reply.call) return message;
+	const { text, spoken } = splitSpoken(reply.text);
+	if (spoken === null) return message;
+	// A reply that was only the spoken line keeps it as its text too.
+	return { ...message, text: (text || spoken).slice(0, MESSAGE_TEXT_MAX), spoken };
 }
