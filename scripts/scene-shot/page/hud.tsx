@@ -1,15 +1,6 @@
-import {
-	NOW,
-	POOL_PLAYING,
-	qa,
-	refreshHeld,
-	reports,
-	setPool,
-	setUpdateStatus,
-	unstubbed,
-} from "./fake-office-hud";
-import { batched, countdown } from "./hud-update-states";
+import { POOL_PLAYING, qa, refreshHeld, reports, setPool, unstubbed } from "./fake-office-hud";
 import { type Box, measureHud, type Overlap } from "./hud-audit";
+import { batched, countdown } from "./hud-update-states";
 import { QA_STATES } from "./qa-hud";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/600.css";

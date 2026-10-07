@@ -721,25 +721,6 @@ const todaysTries = [
 	},
 ];
 
-const dayWrap = {
-	date: new Date(NOW).toISOString().slice(0, 10),
-	postedAt: NOW - 5 * MIN,
-	input: {
-		summary:
-			"The inbox grouping and the call barge-in shipped; drag between lanes is still in review.",
-		misses: [{ bead: "office-t3c", why: "waiting on theo's review" }],
-		tomorrow: [{ bead: "office-t3c", what: "merge drag between lanes first" }],
-	},
-	planned: [
-		{ bead: "office-k2p.3", who: "theo", title: "Trust Inbox grouping", lane: "done" },
-		{ bead: "office-t3c", who: "theo", title: "Drag cards between lanes", lane: "review" },
-	],
-	unplanned: [{ id: "office-e3r", title: "Snooze asks until the morning" }],
-	spendUsd: 61.42,
-	tries: { offered: 3, rated: 0, untried: 0 },
-	dismissed: false,
-};
-
 const api = {
 	getSnapshot: async () => snapshot,
 	getStatus: async () => ({ state: "connected" }),
@@ -962,13 +943,6 @@ const api = {
 		},
 		tries: async () => (dayEnd ? todaysTries : []),
 		rateTry: async () => ({ ok: true }),
-	},
-	wrap: {
-		today: async () => (dayEnd ? dayWrap : null),
-		onChanged: () => unsubscribe,
-		dismiss: async () => {
-			qaCalls.push("wrap.dismiss");
-		},
 	},
 	alerts: {
 		muted: async () => false,

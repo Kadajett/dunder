@@ -34,6 +34,7 @@ export function makeQaFixtures(now: number, state: string | null) {
 					],
 					unplanned: [{ id: "office-7bm", title: "Line up agents for the scene shot" }],
 					spendUsd: 12.35,
+					tries: { offered: 3, rated: 0, untried: 3 },
 					dismissed: false,
 				}
 			: null;
