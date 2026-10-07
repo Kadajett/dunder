@@ -1,3 +1,4 @@
+import type { AgentsApi } from "./agent-replies";
 import type { AlertsApi } from "./alerts";
 import type { AppErrorsApi } from "./app-errors";
 import type { AppUpdateApi } from "./app-update";
@@ -140,6 +141,8 @@ export const IPC = {
 	appErrorsDismiss: "app-errors:dismiss",
 	appErrorsDevtools: "app-errors:devtools",
 	appErrorsChanged: "app-errors:changed",
+	/** A live agent's final reply of its last turn (invoke). */
+	agentsLastReply: "agents:last-reply",
 } as const;
 
 export type BridgeStatus =
@@ -190,4 +193,5 @@ export interface OfficeApi {
 	readonly whatsNew: WhatsNewApi;
 	readonly alerts: AlertsApi;
 	readonly errors: AppErrorsApi;
+	readonly agents: AgentsApi;
 }
