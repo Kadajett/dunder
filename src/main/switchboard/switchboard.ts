@@ -189,7 +189,9 @@ export class Switchboard {
 			this.#record({ ...message, state: "delivered" });
 		} catch (error) {
 			if (error instanceof HerdrApiError && RETRYABLE.has(error.code)) {
-				this.#queue.push(pending);
+				// Back to the front: it was this recipient's oldest message (one per recipient per
+				// round), so anything else queued for them arrived after it and must stay behind it.
+				this.#queue.unshift(pending);
 				return;
 			}
 			this.#record({

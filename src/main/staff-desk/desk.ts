@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { avatarStyleFor } from "@shared/avatar/style";
 import { CHIEF_ROLE } from "@shared/chief";
 import type { Roster } from "@shared/company/roster";
@@ -8,14 +8,13 @@ import type { SessionSnapshot } from "@shared/herdr/schema";
 import { createLogger } from "@shared/log/logger";
 import type { SetModelResult } from "@shared/models";
 import type { StaffAction, StaffOutcome, StaffRequestLine, StaffResultLine } from "@shared/staff";
-import { z } from "zod";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { readSavedOffset } from "../switchboard/offset-file";
 import { appendResultLine } from "../switchboard/results-file";
 import { parseStaffRequests } from "./requests";
 import { rosterTable } from "./roster-table";
 
 const log = createLogger("staff-desk");
-const stateSchema = z.object({ offset: z.number().int().nonnegative() });
 
 type Hire = Extract<StaffAction, { action: "hire" }>;
 
@@ -79,10 +78,8 @@ export class StaffDesk {
 
 	async start(): Promise<void> {
 		const { requestsPath, statePath } = this.#deps;
-		const offset = await readFile(statePath, "utf8").then(
-			(text) => stateSchema.safeParse(JSON.parse(text)).data?.offset ?? 0,
-			() => 0,
-		);
+		// A lost place reads from the top; requests older than STAFF_REQUEST_MAX_AGE_MS are dropped.
+		const offset = (await readSavedOffset(statePath)) ?? 0;
 		this.#tail = await tailMailbox({
 			path: requestsPath,
 			offset,
