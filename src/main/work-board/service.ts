@@ -3,6 +3,7 @@ import {
 	type HumanAsk,
 	REVIEW_LABEL,
 	type WorkBoard,
+	type WorkCard,
 	type WorkLane,
 	type WorkPriority,
 	type WorkResult,
@@ -10,7 +11,7 @@ import {
 import { z } from "zod";
 import type { BdRunner } from "../beads/bd";
 import { buildAsks } from "./asks";
-import { type Bead, buildCards, isEpic, isHumanAsk, parseBeads } from "./cards";
+import { type Bead, buildCards, closedIds, isEpic, isHumanAsk, parseBeads } from "./cards";
 import { type SpendOf, withSpend } from "./spend";
 
 const log = createLogger("work-board");
@@ -34,6 +35,8 @@ export interface WorkBoardDeps {
 	readonly notify: (agent: string, text: string) => void;
 	/** An agent's AI spend over a time span, for each card's approximate cost. */
 	readonly spendOf: SpendOf;
+	/** Marks Review cards with whether their branch merges cleanly (left out in tests: no git). */
+	readonly checkMerges?: (cards: readonly WorkCard[]) => Promise<readonly WorkCard[]>;
 }
 
 /** A board as read from bd, before main stamps its revision. */
@@ -292,11 +295,9 @@ export class WorkBoardService {
 			};
 			const cards = buildCards(lists, now - DONE_WINDOW_MS);
 			const priced = withSpend(cards, [...openBeads, ...closedBeads], this.#deps.spendOf, now);
-			const doneSince = now - DONE_WINDOW_MS;
-			const closedToday = closedBeads
-				.filter((bead) => (Date.parse(bead.closed_at ?? "") || 0) >= doneSince)
-				.map((bead) => bead.id);
-			return { state: "ok", cards: priced, asks: buildAsks(openBeads), closedToday };
+			const checked = (await this.#deps.checkMerges?.(priced)) ?? priced;
+			const closedToday = closedIds(closedBeads, now - DONE_WINDOW_MS);
+			return { state: "ok", cards: checked, asks: buildAsks(openBeads), closedToday };
 		} catch (error) {
 			return { state: "unavailable", reason: reasonOf(error) };
 		}

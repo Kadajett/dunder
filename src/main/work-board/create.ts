@@ -2,6 +2,7 @@ import { createLogger } from "@shared/log/logger";
 import type { WorkBoard } from "@shared/work-board";
 import { runBd } from "../beads/bd";
 import { postToMailbox } from "../switchboard/service";
+import { gitIn, MergeChecks } from "./merges";
 import { WorkBoardService } from "./service";
 import type { SpendOf } from "./spend";
 
@@ -18,6 +19,7 @@ export function createWorkBoard(
 	spend: SpendSource,
 	emit: (board: WorkBoard) => void,
 ): WorkBoardService {
+	const merges = new MergeChecks(gitIn(cwd));
 	return new WorkBoardService({
 		runBd,
 		cwd,
@@ -33,5 +35,6 @@ export function createWorkBoard(
 				log.warn("asker not told", { agent, error }),
 			),
 		spendOf: (agent, from, to) => spend.spendBetween(agent, from, to),
+		checkMerges: (cards) => merges.annotate(cards),
 	});
 }

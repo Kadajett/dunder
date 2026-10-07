@@ -5,6 +5,7 @@ import { useRosterStore } from "../hire/roster-store";
 import { OpenInEditor } from "../worktrees/OpenInEditor";
 import { AgentDot } from "./AgentDot";
 import { epicTitle, rowShowsSpend, spendLabel, spendLine, spendTitle } from "./card-spend";
+import { MergeNote } from "./MergeNote";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
 import {
@@ -241,6 +242,7 @@ export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowPro
 				</p>
 			) : null}
 			{card.lane === "review" ? <ReviewWait since={card.updatedAt} /> : null}
+			{card.lane === "review" && card.merge ? <MergeNote merge={card.merge} id={card.id} /> : null}
 			{expanded ? <CardDetail card={card} /> : null}
 			<WorkError errorKey={card.id} />
 		</li>
