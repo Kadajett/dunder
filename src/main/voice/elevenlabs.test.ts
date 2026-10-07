@@ -3,7 +3,7 @@ import { DEFAULT_VOICE_ID, MISSING_KEY_REASON, readVoiceSetup, type VoiceSetup }
 import { ElevenLabsVoice, type Fetch } from "./elevenlabs";
 
 const KEY = "sk_test_secret_value";
-const ready: VoiceSetup = { ok: true, config: { key: KEY, voiceId: "voice-1" } };
+const ready: VoiceSetup = { ok: true, config: { key: KEY, voiceId: "voice-1", language: "en" } };
 
 interface Sent {
 	readonly url: string;
@@ -29,7 +29,10 @@ describe("ElevenLabsVoice", () => {
 		expect(sent[0]?.url).toBe("https://api.elevenlabs.io/v1/speech-to-text");
 		expect(header(sent[0], "xi-api-key")).toBe(KEY);
 		const form = sent[0]?.init.body;
-		expect(form instanceof FormData && form.get("model_id")).toBe("scribe_v1");
+		expect(form instanceof FormData && [form.get("model_id"), form.get("language_code")]).toEqual([
+			"scribe_v1",
+			"en",
+		]);
 		const file = form instanceof FormData ? form.get("file") : null;
 		expect(file instanceof File && [file.name, file.size]).toEqual(["turn.webm", 3]);
 	});
@@ -79,24 +82,25 @@ describe("ElevenLabsVoice", () => {
 });
 
 describe("readVoiceSetup", () => {
-	const file = 'OTHER=1\nexport ELEVENLABS_API_KEY="from-file"\nELEVENLABS_VOICE_ID=file-voice\n';
+	const file =
+		'OTHER=1\nexport ELEVENLABS_API_KEY="from-file"\nELEVENLABS_VOICE_ID=file-voice\nELEVENLABS_STT_LANGUAGE=de\n';
 
 	it("prefers the environment, then the secrets file", async () => {
 		const env = { ELEVENLABS_API_KEY: "from-env" };
 		expect(await readVoiceSetup(env, async () => file)).toEqual({
 			ok: true,
-			config: { key: "from-env", voiceId: "file-voice" },
+			config: { key: "from-env", voiceId: "file-voice", language: "de" },
 		});
 		expect(await readVoiceSetup({}, async () => file)).toEqual({
 			ok: true,
-			config: { key: "from-file", voiceId: "file-voice" },
+			config: { key: "from-file", voiceId: "file-voice", language: "de" },
 		});
 	});
 
 	it("falls back to the default voice, and reports a missing key and file", async () => {
 		expect(await readVoiceSetup({}, async () => "ELEVENLABS_API_KEY=k")).toEqual({
 			ok: true,
-			config: { key: "k", voiceId: DEFAULT_VOICE_ID },
+			config: { key: "k", voiceId: DEFAULT_VOICE_ID, language: "en" },
 		});
 		const missing = await readVoiceSetup({}, () => Promise.reject(new Error("ENOENT")));
 		expect(missing).toEqual({ ok: false, reason: MISSING_KEY_REASON });

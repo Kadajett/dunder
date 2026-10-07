@@ -1,23 +1,22 @@
 import type { ChiefPresence } from "@shared/chief";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
 	hangUp,
 	loadVoiceAvailability,
 	notePresence,
 	startCall,
-	startTalking,
-	stopTalking,
 	toggleMute,
-	toggleTalking,
 	useCall,
 } from "./call-store";
 import { callLabel } from "./call-turn";
+import { LevelMeter } from "./LevelMeter";
+import { MicPopover } from "./MicPopover";
 import "./call.css";
 
-/** Talk start/stop from anywhere, a focused terminal included (captured before it). */
-export const TALK_CHORD_LABEL = "Ctrl+Shift+Space";
+/** Mute toggle from anywhere during a call, a focused terminal included (captured before it). */
+export const MUTE_CHORD_LABEL = "Ctrl+Shift+Space";
 
-function isTalkChord(event: KeyboardEvent): boolean {
+function isMuteChord(event: KeyboardEvent): boolean {
 	return (
 		event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.code === "Space"
 	);
@@ -36,7 +35,7 @@ function PhoneIcon() {
 
 /**
  * Keeps a call in step with the chief while the dock is mounted, chat open or
- * not: his presence drives the strip, and the talk chord works everywhere.
+ * not: his presence drives the strip, and the mute chord works everywhere.
  */
 export function useCallWiring(presence: ChiefPresence): void {
 	const active = useCall((state) => state.active);
@@ -45,10 +44,10 @@ export function useCallWiring(presence: ChiefPresence): void {
 	useEffect(() => {
 		if (!active) return;
 		const onKey = (event: KeyboardEvent): void => {
-			if (!isTalkChord(event)) return;
+			if (!isMuteChord(event)) return;
 			event.preventDefault();
 			event.stopPropagation();
-			if (!event.repeat) toggleTalking();
+			if (!event.repeat) toggleMute();
 		};
 		window.addEventListener("keydown", onKey, { capture: true });
 		return () => window.removeEventListener("keydown", onKey, { capture: true });
@@ -77,20 +76,28 @@ export function CallButton({ name }: { readonly name: string }) {
 	);
 }
 
-/** Above the composer during a call: state, Talk (hold, or the chord), mute and hang up. */
+/** Above the composer during a call: a big state, the live mic, what was heard, Mic / Mute / Hang up. */
 export function CallStrip({ name }: { readonly name: string }) {
 	const call = useCall();
+	const [micOpen, setMicOpen] = useState(false);
 	if (!call.active) return null;
-	const recording = call.phase === "recording";
-	const busy = call.phase === "transcribing";
+	const label = call.muted && call.phase === "listening" ? "Muted" : callLabel(call.phase, name);
 	return (
-		<section className="chief-call" aria-label={`Call with ${name}`} data-phase={call.phase}>
+		<section
+			className="chief-call"
+			aria-label={`Call with ${name}`}
+			data-phase={call.phase}
+			data-muted={call.muted}
+		>
+			{micOpen && <MicPopover onClose={() => setMicOpen(false)} />}
 			<div className="chief-call__state">
 				<span className="chief-call__light" aria-hidden="true" />
 				<span className="chief-call__label" aria-live="polite">
-					{callLabel(call.phase, name)}
+					{label}
 				</span>
 			</div>
+			<LevelMeter />
+			{call.heard && <p className="chief-call__heard">Heard: “{call.heard}”</p>}
 			{(call.error ?? call.hint) && (
 				<p className={call.error ? "chief-call__error" : "chief-call__hint"} role="status">
 					{call.error ?? call.hint}
@@ -99,25 +106,18 @@ export function CallStrip({ name }: { readonly name: string }) {
 			<div className="chief-call__controls">
 				<button
 					type="button"
-					className="chief-call__talk"
-					aria-pressed={recording}
-					disabled={busy}
-					title={`Hold to talk, or press ${TALK_CHORD_LABEL} to start and stop`}
-					onPointerDown={(event) => {
-						event.currentTarget.setPointerCapture(event.pointerId);
-						startTalking();
-					}}
-					onPointerUp={() => void stopTalking()}
-					onPointerCancel={() => void stopTalking()}
+					className="chief-call__mic"
+					aria-expanded={micOpen}
+					title={call.mic?.label ? `Mic: ${call.mic.label}` : "Choose and test the microphone"}
+					onClick={() => setMicOpen((open) => !open)}
 				>
-					{recording ? "Release to send" : "Hold to talk"}
-					<span className="chief-call__chord">{TALK_CHORD_LABEL}</span>
+					Mic
 				</button>
 				<button
 					type="button"
 					className="chief-call__mute"
 					aria-pressed={call.muted}
-					title={call.muted ? `Unmute ${name}'s voice` : `Mute ${name}'s voice (captions stay)`}
+					title={`${call.muted ? "Unmute" : "Mute"} your mic (${MUTE_CHORD_LABEL})`}
 					onClick={toggleMute}
 				>
 					{call.muted ? "Unmute" : "Mute"}

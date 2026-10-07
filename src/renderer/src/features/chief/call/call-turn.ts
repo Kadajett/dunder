@@ -1,29 +1,41 @@
 import type { ChiefMessage, ChiefPresence } from "@shared/chief";
 
-/** Where a call is, as the strip shows it. */
+/** Where a call is, as the strip shows it. The mic is open throughout. */
 export type CallPhase =
-	| "ready"
-	| "recording"
+	/** Waiting for Jeremy to talk. */
+	| "listening"
+	/** He is talking. */
+	| "hearing"
+	/** His last utterance is with Scribe. */
 	| "transcribing"
-	| "sent"
+	/** Sent; the chief hasn't started on it yet. */
+	| "heard"
 	| "queued"
-	| "working"
+	| "thinking"
 	| "speaking"
 	| "replied";
 
 const LABELS: Readonly<Record<CallPhase, (name: string) => string>> = {
-	ready: () => "Your turn",
-	recording: () => "Listening…",
-	transcribing: () => "Transcribing…",
-	sent: () => "Sent",
+	listening: () => "Listening",
+	hearing: () => "Listening…",
+	transcribing: () => "Heard you…",
+	heard: () => "Heard you",
 	queued: (name) => `${name} is busy; he'll hear you when he's free`,
-	working: (name) => `${name} is working…`,
+	thinking: (name) => `${name} is thinking…`,
 	speaking: (name) => `${name} is speaking…`,
 	replied: (name) => `${name} replied in chat`,
 };
 
 export function callLabel(phase: CallPhase, name: string): string {
 	return LABELS[phase](name);
+}
+
+/** Transcripts shorter than this are noise ("对", "uh"), not something to send. */
+export const MIN_TRANSCRIPT = 3;
+
+/** Whether Scribe's text is worth a call turn. */
+export function worthSending(transcript: string): boolean {
+	return transcript.replace(/[\s\p{P}]/gu, "").length >= MIN_TRANSCRIPT;
 }
 
 /** Following the chief's answer to the last call turn, until it is spoken or he stops without one. */

@@ -7,9 +7,10 @@ export type MiiPose = "seated" | "standing" | "walking" | "exercising";
  * What the body is doing on top of the pose: `slumped` (blocked, waiting on
  * the human) sags forward with the head down; `stretching` (done) reaches
  * overhead every few seconds; `cue`: standing at the pool table, holding a cue
- * upright in the camera-side hand.
+ * upright in the camera-side hand; `phone`: on a call, a handset held to the
+ * camera-side ear (seated, standing or walking).
  */
-export type MiiActivity = "typing" | "idle" | "slumped" | "stretching" | "cue";
+export type MiiActivity = "typing" | "idle" | "slumped" | "stretching" | "cue" | "phone";
 
 /* Body dimensions (metres). Hips are the rig root; everything above hangs off them. */
 export const HIP_Y = 0.48;

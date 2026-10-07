@@ -3,15 +3,20 @@ import { createLogger } from "@shared/log/logger";
 import type { VoiceAvailability } from "@shared/voice";
 import { create } from "zustand";
 import { sendToChief } from "../chat-store";
-import { chime, playMp3, type Recording, startRecording, stopPlayback } from "./call-audio";
-import { type CallPhase, NEW_TURN, type TurnWatch, watchMessage, watchPresence } from "./call-turn";
+import { chime, playMp3, stopPlayback } from "./call-audio";
+import { closeMic, openMic, savedMicId, saveMicId, setMicMuted, setMicPlaying } from "./call-mic";
+import {
+	type CallPhase,
+	NEW_TURN,
+	type TurnWatch,
+	watchMessage,
+	watchPresence,
+	worthSending,
+} from "./call-turn";
+import { micErrorMessage } from "./mic-errors";
 
 const log = createLogger("call");
 
-/** A turn auto-stops and sends after this long. */
-export const TURN_MAX_MS = 60_000;
-/** Shorter than this is a tap, not speech: nothing is sent (or paid for). */
-const TURN_MIN_MS = 400;
 /** After he goes idle, how long his spoken line may still take to come out of the session log. */
 const SPOKEN_GRACE_MS = 3_000;
 
@@ -20,9 +25,15 @@ interface CallState {
 	readonly availability: VoiceAvailability | null;
 	readonly active: boolean;
 	readonly phase: CallPhase;
-	/** Max's voice is off: no TTS requests, captions only. */
+	/** Jeremy's mic is muted: nothing he says is heard or sent. */
 	readonly muted: boolean;
-	/** `Voice error: …` or `Not sent: …`, until the next turn. */
+	/** The input in use, once open. */
+	readonly mic: { readonly deviceId: string | undefined; readonly label: string } | null;
+	/** Live mic level (RMS) for the meter. */
+	readonly level: number;
+	/** What Scribe heard last, as sent to the chief. */
+	readonly heard: string | null;
+	/** A mic or voice failure, worded for Jeremy; until the next success. */
 	readonly error: string | null;
 	/** A gentle note, e.g. "Didn't catch that". */
 	readonly hint: string | null;
@@ -31,32 +42,41 @@ interface CallState {
 	readonly since: number;
 }
 
-export const useCall = create<CallState>(() => ({
-	availability: null,
+const IDLE = {
 	active: false,
-	phase: "ready",
+	phase: "listening",
 	muted: false,
+	mic: null,
+	level: 0,
+	heard: null,
 	error: null,
 	hint: null,
 	watch: null,
 	since: 0,
-}));
+} as const satisfies Omit<CallState, "availability">;
+
+export const useCall = create<CallState>(() => ({ availability: null, ...IDLE }));
 
 const voiceApi = () => ("voice" in window.office ? window.office.voice : null);
+const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-/** Side effects of the call in progress; reset by hang-up. */
-let recording: Promise<Recording | null> | null = null;
-let capTimer: number | undefined;
 let graceTimer: number | undefined;
 let unsubscribe: (() => void) | null = null;
-/** Bumped to drop speech whose TTS request was overtaken (talk, mute, hang up). */
+/** Utterances are transcribed and sent one at a time, in the order he said them. */
+let turns: Promise<void> = Promise.resolve();
+/** Bumped to drop speech whose TTS request was overtaken (barge-in, hang up). */
 let speech = 0;
-
-const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 function cancelGrace(): void {
 	window.clearTimeout(graceTimer);
 	graceTimer = undefined;
+}
+
+/** The phase once nothing is being said or played: where the chief is with the last turn. */
+function restingPhase(watch: TurnWatch | null): CallPhase {
+	if (watch === null) return "listening";
+	if (!watch.delivered) return "queued";
+	return watch.sawWorking ? "thinking" : "heard";
 }
 
 /** Ask main whether calls can work (the key is there). */
@@ -65,123 +85,125 @@ export async function loadVoiceAvailability(): Promise<void> {
 	const availability: VoiceAvailability = voice
 		? await voice
 				.available()
-				.catch((error: unknown) => ({ available: false, reason: reason(error) }))
+				.catch((error: unknown) => ({ available: false, reason: reasonOf(error) }))
 		: { available: false, reason: "This build has no voice calls." };
 	useCall.setState({ availability });
 }
 
 export function startCall(): void {
 	if (useCall.getState().active || !voiceApi()) return;
-	useCall.setState({
-		active: true,
-		phase: "ready",
-		error: null,
-		hint: null,
-		watch: null,
-		since: Date.now(),
-	});
+	useCall.setState({ ...IDLE, active: true, since: Date.now() });
 	unsubscribe = window.office.chief.onMessage(noteMessage);
+	void switchMic(savedMicId());
 }
 
 export function hangUp(): void {
-	window.clearTimeout(capTimer);
 	cancelGrace();
 	unsubscribe?.();
 	unsubscribe = null;
-	void recording?.then((open) => open?.cancel());
-	recording = null;
+	closeMic();
 	silence();
-	useCall.setState({ active: false, phase: "ready", watch: null, error: null, hint: null });
+	useCall.setState(IDLE);
+}
+
+/** Open the given input (null: the default) for the call, wording any failure. */
+export async function switchMic(deviceId: string | null): Promise<void> {
+	try {
+		const opened = await openMic(deviceId, {
+			level: (level) => useCall.setState({ level }),
+			speech: heardSpeech,
+			utterance: (wav) => {
+				turns = turns.then(() => handleUtterance(wav));
+			},
+			lost: () => {
+				useCall.setState({ hint: "Your mic went away; switched to the default input." });
+				void switchMic(null);
+			},
+		});
+		if (!useCall.getState().active) return closeMic();
+		setMicMuted(useCall.getState().muted);
+		useCall.setState({
+			mic: { deviceId: opened.deviceId, label: opened.label },
+			error: null,
+			...(opened.fellBack && {
+				hint: `Your chosen mic is gone; using ${opened.label || "the default"}.`,
+			}),
+		});
+	} catch (error) {
+		log.warn("microphone failed", { error });
+		useCall.setState({ mic: null, level: 0, error: micErrorMessage(error) });
+	}
+}
+
+/** Pick an input in the Mic popover: remembered, and the call switches to it now. */
+export function chooseMic(deviceId: string): Promise<void> {
+	saveMicId(deviceId);
+	return switchMic(deviceId);
 }
 
 export function toggleMute(): void {
 	const muted = !useCall.getState().muted;
-	if (muted) silence();
+	setMicMuted(muted);
 	useCall.setState((state) => ({
 		muted,
-		phase: muted && state.phase === "speaking" ? "ready" : state.phase,
+		phase: muted && state.phase === "hearing" ? restingPhase(state.watch) : state.phase,
 	}));
 }
 
 /** Stop Max mid-sentence (and any speech still being fetched). */
 function silence(): void {
 	speech += 1;
+	setMicPlaying(false);
 	stopPlayback();
 }
 
-export function startTalking(): void {
-	const { active, phase } = useCall.getState();
-	if (!active || recording || phase === "transcribing") return;
-	silence();
-	useCall.setState({ phase: "recording", error: null, hint: null });
-	recording = startRecording().catch((error: unknown) => {
-		log.warn("microphone failed", { error });
-		recording = null;
-		useCall.setState({ phase: "ready", error: `Voice error: microphone: ${reason(error)}` });
-		return null;
-	});
-	capTimer = window.setTimeout(() => void stopTalking(), TURN_MAX_MS);
-}
-
-export function toggleTalking(): void {
-	if (useCall.getState().phase === "recording") void stopTalking();
-	else startTalking();
-}
-
-/** End the turn: transcribe it and send it to the chief as a call turn. */
-export async function stopTalking(): Promise<void> {
-	window.clearTimeout(capTimer);
-	const pending = recording;
-	recording = null;
-	const open = await pending;
-	if (!open) return;
-	const clip = await open.stop();
+/** Jeremy started talking: barge in over Max. */
+function heardSpeech(): void {
 	if (!useCall.getState().active) return;
-	if (clip.durationMs < TURN_MIN_MS) {
-		useCall.setState({ phase: "ready", hint: "Hold Talk while you speak" });
-		return;
-	}
-	useCall.setState({ phase: "transcribing" });
-	const heard = await transcribe(clip.bytes, clip.mimeType);
-	if (heard === null || !useCall.getState().active) return;
-	if (heard.length === 0) {
-		useCall.setState({ phase: "ready", hint: "Didn't catch that" });
-		return;
-	}
-	await sendTurn(heard);
+	silence();
+	useCall.setState({ phase: "hearing", hint: null });
 }
 
-async function transcribe(bytes: Uint8Array, mimeType: string): Promise<string | null> {
+async function handleUtterance(wav: Uint8Array): Promise<void> {
 	const voice = voiceApi();
-	const result = voice
-		? await voice
-				.transcribe(bytes, mimeType)
-				.catch((error: unknown) => ({ ok: false as const, reason: reason(error) }))
-		: { ok: false as const, reason: "no voice in this build" };
-	if (result.ok) return result.value;
-	useCall.setState({ phase: "ready", error: `Voice error: ${result.reason}` });
-	return null;
+	if (!voice || !useCall.getState().active) return;
+	useCall.setState({ phase: "transcribing" });
+	const result = await voice
+		.transcribe(wav, "audio/wav")
+		.catch((error: unknown) => ({ ok: false as const, reason: reasonOf(error) }));
+	const state = useCall.getState();
+	if (!state.active) return;
+	const busy = state.phase === "hearing";
+	const settle = busy ? state.phase : restingPhase(state.watch);
+	if (!result.ok) {
+		useCall.setState({ phase: settle, error: `Voice error: ${result.reason}` });
+		return;
+	}
+	if (!worthSending(result.value)) {
+		useCall.setState({ phase: settle, hint: "Didn't catch that" });
+		return;
+	}
+	await sendTurn(result.value);
 }
 
 async function sendTurn(text: string): Promise<void> {
 	// Watch from before the send: he can start working before the send returns.
 	cancelGrace();
-	useCall.setState({ watch: NEW_TURN });
+	useCall.setState({ watch: NEW_TURN, heard: text, error: null, hint: null });
 	const result = await sendToChief(text, { call: true });
 	if (result.state === "rejected") {
 		useCall.setState({
-			phase: "ready",
+			phase: "listening",
 			watch: null,
 			error: `Not sent: ${result.reason ?? "refused"}`,
 		});
 		return;
 	}
-	useCall.setState((state) => ({
-		phase:
-			result.state === "queued" ? "queued" : state.phase === "transcribing" ? "sent" : state.phase,
-		watch:
-			result.state === "sent" && state.watch ? { ...state.watch, delivered: true } : state.watch,
-	}));
+	useCall.setState((state) => {
+		const watch =
+			result.state === "sent" && state.watch ? { ...state.watch, delivered: true } : state.watch;
+		return { watch, phase: state.phase === "hearing" ? state.phase : restingPhase(watch) };
+	});
 }
 
 function noteMessage(message: ChiefMessage): void {
@@ -195,31 +217,32 @@ function noteMessage(message: ChiefMessage): void {
 }
 
 async function speak(text: string): Promise<void> {
-	const { muted, phase } = useCall.getState();
-	// Talking or muted: the caption in the chat is the answer.
-	if (phase === "recording" || phase === "transcribing") return;
-	if (muted) {
-		useCall.setState({ phase: "ready" });
-		return;
-	}
+	// Talking over him already: the caption in the chat is the answer.
+	if (useCall.getState().phase === "hearing") return;
 	const mine = ++speech;
 	const voice = voiceApi();
 	const result = voice
 		? await voice
 				.speak(text)
-				.catch((error: unknown) => ({ ok: false as const, reason: reason(error) }))
+				.catch((error: unknown) => ({ ok: false as const, reason: reasonOf(error) }))
 		: null;
-	if (mine !== speech || !result) return;
+	if (mine !== speech || !result || !useCall.getState().active) return;
 	if (!result.ok) {
-		useCall.setState({ phase: "ready", error: `Voice error: ${result.reason}` });
+		useCall.setState((state) => ({
+			phase: restingPhase(state.watch),
+			error: `Voice error: ${result.reason}`,
+		}));
 		return;
 	}
 	useCall.setState({ phase: "speaking", error: null });
+	setMicPlaying(true);
 	await playMp3(result.value).catch((error: unknown) => log.warn("playback failed", { error }));
-	if (mine === speech) useCall.setState({ phase: "ready" });
+	if (mine !== speech) return;
+	setMicPlaying(false);
+	useCall.setState((state) => ({ phase: restingPhase(state.watch) }));
 }
 
-/** Follow the chief's presence: working on the turn, or done with it (spoken line or not). */
+/** Follow the chief's presence: thinking about the turn, or done with it (spoken line or not). */
 export function notePresence(presence: ChiefPresence): void {
 	const state = useCall.getState();
 	if (!state.active) return;
@@ -227,7 +250,8 @@ export function notePresence(presence: ChiefPresence): void {
 	if (watch !== state.watch) useCall.setState({ watch });
 	if (step === "working") {
 		cancelGrace();
-		if (state.phase === "sent" || state.phase === "queued") useCall.setState({ phase: "working" });
+		if (state.phase === "heard" || state.phase === "queued")
+			useCall.setState({ phase: "thinking" });
 	}
 	if (step === "finished" && graceTimer === undefined)
 		graceTimer = window.setTimeout(repliedInChat, SPOKEN_GRACE_MS);
@@ -239,6 +263,6 @@ function repliedInChat(): void {
 	const state = useCall.getState();
 	if (!state.active || state.watch === null) return;
 	chime();
-	const busy = state.phase === "recording" || state.phase === "transcribing";
+	const busy = state.phase === "hearing" || state.phase === "transcribing";
 	useCall.setState({ watch: null, phase: busy ? state.phase : "replied" });
 }
