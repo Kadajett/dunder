@@ -16,6 +16,9 @@ const laneText = (lane: ItemLane): string =>
 			? "not on the board"
 			: laneLabels[lane].toLowerCase();
 
+/** One empty list: a selector returning a fresh `[]` re-renders forever (zustand compares by identity). */
+const NONE: readonly string[] = [];
+
 /**
  * The decided plan at the top of the work bar for the rest of the day:
  * the focus, opening to each item with its live lane, so by evening Jeremy
@@ -25,7 +28,7 @@ export function TodayPill() {
 	const plan = usePlan((state) => state.plan);
 	const cards = useWorkCards();
 	const closedToday = useWork((state) =>
-		state.board?.state === "ok" ? (state.board.closedToday ?? []) : [],
+		state.board?.state === "ok" ? (state.board.closedToday ?? NONE) : NONE,
 	);
 	const [open, setOpen] = useState(false);
 	if (!plan || !todayPillDue(plan) || !cards) return null;
