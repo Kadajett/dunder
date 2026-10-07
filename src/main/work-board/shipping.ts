@@ -146,7 +146,7 @@ export class ReviewClock {
 		const text = JSON.stringify(Object.fromEntries(this.#since));
 		if (text !== this.#saved) {
 			this.#saved = text;
-			await save(this.#path, text).catch((error: unknown) =>
+			await writeAtomic(this.#path, text).catch((error: unknown) =>
 				log.warn("cannot save review times", { error }),
 			);
 		}
@@ -154,7 +154,8 @@ export class ReviewClock {
 	}
 }
 
-async function save(path: string, text: string): Promise<void> {
+/** Write through a temp file and rename, so a crash never leaves the file half-written. */
+export async function writeAtomic(path: string, text: string): Promise<void> {
 	await mkdir(dirname(path), { recursive: true });
 	const temp = `${path}.${process.pid}.tmp`;
 	await writeFile(temp, `${text}\n`, "utf8");

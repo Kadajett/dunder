@@ -28,6 +28,8 @@ const beadSchema = z.object({
 	created_at: z.string().optional(),
 	/** `bd list` only; null without any. */
 	labels: z.array(z.string()).nullish(),
+	/** Comments on it; a new one is activity bd doesn't stamp in `updated_at`. */
+	comment_count: z.number().int().nullish(),
 	closed_at: z.string().nullish(),
 	/** When it was claimed (moved to in progress); what a bead's spend is counted from. */
 	started_at: z.string().nullish(),
