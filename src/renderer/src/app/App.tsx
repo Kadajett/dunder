@@ -16,6 +16,7 @@ import { connectRoster } from "../features/hire/roster-store";
 import { connectAlerts } from "../features/hud/alerts-store";
 import { HudPanels } from "../features/hud/HudPanels";
 import { TopBar } from "../features/hud/TopBar";
+import { useReportBusy } from "../features/hud/update-busy";
 import { useHud } from "../features/hud/view-store";
 import { connectConversations } from "../features/office/conversations/conversation-store";
 import { FocusOverlay } from "../features/office/focus/FocusOverlay";
@@ -57,6 +58,7 @@ export function App() {
 	useEffect(connectPool, []);
 	useEffect(connectAppErrors, []);
 	useEffect(connectAlerts, []);
+	useReportBusy();
 	return (
 		<div className="office-app" data-view={view}>
 			{view === "office" ? (

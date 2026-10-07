@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { UPDATE_COUNTDOWN_MS, type UpdateStatus } from "@shared/app-update";
+import type { UpdateCountdown, UpdateStatus } from "@shared/app-update";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { createLogger } from "@shared/log/logger";
 import { z } from "zod";
@@ -9,11 +9,20 @@ import { freshRequests } from "./requests";
 import {
 	afterCheck,
 	afterFailure,
+	afterWait,
+	busyChanged,
 	canApply,
+	nextDeadline,
+	requestUpdate,
 	type UpdateCheck,
-	withCountdown,
 	withoutCountdown,
 } from "./status";
+
+/** How a countdown's update is described in the build log. */
+function applyReason({ by, reason, extra }: UpdateCountdown): string {
+	const who = extra > 0 ? `${by} + ${extra} more` : by;
+	return reason ? `${who}: ${reason}` : `requested by ${who}`;
+}
 
 /** How often the app looks for new commits in its checkout. */
 export const CHECK_INTERVAL_MS = 30_000;
@@ -49,7 +58,10 @@ export class AppUpdater {
 	#early: string[] = [];
 	#checking: Promise<void> | undefined;
 	#poll: NodeJS.Timeout | undefined;
-	#countdown: NodeJS.Timeout | undefined;
+	/** Fires at the next deadline: a countdown's apply, or a held update's start. */
+	#timer: NodeJS.Timeout | undefined;
+	/** What Jeremy is doing (from the renderer); agents' updates wait while it is set. */
+	#busy: string | null = null;
 	#tail: MailboxTail | undefined;
 
 	constructor(deps: AppUpdaterDeps) {
@@ -94,7 +106,7 @@ export class AppUpdater {
 
 	stop(): void {
 		clearInterval(this.#poll);
-		clearTimeout(this.#countdown);
+		clearTimeout(this.#timer);
 		this.#tail?.stop();
 	}
 
@@ -113,7 +125,7 @@ export class AppUpdater {
 		return this.#checking;
 	}
 
-	/** New lines from the requests file: the newest fresh request starts a countdown. */
+	/** New lines from the requests file: the newest fresh request counts down, or waits while Jeremy is busy. */
 	async receive(lines: readonly string[]): Promise<void> {
 		if (!this.#snapshot) {
 			this.#early.push(...lines);
@@ -125,18 +137,16 @@ export class AppUpdater {
 		await this.check();
 		const by =
 			this.#snapshot?.agents.find((agent) => agent.pane_id === request.fromPane)?.name ?? "someone";
-		const countdown = { by, reason: request.reason, applyAt: this.#now() + UPDATE_COUNTDOWN_MS };
-		const next = withCountdown(this.#status, countdown);
-		if (next === this.#status) return;
-		clearTimeout(this.#countdown);
-		this.#set(next);
-		const reason = request.reason ? `${by}: ${request.reason}` : `requested by ${by}`;
-		this.#countdown = setTimeout(() => void this.apply(reason), UPDATE_COUNTDOWN_MS);
+		this.#set(requestUpdate(this.#status, { by, reason: request.reason }, this.#busy, this.#now()));
+	}
+
+	/** Jeremy is busy (why) or free (null); a countdown pauses while he is busy. */
+	setBusy(busy: string | null): void {
+		this.#busy = busy;
+		this.#set(busyChanged(this.#status, busy, this.#now()));
 	}
 
 	cancel(): void {
-		clearTimeout(this.#countdown);
-		this.#countdown = undefined;
 		this.#set(withoutCountdown(this.#status));
 	}
 
@@ -145,8 +155,6 @@ export class AppUpdater {
 		const target = this.#status;
 		// Never while a build runs (or under the dev server, or when there is nothing new).
 		if (!canApply(target)) return;
-		clearTimeout(this.#countdown);
-		this.#countdown = undefined;
 		log.info("building", { head: target.head, reason });
 		this.#set({ state: "building", logTail: reason ? `Updating: ${reason}` : "" });
 		let emittedAt = 0;
@@ -174,5 +182,28 @@ export class AppUpdater {
 		if (next === this.#status) return;
 		this.#status = next;
 		this.#deps.emit(next);
+		this.#schedule();
+	}
+
+	/** One timer for whatever is due next; every status change re-plans it. */
+	#schedule(): void {
+		clearTimeout(this.#timer);
+		this.#timer = undefined;
+		const deadline = nextDeadline(this.#status);
+		if (deadline === null) return;
+		this.#timer = setTimeout(() => this.#due(), Math.max(0, deadline - this.#now()));
+	}
+
+	/** A deadline passed: apply a finished countdown, or start a held update's countdown. */
+	#due(): void {
+		const status = this.#status;
+		const now = this.#now();
+		if (canApply(status) && status.countdown && status.countdown.applyAt <= now) {
+			void this.apply(applyReason(status.countdown));
+			return;
+		}
+		const next = afterWait(status, now);
+		if (next === status) this.#schedule();
+		else this.#set(next);
 	}
 }
