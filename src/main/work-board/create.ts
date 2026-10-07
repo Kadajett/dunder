@@ -6,7 +6,7 @@ import { runBd } from "../beads/bd";
 import { postToMailbox } from "../switchboard/service";
 import { gitIn, MergeChecks } from "./merges";
 import { WorkBoardService } from "./service";
-import { ReviewClock, shippingStats } from "./shipping";
+import { ReviewClock, shippingStats, withReviewSince } from "./shipping";
 import type { SpendOf } from "./spend";
 
 const log = createLogger("work-board");
@@ -41,14 +41,9 @@ export function createWorkBoard(
 		emit,
 		notify,
 		spendOf,
-		checkMerges: (cards) => merges.annotate(cards),
+		annotate: async (cards) =>
+			withReviewSince(await merges.annotate(cards), await reviews.observe(cards, Date.now())),
 		shipping: async (closed, cards, now) =>
-			shippingStats({
-				closed,
-				cards,
-				reviewSince: await reviews.observe(cards, now),
-				spendOf,
-				now,
-			}),
+			shippingStats({ closed, cards, reviewSince: reviews.current(), spendOf, now }),
 	});
 }

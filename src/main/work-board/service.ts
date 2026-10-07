@@ -36,8 +36,8 @@ export interface WorkBoardDeps {
 	readonly notify: (agent: string, text: string) => void;
 	/** An agent's AI spend over a time span, for each card's approximate cost. */
 	readonly spendOf: SpendOf;
-	/** Marks Review cards with whether their branch merges cleanly (left out in tests: no git). */
-	readonly checkMerges?: (cards: readonly WorkCard[]) => Promise<readonly WorkCard[]>;
+	/** Adds what the board knows beyond bd: Review cards' merge check and entry time (left out in tests). */
+	readonly annotate?: (cards: readonly WorkCard[]) => Promise<readonly WorkCard[]>;
 	/** The SHIPPING figures from the beads closed lately and the cards (left out in tests). */
 	readonly shipping?: (
 		closed: readonly Bead[],
@@ -302,7 +302,7 @@ export class WorkBoardService {
 			};
 			const cards = buildCards(lists, now - DONE_WINDOW_MS);
 			const priced = withSpend(cards, [...openBeads, ...closedBeads], this.#deps.spendOf, now);
-			const checked = (await this.#deps.checkMerges?.(priced)) ?? priced;
+			const checked = (await this.#deps.annotate?.(priced)) ?? priced;
 			const closedToday = closedIds(closedBeads, now - DONE_WINDOW_MS);
 			const shipping = await this.#deps.shipping?.(closedBeads, checked, now);
 			const asks = buildAsks(openBeads);

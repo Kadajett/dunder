@@ -103,6 +103,18 @@ export function noteReview(
 	return next;
 }
 
+/** Review cards with `reviewSince` from the clock (their last update when it has none). */
+export function withReviewSince(
+	cards: readonly WorkCard[],
+	since: ReadonlyMap<string, number>,
+): WorkCard[] {
+	return cards.map((card) => {
+		if (card.lane !== "review") return card;
+		const at = since.get(card.id);
+		return { ...card, reviewSince: at === undefined ? card.updatedAt : new Date(at).toISOString() };
+	});
+}
+
 const reviewFileSchema = z.record(z.string(), z.number());
 
 /** `noteReview` kept in a file, so a restart doesn't forget who is waiting since when. */
@@ -120,6 +132,11 @@ export class ReviewClock {
 				this.#since = new Map(Object.entries(reviewFileSchema.parse(JSON.parse(text))));
 			})
 			.catch(() => undefined);
+	}
+
+	/** The entries as of the last `observe`. */
+	current(): ReadonlyMap<string, number> {
+		return this.#since;
 	}
 
 	/** Update from the board just read; returns the entries. */
