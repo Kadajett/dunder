@@ -94,6 +94,7 @@ export const IPC = {
 	updateChanged: "update:changed",
 	updateApply: "update:apply",
 	updateCancel: "update:cancel",
+	updateSetBusy: "update:set-busy",
 	/** Whiteboard: the current company's board (invoke), the editor's save (invoke), every change (main → renderer). */
 	whiteboardGet: "whiteboard:get",
 	whiteboardPut: "whiteboard:put",

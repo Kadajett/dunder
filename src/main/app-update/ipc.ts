@@ -1,3 +1,4 @@
+import { updateBusySchema } from "@shared/app-update";
 import { IPC } from "@shared/ipc";
 import { ipcMain } from "electron";
 import { z } from "zod";
@@ -12,4 +13,9 @@ export function registerAppUpdateIpc(updater: AppUpdater): void {
 		updater.apply(reasonSchema.safeParse(reason).data),
 	);
 	ipcMain.handle(IPC.updateCancel, () => updater.cancel());
+	ipcMain.handle(IPC.updateSetBusy, (_event, busy: unknown) => {
+		const parsed = updateBusySchema.safeParse(busy);
+		// A malformed signal must not hold updates forever: treat it as free.
+		updater.setBusy(parsed.success ? parsed.data : null);
+	});
 }

@@ -1,5 +1,10 @@
 import "./hud-update.css";
-import type { ApplicableStatus, UpdateCountdown, UpdateStatus } from "@shared/app-update";
+import type {
+	ApplicableStatus,
+	UpdateCountdown,
+	UpdateHeld,
+	UpdateStatus,
+} from "@shared/app-update";
 import { useEffect, useId, useState } from "react";
 
 /** The stable-mode update status, live from main ("dev" while the preload predates the API). */
@@ -40,20 +45,23 @@ function apply(reason: string): void {
 	window.office.update.apply(reason).catch(() => undefined);
 }
 
+/** "Theo", or "Theo + 2 more" when several agents asked. */
+function requesters({ by, extra }: { readonly by: string; readonly extra: number }): string {
+	const who = by.charAt(0).toUpperCase() + by.slice(1);
+	return extra > 0 ? `${who} + ${extra} more` : who;
+}
+
+const skip = () => void window.office.update.cancel().catch(() => undefined);
+
 function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown }) {
 	const seconds = useSecondsLeft(countdown.applyAt);
-	const who = countdown.by.charAt(0).toUpperCase() + countdown.by.slice(1);
 	return (
 		<div className="update-banner" role="alert">
 			<span>
-				<strong>{who} requested an update</strong>
+				<strong>{requesters(countdown)} requested an update</strong>
 				{countdown.reason ? `: ${countdown.reason}` : ""} — applying in {seconds} s
 			</span>
-			<button
-				type="button"
-				className="update-banner-cancel"
-				onClick={() => void window.office.update.cancel().catch(() => undefined)}
-			>
+			<button type="button" className="update-banner-cancel" onClick={skip}>
 				Cancel
 			</button>
 			<button type="button" className="update-banner-apply" onClick={() => apply("now, by Jeremy")}>
@@ -63,9 +71,34 @@ function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown })
 	);
 }
 
-/** The countdown banner while an agent's `office-update` request waits for Jeremy to cancel it. */
+function WaitLine({ held }: { readonly held: UpdateHeld }) {
+	const seconds = useSecondsLeft(held.startsAt ?? 0);
+	if (held.busy !== null) return <>applies when you're free ({held.busy})</>;
+	return <>you're free: countdown in {seconds} s</>;
+}
+
+/** An agent's update waiting while Jeremy is busy: small, so it never interrupts him. */
+function HeldChip({ held }: { readonly held: UpdateHeld }) {
+	return (
+		<div className="update-held" role="status" title={held.reason || undefined}>
+			<span className="update-dot" />
+			<span>
+				Update from <strong>{requesters(held)}</strong> waiting · <WaitLine held={held} />
+			</span>
+			<button type="button" className="update-held-apply" onClick={() => apply("now, by Jeremy")}>
+				Apply now
+			</button>
+			<button type="button" className="update-held-skip" onClick={skip}>
+				Skip
+			</button>
+		</div>
+	);
+}
+
+/** The countdown banner while an agent's `office-update` request waits for Jeremy to cancel it, or the held chip while he is busy. */
 export function UpdateCountdownBanner({ status }: { readonly status: UpdateStatus }) {
 	if (status.state !== "available" && status.state !== "failed") return null;
+	if (status.held) return <HeldChip held={status.held} />;
 	return status.countdown ? <CountdownBanner countdown={status.countdown} /> : null;
 }
 

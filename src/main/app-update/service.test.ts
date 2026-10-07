@@ -106,6 +106,30 @@ describe("AppUpdater", () => {
 		expect(updater.status()).not.toHaveProperty("countdown");
 	});
 
+	it("holds requests while Jeremy is busy, then counts down 10 s after he is free and applies once", async () => {
+		vi.useFakeTimers();
+		const { updater, deps, request } = setup();
+		updater.setBusy("on a call");
+		await updater.receive([request()]);
+		await updater.receive([request({ fromPane: "w9:p9", reason: "pool fix" })]);
+		expect(updater.status()).toMatchObject({
+			held: { by: "someone", reason: "pool fix", extra: 1, busy: "on a call" },
+		});
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(deps.build).not.toHaveBeenCalled();
+		updater.setBusy(null);
+		await vi.advanceTimersByTimeAsync(9_999);
+		expect(updater.status()).toHaveProperty("held");
+		await vi.advanceTimersByTimeAsync(1);
+		expect(updater.status()).toMatchObject({ countdown: { by: "someone", extra: 1 } });
+		updater.setBusy("typing");
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(deps.build).not.toHaveBeenCalled();
+		updater.setBusy(null);
+		await vi.advanceTimersByTimeAsync(25_000);
+		expect(deps.build).toHaveBeenCalledTimes(1);
+	});
+
 	it("ignores a request when the running build is already HEAD", async () => {
 		const { updater, deps, request } = setup({ head: BUILT, commits: [] });
 		await updater.receive([request()]);

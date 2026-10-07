@@ -18,6 +18,24 @@ export interface UpdateCountdown {
 	readonly reason: string;
 	/** Epoch milliseconds. */
 	readonly applyAt: number;
+	/** More requests folded into this one (shown as "theo + 2 more"). */
+	readonly extra: number;
+}
+
+/**
+ * Agents asked for an update while Jeremy was busy: it waits, and the normal
+ * countdown starts once he has been free for `UPDATE_FREE_MS`.
+ */
+export interface UpdateHeld {
+	/** The latest requester, and its reason. */
+	readonly by: string;
+	readonly reason: string;
+	/** Earlier requests folded in. */
+	readonly extra: number;
+	/** What he is doing ("on a call"), or null once he is free. */
+	readonly busy: string | null;
+	/** When the countdown starts (epoch ms); set only while he is free. */
+	readonly startsAt: number | null;
 }
 
 interface Behind {
@@ -27,7 +45,9 @@ interface Behind {
 	readonly commits: readonly UpdateCommit[];
 	/** Commits between the running build and HEAD (0 when HEAD moved sideways or back). */
 	readonly behind: number;
+	/** At most one of `countdown` and `held` is set. */
 	readonly countdown?: UpdateCountdown;
+	readonly held?: UpdateHeld;
 }
 
 export type UpdateStatus =
@@ -48,6 +68,10 @@ export const MAX_LISTED_COMMITS = 20;
 export const UPDATE_COUNTDOWN_MS = 15_000;
 /** Requests older than this (e.g. made while the app was closed) are ignored. */
 export const UPDATE_REQUEST_MAX_AGE_MS = 10 * 60 * 1000;
+/** A held update's countdown starts after Jeremy has been free this long. */
+export const UPDATE_FREE_MS = 10_000;
+/** What Jeremy is doing that holds agents' updates; null when he is free. */
+export const updateBusySchema = z.string().min(1).max(60).nullable();
 
 /** One line of the update-requests file, appended by `office-update`. */
 export const updateRequestLineSchema = z.strictObject({
@@ -66,6 +90,8 @@ export interface AppUpdateApi {
 	onStatus(listener: (status: UpdateStatus) => void): Unsubscribe;
 	/** Rebuild and relaunch on HEAD; no-op unless an update is available or failed. */
 	apply(reason?: string): Promise<void>;
-	/** Cancel an agent-requested countdown. */
+	/** Cancel an agent-requested countdown, or skip a held update. */
 	cancel(): Promise<void>;
+	/** Jeremy is busy (why) or free (null); agents' updates wait while he is busy. */
+	setBusy(busy: string | null): Promise<void>;
 }
