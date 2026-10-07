@@ -1,4 +1,5 @@
 import type { AlertTarget } from "@shared/alerts";
+import { parseAskOptions } from "@shared/ask-options";
 import { agentActivity, agentName } from "@shared/herdr/agent-label";
 import type { AgentInfo } from "@shared/herdr/schema";
 import { askSnoozeKey, blockedSnoozeKey } from "@shared/inbox-snooze";
@@ -17,6 +18,8 @@ export interface AlertItem {
 	readonly target: AlertTarget;
 	/** The inbox item's snooze key: a snoozed item never alerts. */
 	readonly snoozeKey: string;
+	/** An ask's offered answers, listed in its notification. */
+	readonly options?: readonly string[];
 }
 
 /** The alert for a blocked agent. */
@@ -36,6 +39,7 @@ export function askItem(ask: HumanAsk): AlertItem {
 		text: ask.question,
 		target: { kind: "ask", id: ask.id },
 		snoozeKey: askSnoozeKey(ask.id),
+		options: parseAskOptions(ask.detail).options,
 	};
 }
 
@@ -100,8 +104,10 @@ export function batchNotice(items: readonly AlertItem[]): {
 	readonly body: string;
 } {
 	const [first] = items;
-	if (items.length === 1 && first)
-		return { title: `${first.who} needs you`, body: clip(first.text) };
+	if (items.length === 1 && first) {
+		const options = first.options?.length ? `\nOptions: ${clip(first.options.join(" / "))}` : "";
+		return { title: `${first.who} needs you`, body: `${clip(first.text)}${options}` };
+	}
 	const names = [...new Set(items.map((item) => item.who))];
 	return { title: `${items.length} things need you`, body: clip(names.join(", ")) };
 }

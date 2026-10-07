@@ -12,6 +12,7 @@ const STATES = [
 	"01b-away",
 	"01c-whats-new",
 	"02-inbox",
+	"02b-inbox-ask",
 	"03-team",
 	"04-brain",
 	"05-clients",

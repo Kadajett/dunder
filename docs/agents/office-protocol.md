@@ -50,6 +50,7 @@ bd create "<one-line ask, e.g. Run npm login and add NPM_TOKEN to the repo secre
 
 - One ask per bead, one line, phrased as what he should do. `-a <your-name>` is how the answer finds you; `--deps blocks:<bead>` shows him what it unblocks.
 - He answers or dismisses it from the inbox. The answer lands as a comment on the ask, the ask closes, and you get an office message.
+- When the ask is a choice, end its description with an `Options:` line and 2-4 `- ` bullets, your recommendation first, each under 120 characters. He answers in one click, and the answer you get is the option's exact text. Anything else after the bullets, or a single option, means no buttons. For example: `-d $'Rollback needs node_modules shared across builds.\n\nOptions:\n- Yes, drop Node 20\n- No, keep Node 20 and skip rollback across dependency changes'`
 - Don't flag questions a colleague or Max can answer, status, or FYIs: the inbox must stay short or he stops reading it.
 
 ## Working on Dunder itself

@@ -284,7 +284,7 @@ const asks: HumanAsk[] = [
 		id: "office-w9e.1",
 		question: "OK to drop Node 20 support so a rollback can share node_modules?",
 		detail:
-			"Rolling back across a lockfile change needs its own node_modules. Dropping Node 20 lets both builds share one install. Node 22 is already what the app ships with.",
+			"Rolling back across a lockfile change needs its own node_modules. Dropping Node 20 lets both builds share one install. Node 22 is already what the app ships with.\n\nOptions:\n- Yes, drop Node 20\n- No, keep Node 20 and skip rollback across dependency changes",
 		asker: "otto",
 		blocks: [{ id: "office-w9e", title: "Stable updates: roll back across a dependency change" }],
 		createdAt: ago(35),

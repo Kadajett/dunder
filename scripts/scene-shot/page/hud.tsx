@@ -150,6 +150,11 @@ const STATES: Record<string, () => Promise<void>> = {
 		if (!click(".whats-new__others .whats-new__more")) notes.push("'Also changed' not found");
 	},
 	"02-inbox": async () => useHud.setState({ panel: "inbox" }),
+	"02b-inbox-ask": async () => {
+		useHud.setState({ panel: "inbox" });
+		await until(() => document.querySelector('.hud-card[data-kind="ask"]') !== null, 10_000);
+		document.querySelector('.hud-card[data-kind="ask"]')?.scrollIntoView({ block: "start" });
+	},
 	"03-team": async () => useHud.setState({ panel: "team" }),
 	"04-brain": async () => useHud.setState({ panel: "brain" }),
 	"05-clients": async () => useHud.setState({ panel: "clients" }),
