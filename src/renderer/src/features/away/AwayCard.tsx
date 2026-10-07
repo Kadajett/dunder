@@ -1,20 +1,22 @@
 import type { AwaySummary } from "@shared/away";
-import { useEffect, useState } from "react";
+import type { WhatsNew } from "@shared/whats-new";
+import { useState } from "react";
 import { create } from "zustand";
 import { formatClock } from "../feed/feed-model";
 import { useHud } from "../hud/view-store";
-import { usePlanCardPending } from "../plan/plan-store";
-import { useWhatsNew } from "../whats-new/whats-new-store";
+import { ReviewToggle, WhatsNewRows } from "../whats-new/WhatsNewCard";
+import { dismissWhatsNew } from "../whats-new/whats-new-store";
 import { useWork } from "../work/work-store";
 import "../whats-new/whats-new.css";
 import "./away.css";
 
-const useAway = create<{ readonly summary: AwaySummary | null }>(() => ({ summary: null }));
+/** Main's summary of the time Jeremy was away; null once dismissed (or none due). */
+export const useAway = create<{ readonly summary: AwaySummary | null }>(() => ({ summary: null }));
 
 const api = () => ("away" in window.office ? window.office.away : null);
 
 /** Follow main's summaries (and pick up one waiting after a reload); returns the cleanup. */
-function connectAway(): () => void {
+export function connectAway(): () => void {
 	const away = api();
 	if (!away) return () => undefined;
 	void away
@@ -24,7 +26,7 @@ function connectAway(): () => void {
 	return away.onSummary((summary) => useAway.setState({ summary }));
 }
 
-function dismiss(): void {
+function dismissAway(): void {
 	useAway.setState({ summary: null });
 	void api()
 		?.dismiss()
@@ -73,7 +75,39 @@ function ClosedBeads({ closed }: { readonly closed: AwaySummary["closed"] }) {
 	);
 }
 
-function Sections({ summary }: { readonly summary: AwaySummary }) {
+/** The updates line: a pointer to What's new, or (merged) What's new itself, one line until opened. */
+function Updates({
+	summary,
+	whatsNew,
+}: {
+	readonly summary: AwaySummary;
+	readonly whatsNew: WhatsNew | null;
+}) {
+	const [open, setOpen] = useState(false);
+	if (whatsNew) {
+		return (
+			<li>
+				<ReviewToggle card={whatsNew} open={open} onToggle={() => setOpen((value) => !value)} />
+				{open ? <WhatsNewRows card={whatsNew} /> : null}
+			</li>
+		);
+	}
+	if (summary.updates === 0) return null;
+	return (
+		<li>
+			<strong>{plural(summary.updates, "update applied", "updates applied")}</strong>
+			<span className="away__note"> (What's new has the details)</span>
+		</li>
+	);
+}
+
+function Sections({
+	summary,
+	whatsNew,
+}: {
+	readonly summary: AwaySummary;
+	readonly whatsNew: WhatsNew | null;
+}) {
 	return (
 		<ul className="away__sections">
 			{summary.closed.length > 0 ? <ClosedBeads closed={summary.closed} /> : null}
@@ -88,12 +122,7 @@ function Sections({ summary }: { readonly summary: AwaySummary }) {
 					</button>
 				</li>
 			) : null}
-			{summary.updates > 0 ? (
-				<li>
-					<strong>{plural(summary.updates, "update applied", "updates applied")}</strong>
-					<span className="away__note"> (What's new has the details)</span>
-				</li>
-			) : null}
+			<Updates summary={summary} whatsNew={whatsNew} />
 			{summary.spendUsd !== null ? (
 				<li>
 					AI spend while away: <strong>~${summary.spendUsd.toFixed(2)}</strong>
@@ -104,20 +133,28 @@ function Sections({ summary }: { readonly summary: AwaySummary }) {
 }
 
 /**
- * After 2 h or more away: what happened meanwhile, top-centre in the What's
- * new card's place (and after it, when both are due).
+ * After 2 h or more away: what happened meanwhile. With `whatsNew` (both due
+ * at once) it is the one 'Since you left' notice: the away counts with the
+ * update's rows inside, and Dismiss clears both.
  */
-export function AwayCard() {
-	useEffect(connectAway, []);
+export function AwayCard({ whatsNew = null }: { readonly whatsNew?: WhatsNew | null }) {
 	const summary = useAway((state) => state.summary);
-	const whatsNewDue = useWhatsNew((state) => !state.settled || state.card !== null);
-	const planFirst = usePlanCardPending();
-	if (!summary || whatsNewDue || planFirst) return null;
+	if (!summary) return null;
+	const merged = whatsNew !== null;
+	const dismiss = (): void => {
+		dismissAway();
+		if (merged) dismissWhatsNew();
+	};
 	return (
-		<section className="whats-new away" aria-label="While you were away">
+		<section
+			className="whats-new away"
+			aria-label={merged ? "Since you left" : "While you were away"}
+		>
 			<header className="whats-new__header">
 				<div>
-					<h2 className="whats-new__heading">While you were away</h2>
+					<h2 className="whats-new__heading">
+						{merged ? "Since you left" : "While you were away"}
+					</h2>
 					<span className="whats-new__build">
 						away {awayFor(summary.backAt - summary.awayAt)} · since {formatClock(summary.awayAt)}
 					</span>
@@ -126,7 +163,7 @@ export function AwayCard() {
 					Dismiss
 				</button>
 			</header>
-			<Sections summary={summary} />
+			<Sections summary={summary} whatsNew={whatsNew} />
 		</section>
 	);
 }

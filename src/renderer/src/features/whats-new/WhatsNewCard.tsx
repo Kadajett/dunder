@@ -1,7 +1,11 @@
-import { WHATS_NEW_FEEDBACK_MAX, WHATS_NEW_ROWS, type WhatsNewBead } from "@shared/whats-new";
-import { useEffect, useState } from "react";
-import { usePlanCardPending } from "../plan/plan-store";
-import { dismissWhatsNew, loadWhatsNew, rateBead, useWhatsNew } from "./whats-new-store";
+import {
+	WHATS_NEW_FEEDBACK_MAX,
+	WHATS_NEW_ROWS,
+	type WhatsNew,
+	type WhatsNewBead,
+} from "@shared/whats-new";
+import { useState } from "react";
+import { dismissWhatsNew, rateBead, useWhatsNew } from "./whats-new-store";
 import "./whats-new.css";
 
 /** 👎 asks "What's off?" first; Enter or leaving the field sends it (text optional), Esc cancels. */
@@ -75,30 +79,17 @@ function Row({
 	);
 }
 
-/** Top-centre after Dunder relaunches on a new commit: what shipped, how to try it, thumbs. */
-export function WhatsNewCard() {
-	useEffect(loadWhatsNew, []);
-	const card = useWhatsNew((state) => state.card);
+/** How many changes shipped, beads and other commits together. */
+export const changeCount = (card: WhatsNew): number => card.beads.length + card.others.length;
+
+/** The shipped beads with thumbs, and the other commits folded; capped at 45 vh, then it scrolls. */
+export function WhatsNewRows({ card }: { readonly card: WhatsNew }) {
 	const [more, setMore] = useState(false);
 	const [othersOpen, setOthersOpen] = useState(false);
-	// The morning plan card comes first; this one waits until it is decided.
-	const planFirst = usePlanCardPending();
-	if (!card || planFirst) return null;
 	const rows = more ? card.beads : card.beads.slice(0, WHATS_NEW_ROWS);
 	const hidden = card.beads.length - rows.length;
 	return (
-		<section className="whats-new" aria-label="What's new">
-			<header className="whats-new__header">
-				<div>
-					<h2 className="whats-new__heading">
-						{card.recent ? "What's new (recent)" : "What's new"}
-					</h2>
-					<span className="whats-new__build">Dunder is now on {card.built.slice(0, 7)}</span>
-				</div>
-				<button type="button" className="whats-new__done" onClick={dismissWhatsNew}>
-					Got it
-				</button>
-			</header>
+		<div className="whats-new__list">
 			{rows.length > 0 && (
 				<ol className="whats-new__rows">
 					{rows.map((bead) => (
@@ -132,6 +123,51 @@ export function WhatsNewCard() {
 					)}
 				</div>
 			)}
+		</div>
+	);
+}
+
+/** 'Dunder updated · 10 changes · Review ▾': one line until he opens it. */
+export function ReviewToggle({
+	card,
+	open,
+	onToggle,
+}: {
+	readonly card: WhatsNew;
+	readonly open: boolean;
+	readonly onToggle: () => void;
+}) {
+	const count = changeCount(card);
+	return (
+		<button type="button" className="whats-new__review" aria-expanded={open} onClick={onToggle}>
+			Dunder updated{card.recent ? " (recent)" : ""} · {count} {count === 1 ? "change" : "changes"}{" "}
+			· {open ? "Hide ▴" : "Review ▾"}
+		</button>
+	);
+}
+
+/**
+ * After Dunder relaunches on a new commit: one line in the notice slot,
+ * opening to what shipped, how to try it, and thumbs.
+ */
+export function WhatsNewCard() {
+	const card = useWhatsNew((state) => state.card);
+	const [open, setOpen] = useState(false);
+	if (!card) return null;
+	return (
+		<section className="whats-new" data-open={open} aria-label="What's new">
+			<header className="whats-new__header whats-new__header--line">
+				<ReviewToggle card={card} open={open} onToggle={() => setOpen((value) => !value)} />
+				<button type="button" className="whats-new__done" onClick={dismissWhatsNew}>
+					Got it
+				</button>
+			</header>
+			{open ? (
+				<>
+					<span className="whats-new__build">Dunder is now on {card.built.slice(0, 7)}</span>
+					<WhatsNewRows card={card} />
+				</>
+			) : null}
 		</section>
 	);
 }

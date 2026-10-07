@@ -1,16 +1,12 @@
-/* What's new: a paper card top-centre under the top bar; the room stays clickable around it. */
+/* A notice card (What's new, Away, the morning plan) in the notice slot under the top bar. */
 .whats-new {
-	position: absolute;
-	top: 76px;
-	left: 50%;
-	z-index: 650;
-	width: 420px;
-	max-height: calc(100vh - 180px);
+	width: 100%;
+	max-height: calc(100vh - 160px);
+	box-sizing: border-box;
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 	padding: 14px 16px 12px;
-	transform: translateX(-50%);
 	border: 1px solid var(--panel-edge);
 	border-radius: 16px;
 	background: var(--panel);
@@ -21,6 +17,31 @@
 		0 18px 44px rgb(107 85 58 / 0.22);
 	overflow-y: auto;
 	pointer-events: auto;
+}
+
+/* What's new, closed: one line. */
+.whats-new[data-open="false"] {
+	padding: 8px 10px 8px 14px;
+}
+
+.whats-new__header--line {
+	align-items: center;
+}
+
+.whats-new__review {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	font: 600 13px var(--font-ui);
+	text-align: left;
+	cursor: pointer;
+}
+
+/* The rows open to at most 45% of the window, then scroll inside. */
+.whats-new__list {
+	max-height: 45vh;
+	overflow-y: auto;
 }
 
 .whats-new__header {

@@ -1,0 +1,54 @@
+/*
+ * Top-centre, under the top bar: strips (update countdown or held chip, pool
+ * autopilot) then the one notice slot, stacked in a column so none covers
+ * another. The column lets clicks through to the room around its children.
+ */
+.top-centre {
+	position: fixed;
+	top: 76px;
+	left: 50%;
+	z-index: 650;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	max-width: calc(100vw - 40px);
+	max-height: calc(100vh - 96px);
+	transform: translateX(-50%);
+	pointer-events: none;
+}
+
+.top-centre > * {
+	pointer-events: auto;
+}
+
+.notice-slot {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	width: 420px;
+	max-width: 100%;
+	min-height: 0;
+	pointer-events: none;
+}
+
+.notice-slot > * {
+	pointer-events: auto;
+}
+
+.notice-pager {
+	padding: 3px 12px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 999px;
+	background: var(--panel);
+	box-shadow: 0 4px 12px rgb(107 85 58 / 0.14);
+	color: var(--ink-soft);
+	font: 600 11px var(--font-ui);
+	cursor: pointer;
+}
+
+.notice-pager:hover,
+.notice-pager:focus-visible {
+	color: var(--ink);
+}

@@ -121,17 +121,13 @@
 	color: #fff;
 }
 
+/* A strip in the top-centre column (notices/TopCentre): never under a notice. */
 .update-banner {
-	position: fixed;
-	top: 84px;
-	left: 50%;
-	z-index: 700;
 	display: flex;
 	align-items: center;
 	gap: 12px;
 	max-width: min(720px, calc(100vw - 40px));
 	padding: 10px 12px 10px 16px;
-	transform: translateX(-50%);
 	border: 1px solid #ece3d3;
 	border-radius: 12px;
 	background: var(--panel);
@@ -145,18 +141,13 @@
 	flex: 1;
 }
 
-/* An agent's update waiting while Jeremy is busy: a quiet chip where the countdown would be. */
+/* An agent's update waiting while Jeremy is busy: a quiet chip where the countdown would be, above any notice. */
 .update-held {
-	position: fixed;
-	top: 84px;
-	left: 50%;
-	z-index: 700;
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	max-width: min(640px, calc(100vw - 40px));
 	padding: 5px 6px 5px 12px;
-	transform: translateX(-50%);
 	border: 1px solid #ece3d3;
 	border-radius: 999px;
 	background: var(--panel);
