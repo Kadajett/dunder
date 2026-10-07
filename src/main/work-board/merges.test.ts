@@ -17,7 +17,8 @@ const commit = async (file: string, text: string) => {
 	git("add", file);
 	git("commit", "-qm", file);
 };
-const card = (id: string, lane: WorkCard["lane"] = "review") => ({ id, lane }) as WorkCard;
+const card = (id: string, lane: WorkCard["lane"] = "review", assignee: string | null = "theo") =>
+	({ id, lane, assignee }) as WorkCard;
 
 beforeEach(async () => {
 	repo = await mkdtemp(join(tmpdir(), "merges-"));
@@ -84,5 +85,27 @@ describe("MergeChecks", () => {
 		const checks = new MergeChecks(gitIn(join(repo, "missing")));
 		const cards = [card("x-clean")];
 		expect(await checks.annotate(cards)).toBe(cards);
+	});
+
+	it("tells the engineer once per branch head when their Review branch starts to conflict, never about conflicts there at launch", async () => {
+		const told: string[] = [];
+		const checks = new MergeChecks(gitIn(repo), (agent, text) => told.push(`${agent}: ${text}`));
+		const review = () => [card("x-clean"), card("x-clash"), card("x-orphan", "review", null)];
+		git("branch", "bead/x-orphan", "bead/x-clean");
+		await checks.annotate(review());
+		expect(told).toEqual([]);
+		// master moves under x-clean (and x-orphan): b.ts now clashes.
+		await commit("b.ts", "master's own b\n");
+		await checks.annotate(review());
+		await checks.annotate(review());
+		expect(told).toEqual([
+			"theo: Dunder's merge check: your x-clean (branch bead/x-clean) no longer merges cleanly into master: conflicts in b.ts. Rebase it onto master, run npm run check, and report the new commit as usual.",
+		]);
+		// A new push that still conflicts is news again.
+		git("checkout", "-q", "bead/x-clean");
+		await commit("b.ts", "another take\n");
+		git("checkout", "-q", "master");
+		await checks.annotate(review());
+		expect(told).toHaveLength(2);
 	});
 });

@@ -53,6 +53,15 @@ export function parseMergeTree({ code, stdout }: GitOutcome): MergeCheck {
 
 export const branchOf = (id: string): string => `bead/${id}`;
 
+/** The office message to an engineer whose Review branch stopped merging cleanly. */
+export function conflictMessage(id: string, into: string, files: readonly string[]): string {
+	const named = files.length > 0 ? files.join(", ") : "(git named no files)";
+	return `Dunder's merge check: your ${id} (branch ${branchOf(id)}) no longer merges cleanly into ${into}: conflicts in ${named}. Rebase it onto ${into}, run npm run check, and report the new commit as usual.`;
+}
+
+/** Tell an agent something as an office message. */
+export type Notify = (agent: string, text: string) => void;
+
 /**
  * Whether each Review card's `bead/<id>` branch merges cleanly into the
  * branch the main checkout is on. `git merge-tree` touches no checkout; it
@@ -61,16 +70,27 @@ export const branchOf = (id: string): string => `bead/${id}`;
  */
 export class MergeChecks {
 	readonly #git: GitRun;
+	readonly #notify: Notify | undefined;
 	/** `<main sha>:<branch sha>` → the answer. Only the pairs on the board stay. */
 	#cache = new Map<string, MergeCheck>();
+	/** Review bead → the conflicting branch head its engineer was told about (or that was there at launch). */
+	#told = new Map<string, string>();
+	/** The first check after launch only learns which conflicts are already known. */
+	#seeded = false;
 
-	constructor(git: GitRun) {
+	constructor(git: GitRun, notify?: Notify) {
 		this.#git = git;
+		this.#notify = notify;
 	}
 
 	/** The cards with `merge` set on Review cards; unchanged when git can't answer. */
 	async annotate(cards: readonly WorkCard[]): Promise<readonly WorkCard[]> {
-		if (!cards.some((card) => card.lane === "review")) return cards;
+		if (!cards.some((card) => card.lane === "review")) {
+			// Nothing in review: from here on, a conflict is news.
+			this.#told = new Map();
+			this.#seeded = true;
+			return cards;
+		}
 		try {
 			const main = await this.#git(["symbolic-ref", "--short", "HEAD"]);
 			const refs = await this.#git([
@@ -85,6 +105,7 @@ export class MergeChecks {
 			const checked: WorkCard[] = [];
 			for (const card of cards) checked.push(await this.#check(card, into, heads, cache));
 			this.#cache = cache;
+			this.#tellConflicts(checked, heads, main.stdout.trim());
 			return checked;
 		} catch (error) {
 			log.warn("cannot check review branches", { error });
@@ -109,5 +130,27 @@ export class MergeChecks {
 			);
 		cache.set(key, merge);
 		return { ...card, merge };
+	}
+
+	/** One message per conflicting branch head, to the bead's assignee; none for conflicts already there at launch. */
+	#tellConflicts(
+		cards: readonly WorkCard[],
+		heads: ReadonlyMap<string, string>,
+		into: string,
+	): void {
+		const told = new Map<string, string>();
+		for (const card of cards) {
+			const head = heads.get(branchOf(card.id));
+			if (card.lane !== "review" || card.merge?.state !== "conflicts" || !head) continue;
+			told.set(card.id, head);
+			if (!this.#seeded || this.#told.get(card.id) === head || !card.assignee) continue;
+			log.info("review branch conflicts; telling its engineer", {
+				bead: card.id,
+				agent: card.assignee,
+			});
+			this.#notify?.(card.assignee, conflictMessage(card.id, into, card.merge.files));
+		}
+		this.#told = told;
+		this.#seeded = true;
 	}
 }

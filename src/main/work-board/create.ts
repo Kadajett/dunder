@@ -19,7 +19,12 @@ export function createWorkBoard(
 	spend: SpendSource,
 	emit: (board: WorkBoard) => void,
 ): WorkBoardService {
-	const merges = new MergeChecks(gitIn(cwd));
+	// Through the switchboard, so it arrives like any office message, once the agent is free.
+	const notify = (agent: string, text: string): void =>
+		void postToMailbox(agent, text).catch((error: unknown) =>
+			log.warn("agent not told", { agent, error }),
+		);
+	const merges = new MergeChecks(gitIn(cwd), notify);
 	return new WorkBoardService({
 		runBd,
 		cwd,
@@ -29,11 +34,7 @@ export function createWorkBoard(
 			return () => clearTimeout(timer);
 		},
 		emit,
-		// Through the switchboard, so it arrives like any office message, once the agent is free.
-		notify: (agent, text) =>
-			postToMailbox(agent, text).catch((error: unknown) =>
-				log.warn("asker not told", { agent, error }),
-			),
+		notify,
 		spendOf: (agent, from, to) => spend.spendBetween(agent, from, to),
 		checkMerges: (cards) => merges.annotate(cards),
 	});
