@@ -1,6 +1,6 @@
 import type { WorkCard } from "@shared/work-board";
 import { describe, expect, it } from "vitest";
-import { applyEdit, groupByLane, pillText, shortId } from "./work-model";
+import { applyEdit, forAgent, groupByLane, pillText, shortId } from "./work-model";
 
 const AT = "2026-10-06T12:00:00.000Z";
 
@@ -48,6 +48,20 @@ describe("groupByLane", () => {
 			["o-3", "o-2"],
 			["o-1"],
 		]);
+	});
+});
+
+describe("forAgent", () => {
+	it("keeps only that agent's cards in every lane, in order; unassigned cards never match", () => {
+		const cards = [
+			{ ...card("a-1", "in_progress"), assignee: "theo" },
+			{ ...card("a-2", "review"), assignee: "carl" },
+			card("a-3", "ready"),
+			{ ...card("a-4", "done"), assignee: "theo" },
+		];
+		expect(ids(forAgent(cards, "theo"))).toEqual(["a-1", "a-4"]);
+		expect(pillText(forAgent(cards, "carl"))).toBe("Work · 0 in progress · 1 in review");
+		expect(forAgent(cards, "nobody")).toEqual([]);
 	});
 });
 

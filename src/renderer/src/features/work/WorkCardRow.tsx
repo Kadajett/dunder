@@ -55,8 +55,24 @@ function PriorityChip({ card }: { readonly card: WorkCard }) {
 	);
 }
 
+/** "Show only theo's beads" (or back to everyone's), first in an assigned card's assignee menu. */
+function useFilterItem(assignee: string | null): WorkMenuItem[] {
+	const filter = useWork((state) => state.agentFilter);
+	const filterAgent = useWork((state) => state.filterAgent);
+	if (!assignee) return [];
+	const showing = filter === assignee;
+	return [
+		{
+			key: "filter",
+			label: showing ? "Show everyone's beads" : `Show only ${assignee}'s beads`,
+			onSelect: () => filterAgent(showing ? null : assignee),
+		},
+	];
+}
+
 function AssigneeChip({ card }: { readonly card: WorkCard }) {
 	const roster = useRosterStore((state) => state.roster);
+	const filterItem = useFilterItem(card.assignee);
 	const names = useMemo(() => {
 		const hired = (roster?.agents ?? [])
 			.filter((agent) => agent.firedAt === undefined)
@@ -64,6 +80,7 @@ function AssigneeChip({ card }: { readonly card: WorkCard }) {
 		return card.assignee && !hired.includes(card.assignee) ? [card.assignee, ...hired] : hired;
 	}, [roster, card.assignee]);
 	const items: WorkMenuItem[] = [
+		...filterItem,
 		...names.map((name) => ({
 			key: name,
 			label: (
@@ -82,48 +99,20 @@ function AssigneeChip({ card }: { readonly card: WorkCard }) {
 			onSelect: () => void assignCard(card.id, null),
 		},
 	];
-	const assignee = card.assignee;
-	if (!assignee)
-		return (
-			<WorkMenuButton
-				className="work-chip work-chip--assignee"
-				label="Unassigned: assign"
-				menuLabel="Assignee"
-				items={items}
-			>
-				<span className="work-chip__text">unassigned</span>
-			</WorkMenuButton>
-		);
 	return (
-		<span className="work-chip work-chip--assignee work-chip--split">
-			<AgentFilterButton agent={assignee} />
-			<WorkMenuButton
-				className="work-chip__change"
-				label={`Assigned to ${assignee}: change`}
-				menuLabel="Assignee"
-				items={items}
-			>
-				▾
-			</WorkMenuButton>
-		</span>
-	);
-}
-
-/** The assignee's name: shows only their beads (again: everyone's). */
-function AgentFilterButton({ agent }: { readonly agent: string }) {
-	const filtered = useWork((state) => state.agentFilter === agent);
-	const filterAgent = useWork((state) => state.filterAgent);
-	return (
-		<button
-			type="button"
-			className="work-chip__filter"
-			aria-pressed={filtered}
-			title={filtered ? "Show everyone's beads" : `Show only ${agent}'s beads`}
-			onClick={() => filterAgent(filtered ? null : agent)}
+		<WorkMenuButton
+			className="work-chip work-chip--assignee"
+			label={
+				card.assignee
+					? `Assigned to ${card.assignee}: change, or show only theirs`
+					: "Unassigned: assign"
+			}
+			menuLabel="Assignee"
+			items={items}
 		>
-			<AgentDot name={agent} />
-			<span className="work-chip__text">{agent}</span>
-		</button>
+			{card.assignee ? <AgentDot name={card.assignee} /> : null}
+			<span className="work-chip__text">{card.assignee ?? "unassigned"}</span>
+		</WorkMenuButton>
 	);
 }
 
