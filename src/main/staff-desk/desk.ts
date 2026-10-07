@@ -1,4 +1,4 @@
-import { appendFile, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { avatarStyleFor } from "@shared/avatar/style";
 import { CHIEF_ROLE } from "@shared/chief";
 import type { Roster } from "@shared/company/roster";
@@ -10,6 +10,7 @@ import type { SetModelResult } from "@shared/models";
 import type { StaffAction, StaffOutcome, StaffRequestLine, StaffResultLine } from "@shared/staff";
 import { z } from "zod";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { appendResultLine } from "../switchboard/results-file";
 import { parseStaffRequests } from "./requests";
 import { rosterTable } from "./roster-table";
 
@@ -236,7 +237,7 @@ export class StaffDesk {
 
 	async #answer(id: string, answer: Answer): Promise<void> {
 		const line: StaffResultLine = { v: 1, id, ...answer };
-		await appendFile(this.#deps.resultsPath, `${JSON.stringify(line)}\n`).catch((error: unknown) =>
+		await appendResultLine(this.#deps.resultsPath, JSON.stringify(line)).catch((error: unknown) =>
 			log.warn("cannot write a staff result", { id, error }),
 		);
 	}

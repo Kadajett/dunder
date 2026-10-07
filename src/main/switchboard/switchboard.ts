@@ -12,6 +12,7 @@ import { z } from "zod";
 import { type HerdrApi, HerdrApiError } from "../herdr/api-client";
 import { type Pending, planDeliveries } from "./delivery-plan";
 import { type MailboxTail, tailMailbox } from "./mailbox";
+import { linesSince, REPLAY_MAX_AGE_MS } from "./replay";
 
 const log = createLogger("switchboard");
 
@@ -53,38 +54,54 @@ async function startsLine(path: string, offset: number): Promise<boolean> {
 	}
 }
 
+/** Where to resume the mailbox, and whether that's a guess (the saved place was lost). */
+interface Resume {
+	readonly offset: number;
+	readonly lost: boolean;
+}
+
+const lostPlace: Resume = { offset: 0, lost: true };
+
 /**
  * Where to resume reading `mailboxPath`. A saved offset for another file (the
  * mailbox moved) would land mid-line and silently skip mail, so it starts from
  * the top. A legacy offset with no path is kept only when it plausibly belongs to
  * this file (it starts a line within it): the migration copies the old mailbox
- * and its offset together, and replaying the whole mailbox would re-prompt agents.
+ * and its offset together. Reading from the top is `lost`: only recent mail is
+ * delivered, or the whole mailbox would re-prompt agents.
  */
-async function resumeOffset(statePath: string, mailboxPath: string): Promise<number> {
+async function resumeOffset(statePath: string, mailboxPath: string): Promise<Resume> {
 	const text = await readFile(statePath, "utf8").catch(() => undefined);
-	if (text === undefined) return 0;
+	if (text === undefined) return lostPlace;
 	let json: unknown;
 	try {
 		json = JSON.parse(text);
 	} catch {
-		return 0;
+		return lostPlace;
 	}
 	const saved = stateSchema.safeParse(json).data;
-	if (!saved) return 0;
+	if (!saved) return lostPlace;
 	if (saved.mailboxPath !== undefined) {
-		if (saved.mailboxPath === mailboxPath) return saved.offset;
+		if (saved.mailboxPath === mailboxPath) return { offset: saved.offset, lost: false };
 		log.info("mailbox moved; reading it from the top", {
 			from: saved.mailboxPath,
 			to: mailboxPath,
 		});
-		return 0;
+		return lostPlace;
 	}
-	if (await startsLine(mailboxPath, saved.offset)) return saved.offset;
+	if (await startsLine(mailboxPath, saved.offset)) return { offset: saved.offset, lost: false };
 	log.info("legacy offset does not fit the mailbox; reading it from the top", {
 		offset: saved.offset,
 		mailboxPath,
 	});
-	return 0;
+	return lostPlace;
+}
+
+/** Mail sent since `notBefore`, logging how much older mail a lost place skipped. */
+function recentMail(lines: readonly string[], notBefore: number): string[] {
+	const { fresh, skipped } = linesSince(lines, "sentAt", notBefore);
+	if (skipped > 0) log.info("skipped old mail after losing the mailbox place", { skipped });
+	return fresh;
 }
 
 /** Delivers agent-to-agent mail from the mailbox file through `herdr agent prompt`. */
@@ -111,11 +128,13 @@ export class Switchboard {
 
 	async start(): Promise<void> {
 		const { mailboxPath, statePath } = this.#deps;
+		const resume = await resumeOffset(statePath, mailboxPath);
+		const notBefore = resume.lost ? this.#now() - REPLAY_MAX_AGE_MS : undefined;
 		this.#tail = await tailMailbox({
 			path: mailboxPath,
-			offset: await resumeOffset(statePath, mailboxPath),
+			offset: resume.offset,
 			onLines: (lines, offset) => {
-				this.#accept(lines);
+				this.#accept(notBefore === undefined ? lines : recentMail(lines, notBefore));
 				void writeFile(statePath, JSON.stringify({ mailboxPath, offset }));
 				void this.pump();
 			},

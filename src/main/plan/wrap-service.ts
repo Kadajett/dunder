@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createLogger } from "@shared/log/logger";
 import type { DayPlan } from "@shared/plan";
@@ -6,7 +6,7 @@ import { type WorkBoard, workLanes } from "@shared/work-board";
 import { type DayWrap, wrapInputSchema } from "@shared/wrap";
 import { z } from "zod";
 import { dailyTimeSchema, isDailyDue, localDateKey } from "../calisthenics/schedule";
-import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { appendResultLine } from "../switchboard/results-file";
 import { parseOfficePlanRequests } from "./requests";
 import { dayFacts, eveningPrompt } from "./wrap";
 
@@ -56,7 +56,6 @@ export interface WrapDeps {
 	readonly plansDir: string;
 	/** Today's wrap-up as JSON, for `office-plan show`. */
 	readonly digestPath: string;
-	readonly requestsPath: string;
 	readonly resultsPath: string;
 	readonly now: () => number;
 	/** Say it to Max in the chief chat; `call`: as a call turn, so his answer is spoken. */
@@ -83,7 +82,6 @@ export class WrapService {
 	#state: WrapState = stateSchema.parse({});
 	#wrap: DayWrap | null = null;
 	#timer: NodeJS.Timeout | undefined;
-	#tail: MailboxTail | undefined;
 	#checking = false;
 
 	constructor(deps: WrapDeps) {
@@ -99,23 +97,12 @@ export class WrapService {
 		await mkdir(this.#deps.plansDir, { recursive: true });
 		this.#wrap = await readWrap(this.#deps.plansDir, this.#today());
 		await this.#writeDigest();
-		const offset = await stat(this.#deps.requestsPath).then(
-			(info) => info.size,
-			() => 0,
-		);
-		this.#tail = await tailMailbox({
-			path: this.#deps.requestsPath,
-			offset,
-			onLines: (lines) => void this.#receive(lines),
-			onError: (error) => log.warn("cannot read wrap-up requests", { error }),
-		});
 		this.#timer = setInterval(() => void this.check(), CHECK_MS);
 		await this.check();
 	}
 
 	stop(): void {
 		clearInterval(this.#timer);
-		this.#tail?.stop();
 	}
 
 	today(): DayWrap | null {
@@ -161,7 +148,8 @@ export class WrapService {
 		return dayFacts(this.#deps.plan(), board, closed, this.#deps.spendToday());
 	}
 
-	async #receive(lines: readonly string[]): Promise<void> {
+	/** New `office-plan` request lines (the day cycle tails the requests file for both services). */
+	async receive(lines: readonly string[]): Promise<void> {
 		const { valid, invalid } = parseOfficePlanRequests(
 			lines,
 			this.#deps.now(),
@@ -196,8 +184,7 @@ export class WrapService {
 	}
 
 	async #answer(id: string, ok: boolean, message: string): Promise<void> {
-		await mkdir(dirname(this.#deps.resultsPath), { recursive: true });
-		await appendFile(this.#deps.resultsPath, `${JSON.stringify({ id, ok, message })}\n`).catch(
+		await appendResultLine(this.#deps.resultsPath, JSON.stringify({ id, ok, message })).catch(
 			(error: unknown) => log.warn("cannot answer a wrap-up request", { error }),
 		);
 	}

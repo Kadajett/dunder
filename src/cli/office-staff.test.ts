@@ -111,4 +111,28 @@ describe("office-staff", () => {
 		expect(await exited).toBe(1);
 		expect(stderr).toContain("only the chief of staff (max)");
 	});
+
+	it("finds the app's answer after the results file was rotated under it", async () => {
+		const state = stateDir();
+		const child = spawn(process.execPath, [CLI, "list"], { env: env(state, "w1:p1", 10_000) });
+		let stdout = "";
+		child.stdout.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString();
+		});
+		const exited = Promise.withResolvers<number | null>();
+		child.on("exit", exited.resolve);
+		const id = await vi.waitFor(
+			() => staffRequestLineSchema.parse(JSON.parse(readFileSync(requestsFile(state), "utf8"))).id,
+		);
+		// The app answered, then rotated the file: the answer is in the old generation.
+		const results = join(state, "dunder", "staff-results.ndjson");
+		const answer = { v: 1, id, ok: true, message: "the roster: max, carl" };
+		appendFileSync(`${results}.1`, `${JSON.stringify(answer)}\n`);
+		appendFileSync(
+			results,
+			`${JSON.stringify({ v: 1, id: "someone-else", ok: true, message: "x" })}\n`,
+		);
+		expect(await exited.promise).toBe(0);
+		expect(stdout).toContain("the roster: max, carl");
+	});
 });

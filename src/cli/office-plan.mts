@@ -62,13 +62,20 @@ function fail(message: string, code = 1): number {
 	return code;
 }
 
+/** The results file and its rotated generation (`<path>.1`; the app rotates it past 256 KB). */
+function readResults(path: string): string {
+	const read = (file: string): string => {
+		try {
+			return readFileSync(file, "utf8");
+		} catch {
+			return "";
+		}
+	};
+	return `${read(path)}\n${read(`${path}.1`)}`;
+}
+
 function findResult(path: string, id: string): { ok: boolean; message: string } | undefined {
-	let text: string;
-	try {
-		text = readFileSync(path, "utf8");
-	} catch {
-		return undefined;
-	}
+	const text = readResults(path);
 	for (const line of text.split("\n")) {
 		if (!line.includes(id)) continue;
 		try {

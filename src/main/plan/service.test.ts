@@ -1,4 +1,4 @@
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DayPlan } from "@shared/plan";
@@ -24,7 +24,6 @@ function harness(dir = mkdtempSync(join(tmpdir(), "plan-"))) {
 		settingsPath: join(dir, "morning-plan.json"),
 		plansDir: join(dir, "plans"),
 		digestPath: join(dir, "state", "plan.json"),
-		requestsPath: join(dir, "state", "plan-requests.ndjson"),
 		resultsPath: join(dir, "state", "plan-results.ndjson"),
 	};
 	const service = new PlanService({
@@ -42,10 +41,9 @@ function harness(dir = mkdtempSync(join(tmpdir(), "plan-"))) {
 	const propose = (plan: unknown, fromPane = "wN:p1") => {
 		const id = crypto.randomUUID();
 		const requestedAt = new Date(now).toISOString();
-		appendFileSync(
-			paths.requestsPath,
-			`${JSON.stringify({ v: 1, id, fromPane, requestedAt, op: "propose", plan })}\n`,
-		);
+		void service.receive([
+			JSON.stringify({ v: 1, id, fromPane, requestedAt, op: "propose", plan }),
+		]);
 		return id;
 	};
 	const answer = (id: string) =>
