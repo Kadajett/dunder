@@ -80,7 +80,8 @@
 }
 
 .whiteboard-idea-action {
-	position: absolute;
+	/* At the cursor: left/top are client coordinates. */
+	position: fixed;
 	z-index: 10;
 	padding: 7px 10px;
 	border: 1px solid var(--panel-edge);
@@ -93,7 +94,7 @@
 }
 
 .whiteboard-idea-error {
-	position: absolute;
+	position: fixed;
 	z-index: 10;
 	max-width: 320px;
 	padding: 6px 8px;
