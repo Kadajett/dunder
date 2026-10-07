@@ -20,6 +20,7 @@ import { installErrorHooks } from "@renderer/features/errors/errors-store";
 import { useHire } from "@renderer/features/hire/hire-store";
 import { useHud } from "@renderer/features/hud/view-store";
 import { useFocus } from "@renderer/features/office/focus/focus-store";
+import { useTv } from "@renderer/features/office/tv/tv-store";
 import { enterTableView } from "@renderer/features/pool/enter-table-view";
 import { useWhatsNew } from "@renderer/features/whats-new/whats-new-store";
 import { useWork } from "@renderer/features/work/work-store";
@@ -133,6 +134,12 @@ async function poolTable(): Promise<void> {
 	notes.push(`table view phase: ${useFocus.getState().phase} (settled=${settled})`);
 }
 
+/** A state shown with the notice slot empty (no What's new card over the top centre). */
+const withoutNotices = (then: () => void) => async (): Promise<void> => {
+	useWhatsNew.setState({ card: null });
+	then();
+};
+
 const STATES: Record<string, () => Promise<void>> = {
 	"01-default": async () => undefined,
 	"01b-away": async () => useWhatsNew.setState({ card: null }),
@@ -165,10 +172,9 @@ const STATES: Record<string, () => Promise<void>> = {
 		useHud.setState({ panel: "inbox" });
 		startCall();
 	},
-	"12-update-batched": async () => {
-		useWhatsNew.setState({ card: null });
-		batched();
-	},
+	"12-update-batched": withoutNotices(batched),
+	// The wall TV on SHIPPING at the default camera: every figure must read without fullscreen.
+	"13-tv-shipping": withoutNotices(() => useTv.getState().select("shipping")),
 };
 
 /** Last touches right before the shot, for state that runs out while the scene settles. */

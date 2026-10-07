@@ -9,6 +9,7 @@ import {
 	stepChannel,
 	TV_CHANNELS,
 } from "./channels";
+import { WALL_PAGE_MS } from "./paint/shipping";
 import { frameKey, type TvInputs } from "./screen";
 
 describe("channel line-up", () => {
@@ -61,7 +62,7 @@ describe("channel line-up", () => {
 describe("frameKey", () => {
 	const inputs: TvInputs = { pulse: null, weather: null, activity: [], shipping: null };
 	const at = (channel: "pulse" | "clock" | "standby", now: number, showBadge = false) =>
-		frameKey({ channel, inputs, now, showBadge });
+		frameKey({ channel, inputs, now, showBadge, wall: true });
 	const minute = 60_000 * 1_000;
 
 	it("keeps static channels still within a minute and repaints when the minute turns", () => {
@@ -85,8 +86,15 @@ describe("frameKey", () => {
 				workspaces: [],
 			},
 		};
-		expect(frameKey({ channel: "pulse", inputs: busy, now: minute, showBadge: false })).not.toBe(
-			at("pulse", minute),
-		);
+		expect(
+			frameKey({ channel: "pulse", inputs: busy, now: minute, showBadge: false, wall: true }),
+		).not.toBe(at("pulse", minute));
+	});
+
+	it("turns the wall's SHIPPING page every few seconds, while fullscreen shows everything at once", () => {
+		const frame = (now: number, wall: boolean) =>
+			frameKey({ channel: "shipping", inputs, now, showBadge: false, wall });
+		expect(frame(minute, true)).not.toBe(frame(minute + WALL_PAGE_MS, true));
+		expect(frame(minute, false)).toBe(frame(minute + WALL_PAGE_MS, false));
 	});
 });
