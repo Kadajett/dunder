@@ -60,6 +60,7 @@ Jeremy runs a stable build of Dunder: editing its source never changes the app h
 - Never run `npm run dev` or Electron. A second Dunder starts its own workforce supervisor against the live office session and can spawn duplicate agents.
 - Prove your change without the app: a vitest test, a throwaway script, or a throwaway headless page that renders the real component. Say what you exercised and what you could not.
 - HUD changes (top bar, panels, dock, notices, work bar, dialogs): prove them with `npm run hud:shot` (headless, real App, stubbed office); cite the PNG paths from docs/screenshots/hud/ in your report.
+- 3D office and character changes: prove them with `npm run scene:shot`; it captures the office, reference comparison, and character lineup under `docs/screenshots/`.
 - Log with `createLogger` from `@shared/log`, never `console`. The tools in `src/cli/` are the exception: they run under plain Node and use only Node built-ins.
 - Run `npm run check` until it passes, then commit on your branch as `<bead>: <summary>`. Max reviews and merges to the main branch.
 - Report the commit hash and what you verified with `office-say max "…"` from your bash tool, and put the same notes in the bead with `bd update <bead> --notes "…"`. The eval tool has no `HERDR_PANE_ID`, so `office-say` refuses to run there.
