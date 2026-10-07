@@ -1,4 +1,3 @@
-import { readFile, writeFile } from "node:fs/promises";
 import type {
 	PreviousBuild,
 	RollbackResult,
@@ -7,7 +6,6 @@ import type {
 } from "@shared/app-update";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { createLogger } from "@shared/log/logger";
-import { z } from "zod";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
 import { batchUntil, loadBatchMs } from "./batching";
 import type { BuildResult } from "./build";
@@ -21,8 +19,10 @@ import {
 	nextDeadline,
 	requestUpdate,
 	type UpdateCheck,
+	waitingOf,
 	withoutCountdown,
 } from "./status";
+import { type PendingUpdate, UpdaterStateFile } from "./updater-state";
 
 /** How a countdown's update is described in the build log. */
 function applyReason({ by, reason, extra }: UpdateCountdown): string {
@@ -34,14 +34,6 @@ function applyReason({ by, reason, extra }: UpdateCountdown): string {
 export const CHECK_INTERVAL_MS = 30_000;
 /** Build output reaches the HUD at most this often. */
 const LOG_EMIT_MS = 500;
-const stateSchema = z.object({
-	offset: z.number().int().nonnegative(),
-	/** The build Jeremy rolled back from: agents' updates stay off until an update of his applies. */
-	rolledBackFrom: z.string().optional(),
-	/** When an update (or rollback) last applied: agents' updates batch for the interval after it. */
-	lastAppliedAt: z.number().optional(),
-});
-type UpdaterState = z.infer<typeof stateSchema>;
 const log = createLogger("app-update");
 
 export interface AppUpdaterDeps {
@@ -67,10 +59,13 @@ export interface AppUpdaterDeps {
 /**
  * Stable mode's updater: notices commits newer than the running build, and
  * rebuilds + relaunches only when Jeremy (HUD) or an agent (`office-update`,
- * after a countdown Jeremy can cancel) asks for it.
+ * after a countdown Jeremy can cancel) asks for it. An agents' update that
+ * hasn't applied yet is kept on disk, so a restart or a build in between
+ * doesn't lose it.
  */
 export class AppUpdater {
 	readonly #deps: AppUpdaterDeps;
+	readonly #file: UpdaterStateFile;
 	#status: UpdateStatus;
 	#snapshot: SessionSnapshot | undefined;
 	/** Requests read before the first snapshot: the requester's name comes from it. */
@@ -82,14 +77,12 @@ export class AppUpdater {
 	/** What Jeremy is doing (from the renderer); agents' updates wait while it is set. */
 	#busy: string | null = null;
 	#tail: MailboxTail | undefined;
-	#state: UpdaterState = { offset: 0 };
-	/** State writes in order: an offset write must never interleave with the rollback's. */
-	#saving: Promise<void> = Promise.resolve();
 	/** Agents' updates apply at most this often (ms); 0: no batching. */
 	#batchMs = 0;
 
 	constructor(deps: AppUpdaterDeps) {
 		this.#deps = deps;
+		this.#file = new UpdaterStateFile(deps.statePath);
 		this.#status = deps.built ? { state: "idle", head: deps.built } : { state: "dev" };
 	}
 
@@ -108,21 +101,19 @@ export class AppUpdater {
 
 	async start(): Promise<void> {
 		if (this.#status.state === "dev") return;
-		const { requestsPath, statePath } = this.#deps;
 		// Before the first check: it needs to know a build Jeremy rolled back from.
-		this.#state = await readFile(statePath, "utf8").then(
-			(text) => stateSchema.safeParse(JSON.parse(text)).data ?? { offset: 0 },
-			() => ({ offset: 0 }),
-		);
+		await this.#file.load();
 		this.#batchMs = await loadBatchMs(this.#deps.settingsPath);
 		this.#poll = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
-		void this.check();
+		await this.check();
+		this.#resumePending();
 		this.#tail = await tailMailbox({
-			path: requestsPath,
-			offset: this.#state.offset,
+			path: this.#deps.requestsPath,
+			offset: this.#file.state.offset,
 			onLines: (lines, next) => {
-				// Persist first: the request that triggers a relaunch must not replay after it.
-				void this.#saveState({ ...this.#state, offset: next });
+				// Persist first: the request that triggers a relaunch must not replay after it
+				// (an update it asks for is kept as `pending` instead).
+				void this.#file.save({ ...this.#file.state, offset: next });
 				void this.receive(lines);
 			},
 			// A broken requests file only costs agent-triggered updates; the HUD button still works.
@@ -142,9 +133,8 @@ export class AppUpdater {
 			.check()
 			.then(
 				(check) => {
-					this.#set(
-						afterCheck(this.#status, this.#deps.built ?? "", check, this.#state.rolledBackFrom),
-					);
+					const pin = this.#file.state.rolledBackFrom;
+					this.#set(afterCheck(this.#status, this.#deps.built ?? "", check, pin));
 				},
 				// git briefly unavailable (e.g. mid-rebase lock): keep the last status, try next tick.
 				(error: unknown) => log.warn("update check failed", { error }),
@@ -158,7 +148,7 @@ export class AppUpdater {
 	/**
 	 * New lines from the requests file: the newest fresh request waits for the
 	 * batch window, or counts down (held while Jeremy is busy). A hotfix among
-	 * them skips the window.
+	 * them skips the window. One that lands during a build is kept for after it.
 	 */
 	async receive(lines: readonly string[]): Promise<void> {
 		if (!this.#snapshot) {
@@ -172,13 +162,13 @@ export class AppUpdater {
 		await this.check();
 		const by =
 			this.#snapshot?.agents.find((agent) => agent.pane_id === request.fromPane)?.name ?? "someone";
-		// A hotfix among them skips the window (the hold while busy and the countdown still apply).
-		const until = fresh.some((line) => line.hotfix)
-			? null
-			: batchUntil(this.#state.lastAppliedAt, this.#batchMs);
-		const named = { by, reason: request.reason, ...(until === null ? {} : { batchUntil: until }) };
-		const next = requestUpdate(this.#status, named, this.#busy, this.#now());
-		this.#set(next);
+		const hotfix = fresh.some((line) => line.hotfix);
+		if (this.#status.state === "building") {
+			const prior = this.#file.state.pending;
+			this.#keepPending({ by, reason: request.reason, extra: prior ? prior.extra + 1 : 0 }, hotfix);
+			return;
+		}
+		this.#request({ by, reason: request.reason, folded: 0 }, hotfix);
 	}
 
 	/** Jeremy is busy (why) or free (null); a countdown pauses while he is busy. */
@@ -189,6 +179,7 @@ export class AppUpdater {
 
 	cancel(): void {
 		this.#set(withoutCountdown(this.#status));
+		void this.#file.save(this.#file.withPending(undefined));
 	}
 
 	/** Rebuild on HEAD and relaunch; a failed build keeps the old one running. */
@@ -197,6 +188,8 @@ export class AppUpdater {
 		// Never while a build runs (or under the dev server, or when there is nothing new).
 		if (!canApply(target)) return;
 		log.info("building", { head: target.head, reason });
+		// This build covers every update asked for so far; requests during it are kept anew.
+		void this.#file.save(this.#file.withPending(undefined));
 		this.#set({ state: "building", logTail: reason ? `Updating: ${reason}` : "" });
 		let emittedAt = 0;
 		const result = await this.#deps
@@ -209,13 +202,16 @@ export class AppUpdater {
 		if (!result.ok) {
 			log.warn("build failed; the old build keeps running", { error: result.error });
 			this.#set(afterFailure(target, result));
+			// Requests that landed during the build may be for a fix on top: look, then act on them.
+			await this.check();
+			this.#resumePending();
 			return;
 		}
 		this.#set({ state: "building", logTail: "Built. Relaunching on the new build…" });
 		// The window restarts with every update, whoever asked for it; an update unpins a rollback
 		// (agents can't apply while pinned, so this one is Jeremy's).
-		const { rolledBackFrom: _unpinned, ...state } = this.#state;
-		await this.#saveState({ ...state, lastAppliedAt: this.#now() });
+		const { rolledBackFrom: _unpinned, ...state } = this.#file.state;
+		await this.#file.save({ ...state, lastAppliedAt: this.#now() });
 		this.#deps.relaunch();
 	}
 
@@ -250,20 +246,42 @@ export class AppUpdater {
 			this.#set(before);
 			return { ok: false, error: error instanceof Error ? error.message : String(error) };
 		}
-		await this.#saveState({ ...this.#state, rolledBackFrom: bad, lastAppliedAt: this.#now() });
+		const { pending: _dropped, ...state } = this.#file.state;
+		await this.#file.save({ ...state, rolledBackFrom: bad, lastAppliedAt: this.#now() });
 		this.#deps.relaunch();
 		return { ok: true };
 	}
 
-	/** Remember the request offset and the rolled-back build; a failed write only costs that memory. */
-	#saveState(state: UpdaterState): Promise<void> {
-		this.#state = state;
-		this.#saving = this.#saving.then(() =>
-			writeFile(this.#deps.statePath, JSON.stringify(state)).catch((error: unknown) =>
-				log.warn("cannot save the updater's state", { error }),
-			),
-		);
-		return this.#saving;
+	/** Fold a request into the status, and keep what now waits on disk. */
+	#request(request: { by: string; reason: string; folded: number }, hotfix: boolean): void {
+		// A hotfix skips the window (the hold while busy and the countdown still apply).
+		const until = hotfix ? null : batchUntil(this.#file.state.lastAppliedAt, this.#batchMs);
+		const named = { ...request, ...(until === null ? {} : { batchUntil: until }) };
+		this.#set(requestUpdate(this.#status, named, this.#busy, this.#now()));
+		const waiting = waitingOf(this.#status);
+		// Nothing waits (nothing to apply, or Jeremy's rollback pin): nothing to keep.
+		if (waiting) this.#keepPending(waiting, hotfix || this.#file.state.pending?.hotfix === true);
+	}
+
+	#keepPending(pending: Omit<PendingUpdate, "hotfix">, hotfix: boolean): void {
+		void this.#file.save(this.#file.withPending(hotfix ? { ...pending, hotfix: true } : pending));
+	}
+
+	/**
+	 * The pending update (from before a restart, or asked for during a failed
+	 * build) waits again: batched, held or counting down as a fresh request
+	 * would. With nothing left to apply it is dropped.
+	 */
+	#resumePending(): void {
+		const pending = this.#file.state.pending;
+		if (!pending) return;
+		if (!canApply(this.#status)) {
+			if (this.#status.state === "idle") void this.#file.save(this.#file.withPending(undefined));
+			return;
+		}
+		log.info("resuming an agents' update that hadn't applied", { by: pending.by });
+		const { by, reason, extra, hotfix } = pending;
+		this.#request({ by, reason, folded: extra }, hotfix === true);
 	}
 
 	#now(): number {

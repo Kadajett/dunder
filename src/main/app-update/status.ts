@@ -58,6 +58,17 @@ export interface UpdateRequest {
 	readonly reason: string;
 	/** The batch window's end (epoch ms): the request waits for it. Absent with no window, or for a hotfix. */
 	readonly batchUntil?: number;
+	/** Earlier requests already folded into this one (a pending update restored after a restart). */
+	readonly folded?: number;
+}
+
+/** The agents' update waiting on the status (batched, held or counting down), if any. */
+export function waitingOf(
+	status: UpdateStatus,
+): Pick<UpdateCountdown, "by" | "reason" | "extra"> | undefined {
+	if (!canApply(status)) return undefined;
+	const waiting = status.batched ?? status.held ?? status.countdown;
+	return waiting && { by: waiting.by, reason: waiting.reason, extra: waiting.extra };
 }
 
 type Plan =
@@ -106,14 +117,14 @@ const countdownOf = (
  */
 export function requestUpdate(
 	current: UpdateStatus,
-	{ by, reason, batchUntil }: UpdateRequest,
+	{ by, reason, batchUntil, folded = 0 }: UpdateRequest,
 	busy: string | null,
 	now: number,
 ): UpdateStatus {
 	// The build Jeremy rolled back from: only he can choose to go back to it.
 	if (!canApply(current) || current.rolledBack) return current;
 	const earlier = current.held ?? current.countdown ?? current.batched;
-	const extra = earlier ? earlier.extra + 1 : 0;
+	const extra = (earlier ? earlier.extra + 1 : 0) + folded;
 	const waiting = current.held ?? current.countdown;
 	if (batchUntil !== undefined && now < batchUntil && !waiting)
 		return withPlan(current, { batched: { by, reason, extra, nextAt: batchUntil } });
