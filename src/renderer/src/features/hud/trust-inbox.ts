@@ -1,3 +1,4 @@
+import type { AppError } from "@shared/app-errors";
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
 import type { SeenDone } from "@shared/office-stats";
 import type { HumanAsk } from "@shared/work-board";
@@ -17,6 +18,8 @@ export interface InboxAgent {
 
 export type TrustItem =
 	| { readonly kind: "blocked"; readonly agent: InboxAgent }
+	/** The app itself hit an error (a crashed region, an uncaught exception, a library's console error). */
+	| { readonly kind: "error"; readonly error: AppError }
 	/** Something an agent flagged that only Jeremy can do or decide (a bd `human` bead). */
 	| { readonly kind: "ask"; readonly ask: HumanAsk }
 	/** An agent spending more than the company's alarm in the last 30 minutes. */
@@ -43,18 +46,29 @@ export function inboxAgents(snapshot: SessionSnapshot | null): InboxAgent[] {
 	}));
 }
 
+/** Everything the Trust Inbox draws from. */
+export interface InboxSources {
+	readonly agents: readonly InboxAgent[];
+	readonly seen: SeenDone;
+	readonly asks?: readonly HumanAsk[];
+	readonly spenders?: readonly Spender[];
+	/** The app's own errors, newest first (main dedupes repeats). */
+	readonly errors?: readonly AppError[];
+}
+
 /**
- * What needs the user: every blocked agent (sorted by name), then the asks
- * agents flagged for him (in main's order: most urgent, then oldest), then
- * agents spending fast (fastest first), then every finished agent whose
- * `done` has not been seen yet (by name).
+ * What needs the user: every blocked agent (sorted by name), then the app's
+ * own errors (newest first), then the asks agents flagged for him (in main's
+ * order: most urgent, then oldest), then agents spending fast (fastest
+ * first), then every finished agent whose `done` has not been seen yet (by name).
  */
-export function trustInbox(
-	agents: readonly InboxAgent[],
-	seen: SeenDone,
-	asks: readonly HumanAsk[] = [],
-	spenders: readonly Spender[] = [],
-): TrustItem[] {
+export function trustInbox({
+	agents,
+	seen,
+	asks = [],
+	spenders = [],
+	errors = [],
+}: InboxSources): TrustItem[] {
 	const byName = (a: InboxAgent, b: InboxAgent): number => a.name.localeCompare(b.name);
 	const blocked = agents.filter((agent) => agent.status === "blocked").sort(byName);
 	const done = agents
@@ -66,6 +80,7 @@ export function trustInbox(
 	});
 	return [
 		...blocked.map((agent) => ({ kind: "blocked" as const, agent })),
+		...errors.map((error) => ({ kind: "error" as const, error })),
 		...asks.map((ask) => ({ kind: "ask" as const, ask })),
 		...spending,
 		...done.map((agent) => ({ kind: "done" as const, agent })),

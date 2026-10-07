@@ -135,6 +135,19 @@
 	overflow-wrap: anywhere;
 }
 
+/* An app error's stack: monospace, scrolls instead of growing the card. */
+.hud-card-stack {
+	max-height: 160px;
+	margin: 4px 0 0;
+	padding: 6px 8px;
+	overflow: auto;
+	border-radius: 7px;
+	background: #f6f0e4;
+	font: 400 10px / 1.4 var(--font-mono);
+	color: #4a443c;
+	white-space: pre;
+}
+
 .hud-card-actions {
 	display: flex;
 	gap: 6px;

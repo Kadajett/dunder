@@ -4,6 +4,7 @@ import { useBrainstormDialog } from "../brainstorm/BrainstormDialog";
 import { endBrainstorm, useBrainstorm, useBrainstormStore } from "../brainstorm/brainstorm-store";
 import { useEdit } from "../edit/edit-store";
 import { toggleEditMode } from "../edit/edit-toggle";
+import { openDevtools } from "../errors/errors-store";
 import { useWhiteboard } from "../whiteboard/whiteboard-store";
 import { UpdateMenuSection } from "./HudUpdate";
 import { type MenuAction, type MenuEntry, menuSections, updateBadge } from "./hud-menu";
@@ -30,6 +31,9 @@ function runAction(action: MenuAction): void {
 		case "brainstorm":
 			if (useBrainstormStore.getState().current) endBrainstorm();
 			else useBrainstormDialog.getState().setOpen(true);
+			return;
+		case "devtools":
+			openDevtools();
 			return;
 	}
 }

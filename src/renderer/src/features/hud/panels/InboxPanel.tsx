@@ -3,6 +3,7 @@ import type { OfficeModel } from "../../office/model/office-model";
 import { markSeen, useTrustInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
 import { AskCard } from "./AskCard";
+import { ErrorCard } from "./ErrorCard";
 import { openAgentScreen } from "./open-agent";
 import { SpendCard } from "./SpendCard";
 
@@ -11,7 +12,7 @@ const KIND_LINE = {
 	done: "finished, not seen yet",
 } as const;
 
-type AgentItem = Exclude<TrustItem, { kind: "ask" } | { kind: "spend" }>;
+type AgentItem = Extract<TrustItem, { kind: "blocked" } | { kind: "done" }>;
 
 function AgentCard({ item, model }: { readonly item: AgentItem; readonly model: OfficeModel }) {
 	const { agent } = item;
@@ -50,10 +51,13 @@ function AgentCard({ item, model }: { readonly item: AgentItem; readonly model: 
 	);
 }
 
-const itemKey = (item: TrustItem): string =>
-	item.kind === "ask" ? `ask:${item.ask.id}` : `${item.kind}:${item.agent.paneId}`;
+function itemKey(item: TrustItem): string {
+	if (item.kind === "ask") return `ask:${item.ask.id}`;
+	if (item.kind === "error") return `error:${item.error.id}`;
+	return `${item.kind}:${item.agent.paneId}`;
+}
 
-/** Trust Inbox: blocked agents, what agents asked of Jeremy, and finished work he has not seen. */
+/** Trust Inbox: blocked agents, the app's own errors, what agents asked of Jeremy, runaway spend and finished work he has not seen. */
 export function InboxPanel(props: {
 	readonly model: OfficeModel;
 	readonly snapshot: SessionSnapshot | null;
@@ -62,8 +66,8 @@ export function InboxPanel(props: {
 	if (items.length === 0) {
 		return (
 			<p className="hud-panel-empty">
-				Nothing needs you. Blocked agents, agents' asks, agents spending fast and finished work you
-				have not seen yet land here.
+				Nothing needs you. Blocked agents, app errors, agents' asks, agents spending fast and
+				finished work you have not seen yet land here.
 			</p>
 		);
 	}
@@ -71,6 +75,7 @@ export function InboxPanel(props: {
 		<>
 			{items.map((item) => {
 				if (item.kind === "ask") return <AskCard key={itemKey(item)} ask={item.ask} />;
+				if (item.kind === "error") return <ErrorCard key={itemKey(item)} error={item.error} />;
 				if (item.kind === "spend")
 					return <SpendCard key={itemKey(item)} item={item} model={props.model} />;
 				return <AgentCard key={itemKey(item)} item={item} model={props.model} />;

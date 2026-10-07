@@ -6,6 +6,8 @@ import { type BridgeStatus, IPC } from "@shared/ipc";
 import { createLogger } from "@shared/log/logger";
 import { app, BrowserWindow, Menu } from "electron";
 import { migrateLegacyDirs } from "./app-dirs";
+import { registerAppErrorsIpc, watchAppPage } from "./app-errors/ipc";
+import { AppErrorsService } from "./app-errors/service";
 import { createAppUpdater } from "./app-update/create";
 import { registerAppUpdateIpc } from "./app-update/ipc";
 import { createBrainstorm } from "./brainstorm/create";
@@ -163,6 +165,10 @@ const pool = createPool({
 });
 /** The left bar's work board over the app repo's Beads (the repo root in stable mode). */
 const workBoard = createWorkBoard(app.getAppPath(), (board) => broadcast(IPC.workChanged, board));
+/** Renderer errors Jeremy sees in the Trust Inbox (no devtools needed). */
+const appErrors = new AppErrorsService({
+	emit: (errors) => broadcast(IPC.appErrorsChanged, errors),
+});
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -207,7 +213,10 @@ async function startBridge(): Promise<void> {
 }
 
 function createWindow(): void {
-	createMainWindow((contents) => clearPoolViewingWithPage(pool, contents));
+	createMainWindow((contents) => {
+		clearPoolViewingWithPage(pool, contents);
+		watchAppPage(contents, appErrors);
+	});
 }
 
 /** Every `window.office` handler, registered once the app is ready. */
@@ -231,6 +240,7 @@ function registerHandlers(): void {
 	registerPoolIpc(pool);
 	registerBrainstormIpc(brainstorm.service);
 	registerWorkBoardIpc(workBoard);
+	registerAppErrorsIpc(appErrors);
 	registerVoiceIpc(createVoice());
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerOfficeStatsIpc({
@@ -289,6 +299,7 @@ function stopServices(): void {
 	pool.stop();
 	brainstorm.stop();
 	workBoard.stop();
+	appErrors.stop();
 }
 
 app.on("window-all-closed", () => {
