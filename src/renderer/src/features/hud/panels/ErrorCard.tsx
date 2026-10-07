@@ -1,5 +1,18 @@
 import type { AppError } from "@shared/app-errors";
+import { chiefAvailable } from "../../chief/chat-store";
+import { toldStateFor, whereLabel } from "../../errors/error-text";
 import { dismissAppError, openDevtools } from "../../errors/errors-store";
+import { tellMaxAbout, useToldMax } from "../../errors/tell-max";
+import { WorkMenuButton } from "../../work/WorkMenu";
+import "../../work/work-card.css";
+import "./error-card.css";
+
+const tellLabel = {
+	idle: "Tell Max",
+	sending: "Sending…",
+	sent: "Sent to Max",
+	failed: "Tell Max",
+} as const;
 
 const time = new Intl.DateTimeFormat("en-US", {
 	hour: "numeric",
@@ -7,21 +20,16 @@ const time = new Intl.DateTimeFormat("en-US", {
 	second: "2-digit",
 });
 
-/** Where an error came from, in words. */
-function whereLabel(where: string): string {
-	if (where.startsWith("boundary:")) return `in the ${where.slice("boundary:".length)}`;
-	const labels: Readonly<Record<string, string>> = {
-		window: "uncaught",
-		promise: "unhandled promise",
-		console: "console error",
-		react: "React",
-		"renderer-gone": "renderer crashed",
-	};
-	return labels[where] ?? where;
-}
-
-/** One of the app's own errors: the message, where and how often, with the stack a click away. */
+/**
+ * One of the app's own errors: the message, where and how often, with the
+ * stack a click away. The way out is handing it to Max; devtools waits in
+ * the ⋯ menu for whoever debugs it.
+ */
 export function ErrorCard({ error }: { readonly error: AppError }) {
+	const told = toldStateFor(
+		error,
+		useToldMax((state) => state.told[error.id]),
+	);
 	const times =
 		error.count > 1
 			? ` · ${error.count}×, last ${time.format(error.lastAt)}`
@@ -35,6 +43,14 @@ export function ErrorCard({ error }: { readonly error: AppError }) {
 					{whereLabel(error.where)}
 					{times}
 				</span>
+				<WorkMenuButton
+					className="hud-card-more"
+					label="More for this error"
+					menuLabel="Error"
+					items={[{ key: "devtools", label: "Open devtools", onSelect: openDevtools }]}
+				>
+					⋯
+				</WorkMenuButton>
 			</div>
 			<p className="hud-card-quote">{error.message}</p>
 			{error.stack ? (
@@ -44,13 +60,18 @@ export function ErrorCard({ error }: { readonly error: AppError }) {
 				</details>
 			) : null}
 			<div className="hud-card-actions">
-				<button type="button" onClick={openDevtools}>
-					Open devtools
+				<button
+					type="button"
+					disabled={!chiefAvailable || told?.state === "sending" || told?.state === "sent"}
+					onClick={() => void tellMaxAbout(error)}
+				>
+					{tellLabel[told?.state ?? "idle"]}
 				</button>
 				<button type="button" className="secondary" onClick={() => dismissAppError(error.id)}>
 					Dismiss
 				</button>
 			</div>
+			{told?.state === "failed" ? <p className="hud-card-error">{told.reason}</p> : null}
 		</article>
 	);
 }

@@ -1,0 +1,21 @@
+/* An error card's ⋯ menu (devtools), at the end of its head. */
+.hud-card-more {
+	padding: 0 6px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--ink-soft);
+	font: 700 14px / 18px var(--font-ui);
+	cursor: pointer;
+}
+
+.hud-card-more:hover,
+.hud-card-more[aria-expanded="true"] {
+	background: #efe6d6;
+	color: var(--ink);
+}
+
+.hud-card-head .work-menu {
+	left: auto;
+	right: 0;
+}
