@@ -35,7 +35,7 @@ describe("plan request files", () => {
 		const line = (id: string, plan: unknown, requestedAt = "2026-10-07T09:00:00Z") =>
 			JSON.stringify({ v: 1, id, fromPane: "wN:p1", requestedAt, op: "propose", plan });
 		const tooMany = { ...proposal, items: Array.from({ length: 6 }, () => proposal.items[0]) };
-		const { proposals, invalid } = parsePlanRequests(
+		const { valid, invalid } = parsePlanRequests(
 			[
 				line("id-valid-1", { focus: "Ship it", items: [] }),
 				line("id-invalid", tooMany),
@@ -44,8 +44,8 @@ describe("plan request files", () => {
 			],
 			now,
 		);
-		expect(proposals).toEqual([
-			{ id: "id-valid-1", fromPane: "wN:p1", plan: { focus: "Ship it", items: [], notToday: [] } },
+		expect(valid).toEqual([
+			{ id: "id-valid-1", fromPane: "wN:p1", body: { focus: "Ship it", items: [], notToday: [] } },
 		]);
 		expect(invalid).toEqual([{ id: "id-invalid", error: expect.stringContaining("items") }]);
 	});

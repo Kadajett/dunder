@@ -33,6 +33,8 @@ export interface PlanDeps {
 	readonly now: () => number;
 	/** Say it to Max in the chief chat (sent now, or queued until he's free); false when there's no chief. */
 	readonly tellChief: (text: string) => Promise<boolean>;
+	/** Added to the morning prompt: yesterday's wrap-up proposals ('' when there are none). */
+	readonly morningContext: () => Promise<string>;
 	/** Max's live pane: only he can propose the plan. */
 	readonly chiefPane: () => string | undefined;
 	readonly emit: (plan: DayPlan | null) => void;
@@ -129,7 +131,8 @@ export class PlanService {
 	async #promptIfDue(settings: PlanSettings): Promise<void> {
 		const now = new Date(this.#deps.now());
 		if (!isDailyDue(now, settings.dailyTime, settings.lastPromptDate) || this.today()) return;
-		if (!(await this.#deps.tellChief(MORNING_PROMPT))) return;
+		const prompt = MORNING_PROMPT + (await this.#deps.morningContext());
+		if (!(await this.#deps.tellChief(prompt))) return;
 		this.#settings = { ...settings, lastPromptDate: localDateKey(now) };
 		await savePlanSettings(this.#deps.settingsPath, this.#settings);
 		log.info("asked the chief for today's plan");
@@ -152,10 +155,10 @@ export class PlanService {
 	}
 
 	async #receive(lines: readonly string[]): Promise<void> {
-		const { proposals, invalid } = parsePlanRequests(lines, this.#deps.now());
+		const { valid, invalid } = parsePlanRequests(lines, this.#deps.now());
 		for (const { id, error } of invalid)
 			await this.#answer(id, false, `not a valid plan:\n${error}`);
-		for (const request of proposals) {
+		for (const request of valid) {
 			if (request.fromPane !== this.#deps.chiefPane()) {
 				await this.#answer(
 					request.id,
@@ -167,7 +170,7 @@ export class PlanService {
 			const settings = this.#settings ?? (await loadPlanSettings(this.#deps.settingsPath));
 			const plan = proposePlan(
 				this.#today(),
-				request.plan,
+				request.body,
 				this.#deps.now(),
 				settings.proceedAfterMinutes,
 			);

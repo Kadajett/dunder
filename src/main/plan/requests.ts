@@ -26,33 +26,45 @@ export function officePlanDigestPath(env: Env, home: string): string {
 	return join(stateDir(env, home), "plan.json");
 }
 
+/** Today's wrap-up as JSON, for `office-plan show`. */
+export function officeWrapDigestPath(env: Env, home: string): string {
+	return join(stateDir(env, home), "wrap.json");
+}
+
 /** A request is answered only this soon after it was made (older ones were made while the app was closed). */
 export const PLAN_REQUEST_MAX_AGE_MS = 60_000;
 
+/** One `office-plan` request line: the plan for `propose`, the wrap-up for `wrap`. */
 const lineSchema = z.object({
 	v: z.literal(1),
 	id: z.string().min(8).max(64),
 	fromPane: z.string().min(1).max(64),
 	requestedAt: z.iso.datetime(),
-	op: z.literal("propose"),
-	plan: z.unknown(),
+	op: z.enum(["propose", "wrap"]),
+	plan: z.unknown().optional(),
+	wrap: z.unknown().optional(),
 });
 
-export interface PlanRequest {
+export interface OfficePlanRequest<T> {
 	readonly id: string;
 	readonly fromPane: string;
-	readonly plan: PlanProposal;
+	readonly body: T;
 }
 
-/** Recent `propose` lines: valid plans, and the ids of invalid ones with zod's reason. */
-export function parsePlanRequests(
+export interface ParsedRequests<T> {
+	readonly valid: OfficePlanRequest<T>[];
+	/** Recent requests of this op whose body failed `schema`, with zod's reason. */
+	readonly invalid: { readonly id: string; readonly error: string }[];
+}
+
+/** Recent `op` lines: those whose body passes `schema`, and the ids of the rest with the reason. */
+export function parseOfficePlanRequests<T>(
 	lines: readonly string[],
 	nowMs: number,
-): {
-	readonly proposals: PlanRequest[];
-	readonly invalid: { readonly id: string; readonly error: string }[];
-} {
-	const proposals: PlanRequest[] = [];
+	op: "propose" | "wrap",
+	schema: z.ZodType<T>,
+): ParsedRequests<T> {
+	const valid: OfficePlanRequest<T>[] = [];
 	const invalid: { id: string; error: string }[] = [];
 	for (const line of lines) {
 		let json: unknown;
@@ -62,12 +74,20 @@ export function parsePlanRequests(
 			continue;
 		}
 		const parsed = lineSchema.safeParse(json);
-		if (!parsed.success || nowMs - Date.parse(parsed.data.requestedAt) > PLAN_REQUEST_MAX_AGE_MS)
-			continue;
+		if (!parsed.success || parsed.data.op !== op) continue;
+		if (nowMs - Date.parse(parsed.data.requestedAt) > PLAN_REQUEST_MAX_AGE_MS) continue;
 		const { id, fromPane } = parsed.data;
-		const plan = planProposalSchema.safeParse(parsed.data.plan);
-		if (plan.success) proposals.push({ id, fromPane, plan: plan.data });
-		else invalid.push({ id, error: z.prettifyError(plan.error) });
+		const body = schema.safeParse(op === "propose" ? parsed.data.plan : parsed.data.wrap);
+		if (body.success) valid.push({ id, fromPane, body: body.data });
+		else invalid.push({ id, error: z.prettifyError(body.error) });
 	}
-	return { proposals, invalid };
+	return { valid, invalid };
+}
+
+/** Recent `propose` lines (see `parseOfficePlanRequests`). */
+export function parsePlanRequests(
+	lines: readonly string[],
+	nowMs: number,
+): ParsedRequests<PlanProposal> {
+	return parseOfficePlanRequests(lines, nowMs, "propose", planProposalSchema);
 }
