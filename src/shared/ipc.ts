@@ -1,3 +1,4 @@
+import type { AlertsApi } from "./alerts";
 import type { AppErrorsApi } from "./app-errors";
 import type { AppUpdateApi } from "./app-update";
 import type { BrainstormApi } from "./brainstorm";
@@ -127,6 +128,11 @@ export const IPC = {
 	whatsNewGet: "whats-new:get",
 	whatsNewRate: "whats-new:rate",
 	whatsNewDismiss: "whats-new:dismiss",
+	/** Needs-you alerts: the mute (invoke), chime and open-the-inbox requests (main → renderer). */
+	alertsMuted: "alerts:muted",
+	alertsSetMuted: "alerts:set-muted",
+	alertsChime: "alerts:chime",
+	alertsOpen: "alerts:open",
 	/** Renderer errors: the list (invoke), a report (send), dismiss and open devtools (invoke), changes (main → renderer). */
 	appErrorsList: "app-errors:list",
 	appErrorsReport: "app-errors:report",
@@ -181,5 +187,6 @@ export interface OfficeApi {
 	readonly work: WorkBoardApi;
 	readonly voice: VoiceApi;
 	readonly whatsNew: WhatsNewApi;
+	readonly alerts: AlertsApi;
 	readonly errors: AppErrorsApi;
 }

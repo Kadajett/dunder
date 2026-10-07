@@ -164,6 +164,12 @@ const api: OfficeApi = {
 		rate: (request) => ipcRenderer.invoke(IPC.whatsNewRate, request),
 		dismiss: () => ipcRenderer.invoke(IPC.whatsNewDismiss),
 	},
+	alerts: {
+		muted: () => ipcRenderer.invoke(IPC.alertsMuted),
+		setMuted: (muted) => ipcRenderer.invoke(IPC.alertsSetMuted, muted),
+		onChime: (listener) => listen(IPC.alertsChime, listener),
+		onOpen: (listener) => listen(IPC.alertsOpen, listener),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

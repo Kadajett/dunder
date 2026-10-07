@@ -1,7 +1,9 @@
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { OfficeModel } from "../../office/model/office-model";
 import { markSeen, useTrustInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
+import { useHud } from "../view-store";
 import { AskCard } from "./AskCard";
 import { ErrorCard } from "./ErrorCard";
 import { openAgentScreen } from "./open-agent";
@@ -57,6 +59,38 @@ function itemKey(item: TrustItem): string {
 	return `${item.kind}:${item.agent.paneId}`;
 }
 
+function ItemCard({
+	item,
+	model,
+}: {
+	readonly item: TrustItem;
+	readonly model: OfficeModel;
+}): ReactNode {
+	if (item.kind === "ask") return <AskCard ask={item.ask} />;
+	if (item.kind === "error") return <ErrorCard error={item.error} />;
+	if (item.kind === "spend") return <SpendCard item={item} model={model} />;
+	return <AgentCard item={item} model={model} />;
+}
+
+/** One inbox card; the one a notification pointed at scrolls into view and flashes. */
+function InboxItem({ item, model }: { readonly item: TrustItem; readonly model: OfficeModel }) {
+	const key = itemKey(item);
+	const focused = useHud((state) => state.focusItem === key);
+	const frame = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (focused) frame.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+	}, [focused]);
+	return (
+		<div
+			ref={frame}
+			className={`hud-inbox-item${focused ? " hud-inbox-item--focus" : ""}`}
+			data-item-key={key}
+		>
+			<ItemCard item={item} model={model} />
+		</div>
+	);
+}
+
 /** Trust Inbox: blocked agents, the app's own errors, what agents asked of Jeremy, runaway spend and finished work he has not seen. */
 export function InboxPanel(props: {
 	readonly model: OfficeModel;
@@ -73,13 +107,9 @@ export function InboxPanel(props: {
 	}
 	return (
 		<>
-			{items.map((item) => {
-				if (item.kind === "ask") return <AskCard key={itemKey(item)} ask={item.ask} />;
-				if (item.kind === "error") return <ErrorCard key={itemKey(item)} error={item.error} />;
-				if (item.kind === "spend")
-					return <SpendCard key={itemKey(item)} item={item} model={props.model} />;
-				return <AgentCard key={itemKey(item)} item={item} model={props.model} />;
-			})}
+			{items.map((item) => (
+				<InboxItem key={itemKey(item)} item={item} model={props.model} />
+			))}
 		</>
 	);
 }

@@ -2,8 +2,9 @@ import type { ChiefMessage, ChiefPresence } from "@shared/chief";
 import { createLogger } from "@shared/log/logger";
 import type { VoiceAvailability } from "@shared/voice";
 import { create } from "zustand";
+import { chime } from "../../audio/chime";
 import { sendToChief } from "../chat-store";
-import { chime, playMp3, stopPlayback } from "./call-audio";
+import { playMp3, stopPlayback } from "./call-audio";
 import { closeMic, openMic, savedMicId, saveMicId, setMicMuted, setMicPlaying } from "./call-mic";
 import {
 	type CallPhase,

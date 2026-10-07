@@ -5,6 +5,7 @@ import { activeAgents } from "@shared/company/roster-ops";
 import { type BridgeStatus, IPC } from "@shared/ipc";
 import { createLogger } from "@shared/log/logger";
 import { app, BrowserWindow, Menu } from "electron";
+import { createAlerts, registerAlertsIpc } from "./alerts/ipc";
 import { migrateLegacyDirs } from "./app-dirs";
 import { registerAppErrorsIpc, watchAppPage } from "./app-errors/ipc";
 import { AppErrorsService } from "./app-errors/service";
@@ -163,8 +164,13 @@ const pool = createPool({
 	emit: (view) => broadcast(IPC.poolChanged, view),
 	emitFrame: (frame) => broadcast(IPC.poolFrame, frame),
 });
+/** Needs-you alerts: an agent blocked or a new ask while Dunder is in the background. */
+const alerts = createAlerts();
 /** The left bar's work board over the app repo's Beads (the repo root in stable mode). */
-const workBoard = createWorkBoard(app.getAppPath(), (board) => broadcast(IPC.workChanged, board));
+const workBoard = createWorkBoard(app.getAppPath(), (board) => {
+	broadcast(IPC.workChanged, board);
+	alerts.updateBoard(board);
+});
 /** Renderer errors Jeremy sees in the Trust Inbox (no devtools needed). */
 const appErrors = new AppErrorsService({
 	emit: (errors) => broadcast(IPC.appErrorsChanged, errors),
@@ -201,6 +207,7 @@ async function startBridge(): Promise<void> {
 				whiteboard.service.updateSnapshot(snapshot);
 				pool.updateSnapshot(snapshot);
 				brainstorm.service.updateSnapshot(snapshot);
+				alerts.updateSnapshot(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -243,6 +250,7 @@ function registerHandlers(): void {
 	registerAppErrorsIpc(appErrors);
 	registerVoiceIpc(createVoice());
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
+	registerAlertsIpc(alerts);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),

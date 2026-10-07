@@ -318,3 +318,35 @@
 .team-hire {
 	margin: 0 0 10px;
 }
+
+/* Trust Inbox header: needs-you alerts on/off. */
+.hud-alerts-bell {
+	align-self: center;
+	padding: 4px 9px;
+	border: 1px solid #efe6d6;
+	border-radius: 999px;
+	background: #fffdf8;
+	color: var(--ink-soft);
+	font: 600 11px var(--font-ui);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.hud-alerts-bell[aria-pressed="true"] {
+	color: var(--ink);
+}
+
+/* The item a clicked notification points at. */
+.hud-inbox-item--focus > * {
+	animation: hud-inbox-flash 1.6s ease-out 2;
+}
+
+@keyframes hud-inbox-flash {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 rgb(217 154 43 / 0);
+	}
+	30% {
+		box-shadow: 0 0 0 3px rgb(217 154 43 / 0.75);
+	}
+}

@@ -45,22 +45,3 @@ export function stopPlayback(): void {
 	current.source.stop();
 	current.done();
 }
-
-/** A soft two-note chime: "he answered, look at the chat". */
-export function chime(): void {
-	const ctx = audio();
-	const start = ctx.currentTime;
-	for (const [index, frequency] of [660, 880].entries()) {
-		const tone = ctx.createOscillator();
-		const gain = ctx.createGain();
-		const at = start + index * 0.16;
-		tone.type = "sine";
-		tone.frequency.value = frequency;
-		gain.gain.setValueAtTime(0.0001, at);
-		gain.gain.exponentialRampToValueAtTime(0.18, at + 0.02);
-		gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35);
-		tone.connect(gain).connect(ctx.destination);
-		tone.start(at);
-		tone.stop(at + 0.4);
-	}
-}
