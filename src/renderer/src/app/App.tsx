@@ -23,6 +23,7 @@ import { useOfficeModel } from "../features/office/model/office-model";
 import { connectModels } from "../features/office/models/models-store";
 import { OfficeView } from "../features/office/OfficeView";
 import { TvFullscreen } from "../features/office/tv/TvFullscreen";
+import { AutopilotNotice } from "../features/pool/AutopilotNotice";
 import { connectPool } from "../features/pool/pool-store";
 import { TableView } from "../features/pool/TableView";
 import { WhatsNewCard } from "../features/whats-new/WhatsNewCard";
@@ -60,6 +61,7 @@ export function App() {
 					<EditDock />
 					<FocusOverlay />
 					<TableView />
+					<AutopilotNotice />
 					<TvFullscreen />
 				</>
 			) : (

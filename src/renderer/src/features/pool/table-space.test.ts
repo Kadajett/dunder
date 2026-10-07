@@ -24,7 +24,7 @@ function view(overrides: Partial<PoolView> = {}): PoolView {
 		last: null,
 		recent: [],
 		result: null,
-		jeremy: { joined: true, viewing: false, yourTurn: false },
+		jeremy: { joined: true, viewing: false, yourTurn: false, autopilotAt: null },
 		label: "",
 		...overrides,
 	};

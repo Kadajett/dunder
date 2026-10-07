@@ -6,6 +6,7 @@ import {
 	type PoolFrame,
 	type PoolShotInput,
 	type PoolView,
+	VIEWING_GRACE_MS,
 } from "@shared/pool";
 import { chooseShot } from "./ai";
 import { shotProblem, takeShot } from "./game";
@@ -66,7 +67,17 @@ export class PoolService {
 	#presences: readonly Presence[] = [];
 	#flight: Flight | null = null;
 	#playback: NodeJS.Timeout | undefined;
-	#turn: { readonly game: PoolGame; readonly timer: NodeJS.Timeout } | undefined;
+	/** The AI's next shot: whose game, how long it waited for Jeremy (`until`), when it fires. */
+	#turn:
+		| {
+				readonly game: PoolGame;
+				readonly until: number;
+				readonly at: number;
+				readonly timer: NodeJS.Timeout;
+		  }
+		| undefined;
+	/** Jeremy's shot is his until then: the last table-view ping or his leaving it, plus the grace. */
+	#viewingUntil = 0;
 	#tick: NodeJS.Timeout | undefined;
 	#lastView = "";
 	#started = false;
@@ -86,14 +97,16 @@ export class PoolService {
 		this.#started = false;
 		clearTimeout(this.#tick);
 		clearInterval(this.#playback);
-		if (this.#turn) clearTimeout(this.#turn.timer);
+		this.#cancelTurn();
 		this.#tick = undefined;
 		this.#playback = undefined;
-		this.#turn = undefined;
 	}
 
 	view(): PoolView {
-		return viewOf(this.#lounge, this.#flight !== null);
+		const turn = this.#turn;
+		const autopilot =
+			turn && !this.#lounge.jeremy.viewing && shooterOf(turn.game) === JEREMY ? turn.at : null;
+		return viewOf(this.#lounge, this.#flight !== null, autopilot);
 	}
 
 	updateSnapshot(snapshot: SessionSnapshot): void {
@@ -124,7 +137,13 @@ export class PoolService {
 		return { ok: true };
 	}
 
+	/**
+	 * A table-view ping (`true`) or its closing (`false`). Either way Jeremy's
+	 * shot waits `VIEWING_GRACE_MS` from now, whatever the window's focus: the
+	 * engine plays it only once the pings have stopped for that long.
+	 */
 	setViewing(viewing: boolean): void {
+		this.#viewingUntil = this.#now() + VIEWING_GRACE_MS;
 		this.#apply((lounge) => ({ ...lounge, jeremy: { ...lounge.jeremy, viewing } }));
 	}
 
@@ -153,6 +172,8 @@ export class PoolService {
 	}
 
 	#changed(): void {
+		// Plan first: the view carries the autopilot's time.
+		this.#plan();
 		const view = this.view();
 		const text = JSON.stringify(view);
 		if (text !== this.#lastView) {
@@ -162,7 +183,6 @@ export class PoolService {
 				.saveDigest(view)
 				.catch((error: unknown) => log.warn("cannot save the pool digest", { error }));
 		}
-		this.#plan();
 		this.#wake();
 	}
 
@@ -179,25 +199,35 @@ export class PoolService {
 		);
 	}
 
-	/** Schedule the AI's shot (an agent's, or Jeremy's on autopilot while he's out of table view). */
+	/**
+	 * Schedule the AI's shot: an agent's, or Jeremy's on autopilot. His waits
+	 * until the grace after his table view's last ping has run out, so it moves
+	 * on with every ping and never fires while the view is open.
+	 */
 	#plan(): void {
 		const game = this.#lounge.game;
 		const due = this.#lounge.stage === "playing" && game && !game.result && !this.#flight;
-		const human = game && shooterOf(game) === JEREMY && this.#lounge.jeremy.viewing;
-		if (!due || human) {
-			if (this.#turn) clearTimeout(this.#turn.timer);
-			this.#turn = undefined;
+		if (!due) {
+			this.#cancelTurn();
 			return;
 		}
-		if (this.#turn?.game === game) return;
-		if (this.#turn) clearTimeout(this.#turn.timer);
+		const until = shooterOf(game) === JEREMY ? this.#viewingUntil : 0;
+		if (this.#turn?.game === game && this.#turn.until === until) return;
+		this.#cancelTurn();
 		const delay = game.shots === 0 ? WALK_MS : THINK_MS + nextRandom(game.seed).value * THINK_MS;
+		const now = this.#now();
+		const at = Math.max(now, until) + delay;
 		const timer = setTimeout(() => {
 			this.#turn = undefined;
 			const ai = chooseShot(game);
 			this.#strike({ ...game, seed: ai.seed }, ai.input);
-		}, delay);
-		this.#turn = { game, timer };
+		}, at - now);
+		this.#turn = { game, until, at, timer };
+	}
+
+	#cancelTurn(): void {
+		if (this.#turn) clearTimeout(this.#turn.timer);
+		this.#turn = undefined;
 	}
 
 	#strike(game: PoolGame, input: PoolShotInput): void {
