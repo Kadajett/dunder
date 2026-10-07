@@ -6,6 +6,7 @@ import type {
 	UpdateStatus,
 } from "@shared/app-update";
 import { useEffect, useId, useState } from "react";
+import { RollbackSection } from "./HudRollback";
 
 /** The stable-mode update status, live from main ("dev" while the preload predates the API). */
 export function useUpdateStatus(): UpdateStatus {
@@ -172,6 +173,20 @@ function Available({
 	readonly status: Applicable<"available">;
 	readonly onDone: () => void;
 }) {
+	if (status.rolledBack) {
+		return (
+			<>
+				<p className="hud-menu-heading update-heading">
+					You rolled back from {status.head.slice(0, 7)}
+				</p>
+				<CommitList status={status} />
+				<p className="update-note">
+					Agents' updates won't put it back; a newer commit brings updates back as usual.
+				</p>
+				<ApplyButton label="Update anyway" reason="anyway, by Jeremy" onDone={onDone} />
+			</>
+		);
+	}
 	const label =
 		status.behind > 0
 			? `${status.behind} new commit${status.behind === 1 ? "" : "s"}`
@@ -211,9 +226,10 @@ function Failed({
 }
 
 /**
- * The update part of the top-bar menu: nothing when up to date or under the dev
- * server; otherwise the new commits to apply, build progress, or a failure to retry.
- * `onDone` closes the menu once an update is started.
+ * The update part of the top-bar menu: nothing under the dev server;
+ * otherwise the new commits to apply, build progress, or a failure to retry,
+ * plus 'Roll back to <sha>' while the previous build is kept. `onDone`
+ * closes the menu once an update or rollback is started.
  */
 export function UpdateMenuSection({
 	status,
@@ -224,8 +240,9 @@ export function UpdateMenuSection({
 }) {
 	switch (status.state) {
 		case "dev":
-		case "idle":
 			return null;
+		case "idle":
+			return <RollbackSection onDone={onDone} />;
 		case "building":
 			return (
 				<div className="update-section">
@@ -237,15 +254,21 @@ export function UpdateMenuSection({
 			);
 		case "available":
 			return (
-				<div className="update-section">
-					<Available status={status} onDone={onDone} />
-				</div>
+				<>
+					<div className="update-section">
+						<Available status={status} onDone={onDone} />
+					</div>
+					<RollbackSection onDone={onDone} />
+				</>
 			);
 		case "failed":
 			return (
-				<div className="update-section">
-					<Failed status={status} onDone={onDone} />
-				</div>
+				<>
+					<div className="update-section">
+						<Failed status={status} onDone={onDone} />
+					</div>
+					<RollbackSection onDone={onDone} />
+				</>
 			);
 	}
 }

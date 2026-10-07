@@ -117,6 +117,8 @@ const api: OfficeApi = {
 		apply: (reason) => ipcRenderer.invoke(IPC.updateApply, reason),
 		cancel: () => ipcRenderer.invoke(IPC.updateCancel),
 		setBusy: (busy) => ipcRenderer.invoke(IPC.updateSetBusy, busy),
+		previous: () => ipcRenderer.invoke(IPC.updatePrevious),
+		rollback: () => ipcRenderer.invoke(IPC.updateRollback),
 	},
 	whiteboard: {
 		get: () => ipcRenderer.invoke(IPC.whiteboardGet),

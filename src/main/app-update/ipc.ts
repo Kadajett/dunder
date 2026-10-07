@@ -18,4 +18,6 @@ export function registerAppUpdateIpc(updater: AppUpdater): void {
 		// A malformed signal must not hold updates forever: treat it as free.
 		updater.setBusy(parsed.success ? parsed.data : null);
 	});
+	ipcMain.handle(IPC.updatePrevious, () => updater.previous());
+	ipcMain.handle(IPC.updateRollback, () => updater.rollback());
 }

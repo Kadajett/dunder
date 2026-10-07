@@ -1,15 +1,10 @@
 import { spawn } from "node:child_process";
-import { rename, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import { promote, STAGING_DIR } from "./builds";
 
 /** Upper bound on one production build. */
 export const BUILD_TIMEOUT_MS = 10 * 60 * 1000;
-/**
- * The build goes here first and replaces `out/` only when it succeeds, so a
- * broken build never leaves `out/` half-written for the next launch.
- */
-const STAGING_DIR = "out-next";
-const PREVIOUS_DIR = "out-prev";
 const TAIL_LINES = 40;
 
 export type BuildResult =
@@ -36,23 +31,6 @@ export class LogTail {
 	text(): string {
 		return this.#lines.join("\n").trim();
 	}
-}
-
-/** Swap the staged build into `out/`, putting the old one back if the swap fails. */
-async function promote(root: string): Promise<void> {
-	const out = join(root, "out");
-	const previous = join(root, PREVIOUS_DIR);
-	await rm(previous, { recursive: true, force: true });
-	await rename(out, previous).catch((error: NodeJS.ErrnoException) => {
-		if (error.code !== "ENOENT") throw error;
-	});
-	try {
-		await rename(join(root, STAGING_DIR), out);
-	} catch (error) {
-		await rename(previous, out).catch(() => undefined);
-		throw error;
-	}
-	await rm(previous, { recursive: true, force: true });
 }
 
 /** Runs npm with these args in the checkout, streaming output into the log; resolves with the exit code (null when it did not finish). */
@@ -106,14 +84,20 @@ function exitReason(code: number | null): string {
 export interface BuildOptions {
 	/** Run `npm install` first: the dependencies changed since the running build. */
 	readonly install: boolean;
+	/** The running build's commit: its `out/` is kept aside for a rollback. */
+	readonly outgoing: string | undefined;
 	readonly run?: NpmRunner;
 }
 
-/** Build the app checkout for production (installing dependencies first if asked) and install it as `out/`. */
+/**
+ * Build the app checkout for production (installing dependencies first if
+ * asked) into a staging dir, and install it as `out/` only when it succeeds,
+ * so a broken build never leaves `out/` half-written for the next launch.
+ */
 export async function buildApp(
 	root: string,
 	onLog: (tail: string) => void,
-	{ install, run = runNpm }: BuildOptions,
+	{ install, outgoing, run = runNpm }: BuildOptions,
 ): Promise<BuildResult> {
 	const log = new LogTail();
 	const emit = (): void => onLog(log.text());
@@ -133,7 +117,7 @@ export async function buildApp(
 	const code = await run(root, BUILD_ARGS, log, emit);
 	if (code !== 0) return { ok: false, error: `the build ${exitReason(code)}`, logTail: log.text() };
 	try {
-		await promote(root);
+		await promote(root, outgoing);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		const failure = `could not install the new build: ${message}`;

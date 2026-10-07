@@ -48,6 +48,11 @@ interface Behind {
 	/** At most one of `countdown` and `held` is set. */
 	readonly countdown?: UpdateCountdown;
 	readonly held?: UpdateHeld;
+	/**
+	 * Jeremy rolled back from this very HEAD: it shows as 'you rolled back
+	 * from', and agents' update requests don't count down until HEAD moves on.
+	 */
+	readonly rolledBack?: true;
 }
 
 export type UpdateStatus =
@@ -84,6 +89,19 @@ export const updateRequestLineSchema = z.strictObject({
 });
 export type UpdateRequestLine = z.infer<typeof updateRequestLineSchema>;
 
+/** The build the last update replaced, kept (one level deep) so Jeremy can go back to it. */
+export interface PreviousBuild {
+	readonly commit: string;
+	readonly subject: string;
+	/**
+	 * package.json or its lock differ from the running build: the shared
+	 * `node_modules` would not match the old build, so it can't be rolled back to.
+	 */
+	readonly dependenciesChanged: boolean;
+}
+
+export type RollbackResult = { readonly ok: true } | { readonly ok: false; readonly error: string };
+
 /** `window.office.update`. */
 export interface AppUpdateApi {
 	status(): Promise<UpdateStatus>;
@@ -94,4 +112,8 @@ export interface AppUpdateApi {
 	cancel(): Promise<void>;
 	/** Jeremy is busy (why) or free (null); agents' updates wait while he is busy. */
 	setBusy(busy: string | null): Promise<void>;
+	/** The kept previous build, or null when there is none to go back to. */
+	previous(): Promise<PreviousBuild | null>;
+	/** Swap the previous build back in and relaunch on it; resolves only on failure (or never, as the app quits). */
+	rollback(): Promise<RollbackResult>;
 }

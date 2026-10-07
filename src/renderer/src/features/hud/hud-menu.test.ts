@@ -63,6 +63,8 @@ describe("updateBadge", () => {
 		expect(updateBadge({ state: "dev" })).toBeNull();
 		expect(updateBadge({ state: "idle", head: "abc1234" })).toBeNull();
 		expect(updateBadge({ state: "available", ...behind })).toBe("available");
+		// The build he rolled back from doesn't nag.
+		expect(updateBadge({ state: "available", ...behind, rolledBack: true })).toBeNull();
 		expect(updateBadge({ state: "building", logTail: "" })).toBe("building");
 		expect(updateBadge({ state: "failed", error: "tsc", logTail: "", ...behind })).toBe("failed");
 	});
