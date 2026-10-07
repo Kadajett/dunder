@@ -1,23 +1,20 @@
-import { type AvatarStyle, avatarStyleFor } from "@shared/avatar/style";
 import type { Harness } from "@shared/company/roster";
 import { checkHire, type HireCheck, type HireRequest } from "@shared/company/workforce";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { useEffect, useMemo, useState } from "react";
 import { useCompany } from "../company/company-store";
 import { useModels } from "../office/models/models-store";
+import { draftStyle, type LookDraft } from "./draft-look";
 import { useHire } from "./hire-store";
 import { useRosterStore } from "./roster-store";
 
-export interface HireDraft {
-	readonly name: string;
+export interface HireDraft extends LookDraft {
 	readonly role: string;
 	readonly harness: Harness;
 	/** Empty: the harness's default model. */
 	readonly model: string;
 	readonly room: string;
 	readonly cwd: string;
-	/** Look seed after a reroll; until then the look follows the name. */
-	readonly seed: string | undefined;
 }
 
 const EMPTY: HireDraft = {
@@ -28,12 +25,8 @@ const EMPTY: HireDraft = {
 	room: "",
 	cwd: "",
 	seed: undefined,
+	look: undefined,
 };
-
-/** The look the draft would be hired with. */
-export function draftStyle(draft: HireDraft): AvatarStyle {
-	return avatarStyleFor(draft.seed ?? (draft.name.trim() || "new-hire"));
-}
 
 export function draftRequest(draft: HireDraft): HireRequest {
 	const model = draft.model.trim();
