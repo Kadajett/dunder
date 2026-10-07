@@ -1,8 +1,10 @@
 // office-update: ask Jeremy's Dunder app to roll forward onto the merged code.
-//   office-update ["<what changed>"]
+//   office-update [--hotfix] ["<what changed>"]
 // Runs under plain Node (type stripping), so it uses only Node built-ins; the
-// app validates every line against `updateRequestLineSchema` (src/shared/app-update.ts),
-// then shows a 15-second countdown Jeremy can cancel before it rebuilds and relaunches.
+// app validates every line against `updateRequestLineSchema` (src/shared/app-update.ts).
+// Agents' updates apply at most every 2 h (the app's batch window): a request inside
+// the window waits for its end. --hotfix skips the window; then, as always, the update
+// waits while Jeremy is busy and shows a 15-second countdown he can cancel.
 import { randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -18,11 +20,18 @@ export function updateRequestsPath(
 	return join(state, "dunder", "update-requests.ndjson");
 }
 
+const USAGE = 'usage: office-update [--hotfix] ["<what changed>"]\n';
+
 function main(argv: readonly string[]): number {
-	const reason = argv.join(" ").trim();
+	const hotfix = argv[0] === "--hotfix";
+	const reason = (hotfix ? argv.slice(1) : argv).join(" ").trim();
 	if (reason === "-h" || reason === "--help") {
-		process.stdout.write('usage: office-update ["<what changed>"]\n');
+		process.stdout.write(USAGE);
 		return 0;
+	}
+	if (reason.startsWith("--")) {
+		process.stderr.write(`office-update: unknown option ${reason.split(" ")[0]}\n${USAGE}`);
+		return 2;
 	}
 	if (reason.length > 500) {
 		process.stderr.write("office-update: reason is longer than 500 characters\n");
@@ -42,6 +51,7 @@ function main(argv: readonly string[]): number {
 		id: randomUUID(),
 		fromPane,
 		reason,
+		...(hotfix ? { hotfix: true } : {}),
 		requestedAt: new Date().toISOString(),
 	};
 	const path = updateRequestsPath(process.env, homedir());
@@ -49,8 +59,12 @@ function main(argv: readonly string[]): number {
 	// One small O_APPEND write per request, so concurrent requesters never interleave.
 	appendFileSync(path, `${JSON.stringify(line)}\n`);
 	process.stdout.write(
-		"office-update: requested. If there are new commits, Dunder rebuilds and relaunches " +
-			"in 15 s unless Jeremy cancels. Your agents keep running.\n",
+		hotfix
+			? "office-update: hotfix requested. If there are new commits, Dunder rebuilds and relaunches " +
+					"in 15 s unless Jeremy cancels (it waits while he is busy). Your agents keep running.\n"
+			: "office-update: requested. Agents' updates apply at most every 2 h: inside that window it " +
+					"waits for the next batch (Jeremy sees 'N changes waiting'), otherwise Dunder rebuilds " +
+					"and relaunches in 15 s unless he cancels. Your agents keep running.\n",
 	);
 	return 0;
 }

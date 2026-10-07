@@ -38,6 +38,21 @@ export interface UpdateHeld {
 	readonly startsAt: number | null;
 }
 
+/**
+ * Agents asked for an update soon after the last one applied: it waits for
+ * the batch window to end, then runs the normal flow (held while Jeremy is
+ * busy, then the countdown) once for every request folded in.
+ */
+export interface UpdateBatched {
+	/** The latest requester, and its reason. */
+	readonly by: string;
+	readonly reason: string;
+	/** Earlier requests folded in. */
+	readonly extra: number;
+	/** When the window ends (epoch ms). */
+	readonly nextAt: number;
+}
+
 interface Behind {
 	/** The checkout's HEAD, which a rebuild would run. */
 	readonly head: string;
@@ -45,9 +60,10 @@ interface Behind {
 	readonly commits: readonly UpdateCommit[];
 	/** Commits between the running build and HEAD (0 when HEAD moved sideways or back). */
 	readonly behind: number;
-	/** At most one of `countdown` and `held` is set. */
+	/** At most one of `countdown`, `held` and `batched` is set. */
 	readonly countdown?: UpdateCountdown;
 	readonly held?: UpdateHeld;
+	readonly batched?: UpdateBatched;
 	/**
 	 * Jeremy rolled back from this very HEAD: it shows as 'you rolled back
 	 * from', and agents' update requests don't count down until HEAD moves on.
@@ -77,6 +93,8 @@ export const UPDATE_REQUEST_MAX_AGE_MS = 10 * 60 * 1000;
 export const UPDATE_FREE_MS = 10_000;
 /** What Jeremy is doing that holds agents' updates; null when he is free. */
 export const updateBusySchema = z.string().min(1).max(60).nullable();
+/** Agents' updates apply at most this often by default (`<userData>/update-batching.json`; 0 turns batching off). */
+export const UPDATE_BATCH_DEFAULT_MINUTES = 120;
 
 /** One line of the update-requests file, appended by `office-update`. */
 export const updateRequestLineSchema = z.strictObject({
@@ -85,6 +103,8 @@ export const updateRequestLineSchema = z.strictObject({
 	/** herdr pane of the requester (`HERDR_PANE_ID`), mapped to its agent by the app. */
 	fromPane: z.string().max(64).optional(),
 	reason: z.string().max(500),
+	/** `office-update --hotfix`: skips the batch window (the hold while Jeremy is busy and the countdown still apply). */
+	hotfix: z.literal(true).optional(),
 	requestedAt: z.iso.datetime(),
 });
 export type UpdateRequestLine = z.infer<typeof updateRequestLineSchema>;

@@ -109,6 +109,22 @@ function countdown(seconds: number): void {
 	});
 }
 
+/** Agents' updates queued in the batch window (office-itt): 7 changes, the next update at about 83 min from now. */
+function batched(): void {
+	setUpdateStatus({
+		state: "available",
+		head: "a91f3c0d2e",
+		commits: [{ sha: "a91f3c0d2e", subject: "inbox: group repeat app errors (office-k2p.3)" }],
+		behind: 7,
+		batched: {
+			by: "theo",
+			reason: "ship the Trust Inbox error grouping",
+			extra: 4,
+			nextAt: Date.now() + 83 * 60_000,
+		},
+	});
+}
+
 async function poolTable(): Promise<void> {
 	setPool(POOL_PLAYING);
 	await wait(300);
@@ -148,6 +164,10 @@ const STATES: Record<string, () => Promise<void>> = {
 		expandWork();
 		useHud.setState({ panel: "inbox" });
 		startCall();
+	},
+	"12-update-batched": async () => {
+		useWhatsNew.setState({ card: null });
+		batched();
 	},
 };
 

@@ -7,7 +7,9 @@ import type {
 } from "@shared/app-update";
 import { useEffect, useId, useState } from "react";
 import { useCall } from "../chief/call/call-store";
+import { BatchedChip } from "./BatchedChip";
 import { RollbackSection } from "./HudRollback";
+import { applyUpdate, requesters, skipUpdate } from "./update-actions";
 
 /** The stable-mode update status, live from main ("dev" while the preload predates the API). */
 export function useUpdateStatus(): UpdateStatus {
@@ -42,19 +44,6 @@ function useSecondsLeft(applyAt: number): number {
 	return Math.max(0, Math.ceil((applyAt - now) / 1000));
 }
 
-/** Failures surface through the status (state "failed"), so a rejected call needs no handling. */
-function apply(reason: string): void {
-	window.office.update.apply(reason).catch(() => undefined);
-}
-
-/** "Theo", or "Theo + 2 more" when several agents asked. */
-function requesters({ by, extra }: { readonly by: string; readonly extra: number }): string {
-	const who = by.charAt(0).toUpperCase() + by.slice(1);
-	return extra > 0 ? `${who} + ${extra} more` : who;
-}
-
-const skip = () => void window.office.update.cancel().catch(() => undefined);
-
 function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown }) {
 	const seconds = useSecondsLeft(countdown.applyAt);
 	const onCall = useCall((state) => state.active);
@@ -67,10 +56,14 @@ function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown })
 			{onCall ? (
 				<span className="update-banner-call">📞 Call will resume after the update</span>
 			) : null}
-			<button type="button" className="update-banner-cancel" onClick={skip}>
+			<button type="button" className="update-banner-cancel" onClick={skipUpdate}>
 				Cancel
 			</button>
-			<button type="button" className="update-banner-apply" onClick={() => apply("now, by Jeremy")}>
+			<button
+				type="button"
+				className="update-banner-apply"
+				onClick={() => applyUpdate("now, by Jeremy")}
+			>
 				Apply now
 			</button>
 		</div>
@@ -91,20 +84,29 @@ function HeldChip({ held }: { readonly held: UpdateHeld }) {
 			<span>
 				Update from <strong>{requesters(held)}</strong> waiting · <WaitLine held={held} />
 			</span>
-			<button type="button" className="update-held-apply" onClick={() => apply("now, by Jeremy")}>
+			<button
+				type="button"
+				className="update-held-apply"
+				onClick={() => applyUpdate("now, by Jeremy")}
+			>
 				Apply now
 			</button>
-			<button type="button" className="update-held-skip" onClick={skip}>
+			<button type="button" className="update-held-skip" onClick={skipUpdate}>
 				Skip
 			</button>
 		</div>
 	);
 }
 
-/** The countdown banner while an agent's `office-update` request waits for Jeremy to cancel it, or the held chip while he is busy. */
+/**
+ * Top-centre update strip: the countdown banner while an agent's
+ * `office-update` request waits for Jeremy to cancel it, the held chip while
+ * he is busy, or the batched chip while requests wait for the batch window.
+ */
 export function UpdateCountdownBanner({ status }: { readonly status: UpdateStatus }) {
 	if (status.state !== "available" && status.state !== "failed") return null;
 	if (status.held) return <HeldChip held={status.held} />;
+	if (status.batched) return <BatchedChip batched={status.batched} behind={status.behind} />;
 	return status.countdown ? <CountdownBanner countdown={status.countdown} /> : null;
 }
 
@@ -137,7 +139,7 @@ function ApplyButton({ label, reason, onDone }: ApplyButtonProps) {
 			className="update-primary"
 			onClick={() => {
 				onDone();
-				apply(reason);
+				applyUpdate(reason);
 			}}
 		>
 			{label}

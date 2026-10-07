@@ -45,6 +45,7 @@ function setup(check: UpdateCheck = NEW, { snapshot = true } = {}) {
 		built: BUILT as string | undefined,
 		requestsPath: "/nonexistent/requests.ndjson",
 		statePath: "/nonexistent/state.json",
+		settingsPath: "/nonexistent/update-batching.json",
 		emit: (status: UpdateStatus) => emitted.push(status),
 		check: vi.fn(async () => check),
 		build: vi.fn((_onLog: (tail: string) => void) => build.promise),
@@ -190,7 +191,11 @@ describe("rolling back", () => {
 	function files() {
 		const dir = mkdtempSync(join(tmpdir(), "rollback-"));
 		dirs.push(dir);
-		return { requestsPath: join(dir, "requests.ndjson"), statePath: join(dir, "app-update.json") };
+		return {
+			requestsPath: join(dir, "requests.ndjson"),
+			statePath: join(dir, "app-update.json"),
+			settingsPath: join(dir, "update-batching.json"),
+		};
 	}
 
 	it("swaps the kept build back in, relaunches, and keeps agents off the bad build until HEAD moves", async () => {
@@ -220,11 +225,17 @@ describe("rolling back", () => {
 		await after.receive([good.request()]);
 		expect(after.status()).not.toHaveProperty("countdown");
 
-		// A fix lands: agents' requests count down again.
+		// A fix lands. The rollback restarted the batch window, so an ordinary request waits for
+		// it; a hotfix counts down now.
 		good.deps.check.mockResolvedValue(NEW);
 		await after.check();
 		await after.receive([good.request()]);
-		expect(after.status()).toMatchObject({ state: "available", countdown: { by: "max" } });
+		expect(after.status()).toMatchObject({ state: "available", batched: { by: "max" } });
+		await after.receive([good.request({ hotfix: true })]);
+		expect(after.status()).toMatchObject({
+			state: "available",
+			countdown: { by: "max", extra: 1 },
+		});
 		expect(after.status()).not.toHaveProperty("rolledBack");
 		await vi.waitFor(() =>
 			expect(JSON.parse(readFileSync(paths.statePath, "utf8"))).not.toHaveProperty(

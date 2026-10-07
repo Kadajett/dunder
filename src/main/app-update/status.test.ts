@@ -114,8 +114,8 @@ describe("busy and free", () => {
 		const held = requestUpdate(available, max, "in a terminal", 0);
 		const free = busyChanged(held, null, 1_000);
 		expect(nextDeadline(free)).toBe(1_000 + UPDATE_FREE_MS);
-		expect(afterWait(free, 1_000 + UPDATE_FREE_MS - 1)).toBe(free);
-		const counting = afterWait(free, 1_000 + UPDATE_FREE_MS);
+		expect(afterWait(free, 1_000 + UPDATE_FREE_MS - 1, null)).toBe(free);
+		const counting = afterWait(free, 1_000 + UPDATE_FREE_MS, null);
 		expect(counting).toMatchObject({
 			countdown: { ...max, extra: 0, applyAt: 1_000 + UPDATE_FREE_MS + UPDATE_COUNTDOWN_MS },
 		});
@@ -134,7 +134,7 @@ describe("busy and free", () => {
 		const paused = busyChanged(counting, "at the pool table", 12_000);
 		expect(paused).toMatchObject({ held: { ...theo, busy: "at the pool table" } });
 		expect(paused).not.toHaveProperty("countdown");
-		const restarted = afterWait(busyChanged(paused, null, 20_000), 20_000 + UPDATE_FREE_MS);
+		const restarted = afterWait(busyChanged(paused, null, 20_000), 20_000 + UPDATE_FREE_MS, null);
 		expect(restarted).toMatchObject({
 			countdown: { applyAt: 20_000 + UPDATE_FREE_MS + UPDATE_COUNTDOWN_MS },
 		});
@@ -169,5 +169,72 @@ describe("skipping and failures", () => {
 			error: "the build exited with 1",
 			logTail: "x",
 		});
+	});
+});
+
+describe("batching agents' updates", () => {
+	const HOUR = 3_600_000;
+	/** The last update applied at 0 with a 2 h interval: the window ends at 2 h. */
+	const inWindow = (request: { by: string; reason: string }) => ({
+		...request,
+		batchUntil: 2 * HOUR,
+	});
+
+	it("queues requests inside the window, quietly, folding them into one batch until its end", () => {
+		const first = requestUpdate(available, inWindow(max), null, HOUR);
+		expect(first).toMatchObject({ batched: { ...max, extra: 0, nextAt: 2 * HOUR } });
+		expect(first).not.toHaveProperty("countdown");
+		const both = requestUpdate(first, inWindow(theo), "typing", HOUR + 1);
+		expect(both).toMatchObject({ batched: { ...theo, extra: 1, nextAt: 2 * HOUR } });
+		expect(both).not.toHaveProperty("held");
+		expect(nextDeadline(both)).toBe(2 * HOUR);
+		// Busy or free doesn't touch a batch, and new commits keep it.
+		expect(busyChanged(both, "on a call", HOUR + 2)).toBe(both);
+		expect(afterCheck(both, BUILT, { head: "e".repeat(40), commits: commits(3) })).toMatchObject({
+			behind: 3,
+			batched: { extra: 1 },
+		});
+	});
+
+	it("counts down as usual for a request after the window", () => {
+		expect(requestUpdate(available, inWindow(max), null, 2 * HOUR)).toMatchObject({
+			countdown: { ...max, applyAt: 2 * HOUR + UPDATE_COUNTDOWN_MS },
+		});
+	});
+
+	it("runs the normal flow once at the window's end: the countdown when free, held while busy", () => {
+		const batch = requestUpdate(
+			requestUpdate(available, inWindow(max), null, 1),
+			inWindow(theo),
+			null,
+			2,
+		);
+		expect(afterWait(batch, 2 * HOUR - 1, null)).toBe(batch);
+		const counting = afterWait(batch, 2 * HOUR, null);
+		expect(counting).toMatchObject({
+			countdown: { ...theo, extra: 1, applyAt: 2 * HOUR + UPDATE_COUNTDOWN_MS },
+		});
+		expect(counting).not.toHaveProperty("batched");
+		const held = afterWait(batch, 2 * HOUR, "in a terminal");
+		expect(held).toMatchObject({
+			held: { ...theo, extra: 1, busy: "in a terminal", startsAt: null },
+		});
+		expect(held).not.toHaveProperty("batched");
+	});
+
+	it("lets a hotfix through the window, carrying the batch with it", () => {
+		const batch = requestUpdate(available, inWindow(max), null, HOUR);
+		expect(requestUpdate(batch, theo, null, HOUR + 5)).toMatchObject({
+			countdown: { ...theo, extra: 1, applyAt: HOUR + 5 + UPDATE_COUNTDOWN_MS },
+		});
+		expect(requestUpdate(batch, theo, "on a call", HOUR + 5)).toMatchObject({
+			held: { ...theo, extra: 1, busy: "on a call" },
+		});
+	});
+
+	it("Skip clears the batch", () => {
+		expect(withoutCountdown(requestUpdate(available, inWindow(max), null, HOUR))).toEqual(
+			available,
+		);
 	});
 });
