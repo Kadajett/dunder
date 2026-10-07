@@ -99,6 +99,22 @@
 	cursor: help;
 }
 
+.work-card__age {
+	flex: none;
+	font: 500 10.5px var(--font-mono);
+	color: var(--ink-soft);
+	white-space: nowrap;
+	cursor: help;
+}
+
+.work-card__age--stale {
+	padding: 1px 6px;
+	border: 1px solid #e2b85b;
+	border-radius: 999px;
+	background: #fff1c2;
+	color: #8a5a12;
+}
+
 .work-card__detail {
 	margin-top: 6px;
 	padding-top: 6px;

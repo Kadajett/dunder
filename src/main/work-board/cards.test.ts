@@ -34,11 +34,17 @@ describe("parseBeads", () => {
 				parent: "office-344",
 				updated_at: "2026-10-06T22:43:05Z",
 				dependencies: [{ issue_id: "office-344.2", depends_on_id: "office-344.1", type: "blocks" }],
+				started_at: "2026-10-06T09:00:00Z",
 				comment_count: 0,
 			},
 		]);
 		const [parsed] = parseBeads(stdout);
-		expect(parsed).toMatchObject({ id: "office-344.2", assignee: "theo", parent: "office-344" });
+		expect(parsed).toMatchObject({
+			id: "office-344.2",
+			assignee: "theo",
+			parent: "office-344",
+			started_at: "2026-10-06T09:00:00Z",
+		});
 		expect(parsed).not.toHaveProperty("owner");
 	});
 
@@ -188,9 +194,18 @@ describe("buildCards order and fields", () => {
 			description: "what",
 			acceptance: "done when",
 			updatedAt: "2026-10-06T12:00:00Z",
+			startedAt: null,
 			spend: null,
 			epicSpend: null,
 		});
+	});
+
+	it("carries Beads' started_at onto in-progress cards", () => {
+		const startedAt = "2026-10-06T09:00:00Z";
+		const [card] = build(
+			lists({ open: [bead("working", { status: "in_progress", started_at: startedAt })] }),
+		);
+		expect(card).toMatchObject({ lane: "in_progress", startedAt });
 	});
 
 	it("leaves epic null for a parent that is not an epic", () => {

@@ -22,6 +22,7 @@ function card(id: string, lane: WorkCard["lane"]): WorkCard {
 		description: "",
 		acceptance: "",
 		updatedAt: "2026-10-01T00:00:00.000Z",
+		startedAt: null,
 		spend: null,
 		epicSpend: null,
 	};

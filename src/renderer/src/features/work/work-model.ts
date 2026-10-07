@@ -1,4 +1,11 @@
-import { type WorkCard, type WorkLane, type WorkPriority, workLanes } from "@shared/work-board";
+import {
+	WORK_STALE_AGE_MS,
+	WORK_STALE_QUIET_MS,
+	type WorkCard,
+	type WorkLane,
+	type WorkPriority,
+	workLanes,
+} from "@shared/work-board";
 
 export const laneLabels: Readonly<Record<WorkLane, string>> = {
 	in_progress: "In progress",
@@ -53,6 +60,25 @@ export function boardSummary(cards: readonly WorkCard[]): string {
 	].join(" · ");
 }
 
+/** `2 h 40 m`: a card's age for the In progress lane. */
+export function elapsedFor(since: string, now: number): string {
+	const parsed = Date.parse(since);
+	const start = Number.isFinite(parsed) ? parsed : now;
+	const minutes = Math.max(0, Math.floor((now - start) / 60_000));
+	const days = Math.floor(minutes / (24 * 60));
+	if (days > 0) return `${days} d ${Math.floor((minutes % (24 * 60)) / 60)} h`;
+	const hours = Math.floor(minutes / 60);
+	return hours > 0 ? `${hours} h ${minutes % 60} m` : `${minutes} min`;
+}
+
+/** Quiet in-progress cards are stale only after both independent time limits pass. */
+export function isStaleInProgress(card: WorkCard, now: number): boolean {
+	if (card.lane !== "in_progress" || card.startedAt === null) return false;
+	const startedAt = Date.parse(card.startedAt);
+	const updatedAt = Date.parse(card.updatedAt);
+	if (!Number.isFinite(startedAt) || !Number.isFinite(updatedAt)) return false;
+	return now - startedAt > WORK_STALE_AGE_MS && now - updatedAt > WORK_STALE_QUIET_MS;
+}
 /** `12 min`, `3 h`, `2 d`: how long a card has waited since `since`. */
 export function waitedFor(since: string, now: number): string {
 	const minutes = Math.max(0, Math.floor((now - (Date.parse(since) || now)) / 60_000));

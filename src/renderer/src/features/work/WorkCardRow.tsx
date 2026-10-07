@@ -7,7 +7,14 @@ import { AgentDot } from "./AgentDot";
 import { epicTitle, spendLabel, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
-import { laneLabels, priorities, shortId, waitedFor } from "./work-model";
+import {
+	elapsedFor,
+	isStaleInProgress,
+	laneLabels,
+	priorities,
+	shortId,
+	waitedFor,
+} from "./work-model";
 import { assignCard, moveCard, setCardPriority, useWork } from "./work-store";
 import "./work-card.css";
 
@@ -24,6 +31,27 @@ function ReviewWait({ since }: { readonly since: string }) {
 		<p className="work-card__waiting work-card__waiting--review" title={title}>
 			waiting {waitedFor(since, now)}
 		</p>
+	);
+}
+
+/** In-progress duration and bead-update age, refreshed once a minute. */
+function InProgressAge({ card }: { readonly card: WorkCard }) {
+	const [now, setNow] = useState(Date.now);
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), 60_000);
+		return () => clearInterval(timer);
+	}, []);
+	if (!card.startedAt) return null;
+	const age = elapsedFor(card.startedAt, now);
+	const stale = isStaleInProgress(card, now);
+	const updateAge = elapsedFor(card.updatedAt, now);
+	return (
+		<span
+			className={`work-card__age${stale ? " work-card__age--stale" : ""}`}
+			title={`In progress ${age}, last bead update ${updateAge} ago`}
+		>
+			for {age}
+		</span>
 	);
 }
 
@@ -189,6 +217,7 @@ export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowPro
 					{shortId(card.id)}
 				</span>
 				<AssigneeChip card={card} />
+				{card.lane === "in_progress" ? <InProgressAge card={card} /> : null}
 				{card.spend !== null ? (
 					<span className="work-card__spend" title={spendTitle(card)}>
 						{spendLabel(card.spend)}

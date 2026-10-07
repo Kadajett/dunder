@@ -16,6 +16,10 @@ export type WorkLane = (typeof workLanes)[number];
  * it back (removes the label).
  */
 export const REVIEW_LABEL = "review";
+/** In-progress beads turn stale after being active this long. */
+export const WORK_STALE_AGE_MS = 2 * 60 * 60 * 1_000;
+/** A long-running bead is stale only when its last Beads update is this old too. */
+export const WORK_STALE_QUIET_MS = 45 * 60 * 1_000;
 
 export const workPrioritySchema = z.number().int().min(0).max(4);
 export type WorkPriority = 0 | 1 | 2 | 3 | 4;
@@ -36,6 +40,8 @@ export interface WorkCard {
 	readonly acceptance: string;
 	/** ISO time of the last change, for ordering. */
 	readonly updatedAt: string;
+	/** ISO time the bead entered In progress; null when it has never been claimed. */
+	readonly startedAt: string | null;
 	/**
 	 * ~USD the assignee's AI spent from the bead's start to its close (or now),
 	 * in cents; null when there is no figure (not in progress or done, never
