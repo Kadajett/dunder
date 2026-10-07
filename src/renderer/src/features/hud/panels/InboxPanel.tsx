@@ -4,13 +4,14 @@ import { markSeen, useTrustInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
 import { AskCard } from "./AskCard";
 import { openAgentScreen } from "./open-agent";
+import { SpendCard } from "./SpendCard";
 
 const KIND_LINE = {
 	blocked: "needs you — waiting on your answer",
 	done: "finished, not seen yet",
 } as const;
 
-type AgentItem = Exclude<TrustItem, { kind: "ask" }>;
+type AgentItem = Exclude<TrustItem, { kind: "ask" } | { kind: "spend" }>;
 
 function AgentCard({ item, model }: { readonly item: AgentItem; readonly model: OfficeModel }) {
 	const { agent } = item;
@@ -61,20 +62,19 @@ export function InboxPanel(props: {
 	if (items.length === 0) {
 		return (
 			<p className="hud-panel-empty">
-				Nothing needs you. Blocked agents, agents' asks and finished work you have not seen yet land
-				here.
+				Nothing needs you. Blocked agents, agents' asks, agents spending fast and finished work you
+				have not seen yet land here.
 			</p>
 		);
 	}
 	return (
 		<>
-			{items.map((item) =>
-				item.kind === "ask" ? (
-					<AskCard key={itemKey(item)} ask={item.ask} />
-				) : (
-					<AgentCard key={itemKey(item)} item={item} model={props.model} />
-				),
-			)}
+			{items.map((item) => {
+				if (item.kind === "ask") return <AskCard key={itemKey(item)} ask={item.ask} />;
+				if (item.kind === "spend")
+					return <SpendCard key={itemKey(item)} item={item} model={props.model} />;
+				return <AgentCard key={itemKey(item)} item={item} model={props.model} />;
+			})}
 		</>
 	);
 }

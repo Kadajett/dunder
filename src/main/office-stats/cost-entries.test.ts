@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addToDays, costOnDay, dayKey, parseCostLine } from "./cost-entries";
+import {
+	addToDays,
+	agentSpends,
+	costOnDay,
+	dayKey,
+	keepRecent,
+	parseCostLine,
+} from "./cost-entries";
 
 const assistant = (timestamp: string, total: number) =>
 	JSON.stringify({
@@ -59,5 +66,43 @@ describe("cost per day", () => {
 		const totals = addToDays(new Map(), [{ at, usd: 0.1 }]);
 		addToDays(totals, [{ at: at + 60_000, usd: 0.05 }]);
 		expect(totals.get(dayKey(at))).toBeCloseTo(0.15);
+	});
+});
+
+describe("per-agent spend", () => {
+	const now = Date.parse("2026-10-06T15:00:00.000Z");
+	const since = now - 30 * 60_000;
+	const day = dayKey(now);
+	const entry = (minutesAgo: number, usd: number) => ({ at: now - minutesAgo * 60_000, usd });
+
+	it("sums each agent's sessions for today and for the window, biggest spender first", () => {
+		const spends = agentSpends(
+			[
+				{ agent: "nora", days: new Map([[day, 2]]), recent: [entry(40, 1), entry(5, 0.5)] },
+				{ agent: "nora", days: new Map([[day, 1]]), recent: [entry(10, 3)] },
+				{
+					agent: "ava",
+					days: new Map([
+						[day, 6],
+						["2026-10-05", 50],
+					]),
+					recent: [entry(1, 0.2)],
+				},
+				{ agent: undefined, days: new Map([[day, 99]]), recent: [entry(1, 99)] },
+			],
+			day,
+			since,
+		);
+		expect(spends).toEqual([
+			{ name: "ava", usd: 6, recentUsd: 0.2 },
+			{ name: "nora", usd: 3, recentUsd: 3.5 },
+		]);
+	});
+
+	it("keeps only turns inside the window as new ones arrive", () => {
+		expect(keepRecent([entry(45, 1), entry(20, 2)], [entry(1, 3)], since)).toEqual([
+			entry(20, 2),
+			entry(1, 3),
+		]);
 	});
 });

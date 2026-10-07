@@ -19,12 +19,13 @@ export interface CompaniesDeps {
 	/** Working directory for workspaces created for new zones. */
 	readonly appRoot: string;
 	readonly cli: OfficeCli;
-	/** The current company changed (switch, rename, saved layout). */
+	/** The current company changed (switch, settings, saved layout). */
 	readonly emit: (company: Company) => void;
 	readonly now?: () => Date;
 }
 
 const identitySchema = companySchema.pick({ name: true, subtitle: true });
+const settingsSchema = companySchema.pick({ name: true, subtitle: true, spendAlarmUsd: true });
 const workspaceLabelSchema = z.string().trim().min(1).max(64);
 
 /** Run tasks one at a time, in call order; a failure does not block later tasks. */
@@ -87,15 +88,15 @@ export class CompaniesService {
 		});
 	}
 
-	/** New name and subtitle; the wall sign follows. */
-	rename(id: string, name: string, subtitle: string): Promise<void> {
+	/** New name, subtitle (the wall sign follows) and spend alarm. */
+	updateSettings(id: string, settings: unknown): Promise<void> {
 		return this.#serial(async () => {
 			const book = await this.#book();
 			const company = findCompany(book, id);
-			const identity = identitySchema.parse({ name, subtitle });
-			const layout = withCompanySign(company.layout, identity.name, identity.subtitle);
+			const next = settingsSchema.parse(settings);
+			const layout = withCompanySign(company.layout, next.name, next.subtitle);
 			const updatedAt = this.#now().toISOString();
-			await this.#put(book, { ...company, ...identity, layout, updatedAt });
+			await this.#put(book, { ...company, ...next, layout, updatedAt });
 		});
 	}
 

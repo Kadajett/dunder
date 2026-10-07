@@ -1,8 +1,7 @@
 import "./hud-stats.css";
 import type { OfficeModel } from "../office/model/office-model";
 import { useCostToday } from "./live-data";
-
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+import { costBreakdown, formatUsd } from "./spend";
 
 /** Live figures: who is working, and what the office spent on AI today. */
 export function StatTiles({ model }: { readonly model: OfficeModel }) {
@@ -21,12 +20,9 @@ export function StatTiles({ model }: { readonly model: OfficeModel }) {
 				<small>Agents</small>
 			</div>
 			{cost.state === "ok" ? (
-				<div
-					className="hud-chip hud-tile"
-					title={`${cost.day} · summed from ${cost.sessions} omp session log${cost.sessions === 1 ? "" : "s"}`}
-				>
+				<div className="hud-chip hud-tile" title={costBreakdown(cost)}>
 					<div className="hud-tile-value">
-						<strong>{usd.format(cost.usd)}</strong>
+						<strong>{formatUsd(cost.usd)}</strong>
 					</div>
 					<small>AI cost · today</small>
 				</div>

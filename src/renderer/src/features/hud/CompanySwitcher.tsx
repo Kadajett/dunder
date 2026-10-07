@@ -5,8 +5,8 @@ import { createLogger } from "@shared/log/logger";
 import { useState } from "react";
 import {
 	createCompany,
-	renameCompany,
 	switchCompany,
+	updateCompanySettings,
 	useCompanies,
 	useCompany,
 } from "../company/company-store";
@@ -14,12 +14,12 @@ import { CompanyForm } from "./CompanyForm";
 
 const log = createLogger("companies");
 
-type MenuMode = "list" | "create" | "rename";
+type MenuMode = "list" | "create" | "settings";
 
 /**
  * The company chip: logo and name of the company on screen, with the herdr
  * connection as a dot. Its menu switches between companies, creates one and
- * renames the current one.
+ * edits the current one's settings (name, subtitle, spend alarm).
  */
 export function CompanySwitcher({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 	const [mode, setMode] = useState<MenuMode | undefined>();
@@ -60,17 +60,24 @@ export function CompanySwitcher({ snapshot }: { readonly snapshot: SessionSnapsh
 								submitLabel="Create"
 								initialName=""
 								initialSubtitle=""
-								onSubmit={(name, subtitle) => createCompany(name, subtitle).then(close)}
+								onSubmit={({ name, subtitle }) => createCompany(name, subtitle).then(close)}
 								onCancel={() => setMode("list")}
 							/>
 						) : null}
-						{mode === "rename" ? (
+						{mode === "settings" ? (
 							<CompanyForm
-								heading={`Rename ${company.name}`}
+								heading={`${company.name} settings`}
 								submitLabel="Save"
 								initialName={company.name}
 								initialSubtitle={company.subtitle}
-								onSubmit={(name, subtitle) => renameCompany(company.id, name, subtitle).then(close)}
+								initialSpendAlarmUsd={company.spendAlarmUsd}
+								onSubmit={({ name, subtitle, spendAlarmUsd }) =>
+									updateCompanySettings(company.id, {
+										name,
+										subtitle,
+										spendAlarmUsd: spendAlarmUsd ?? company.spendAlarmUsd,
+									}).then(close)
+								}
 								onCancel={() => setMode("list")}
 							/>
 						) : null}
@@ -128,9 +135,9 @@ function CompanyList({ current, onMode, onClose }: CompanyListProps) {
 				type="button"
 				role="menuitem"
 				className="hud-menu-action"
-				onClick={() => onMode("rename")}
+				onClick={() => onMode("settings")}
 			>
-				Rename “{current.name}”…
+				“{current.name}” settings…
 			</button>
 		</>
 	);

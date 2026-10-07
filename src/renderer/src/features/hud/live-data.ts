@@ -1,22 +1,32 @@
 import type { CostToday } from "@shared/office-stats";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
 
-const NO_COST: CostToday = { state: "unavailable", reason: "waiting for the main process" };
+const useCost = create<{ readonly cost: CostToday }>(() => ({
+	cost: { state: "unavailable", reason: "waiting for the main process" },
+}));
 
-/**
- * Today's AI cost, pushed from main. A preload that predates the stats API
- * (renderer hot-reloaded ahead of a main restart) reads as unavailable.
- */
+let connected = false;
+
+/** Follow main's cost figures once per page, for every reader (the tile, the Trust Inbox). */
+function connect(): void {
+	if (connected) return;
+	connected = true;
+	// A preload that predates the stats API (renderer hot-reloaded ahead of a main restart).
+	if (!("stats" in window.office)) {
+		useCost.setState({
+			cost: { state: "unavailable", reason: "restart the app to load cost tracking" },
+		});
+		return;
+	}
+	const { stats } = window.office;
+	const set = (cost: CostToday): void => useCost.setState({ cost });
+	void stats.costToday().then(set);
+	stats.onCostToday(set);
+}
+
+/** Today's AI cost, office-wide and per agent, pushed from main. */
 export function useCostToday(): CostToday {
-	const [cost, setCost] = useState<CostToday>(NO_COST);
-	useEffect(() => {
-		if (!("stats" in window.office)) {
-			setCost({ state: "unavailable", reason: "restart the app to load cost tracking" });
-			return;
-		}
-		const { stats } = window.office;
-		void stats.costToday().then(setCost);
-		return stats.onCostToday(setCost);
-	}, []);
-	return cost;
+	useEffect(connect, []);
+	return useCost((state) => state.cost);
 }

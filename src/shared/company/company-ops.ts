@@ -1,6 +1,11 @@
 import { DEFAULT_LAYOUT } from "../layout/default-layout";
 import type { Layout } from "../layout/schema";
-import { COMPANY_VERSION, type Company, type CompanySummary } from "./company";
+import {
+	COMPANY_VERSION,
+	type Company,
+	type CompanySummary,
+	DEFAULT_SPEND_ALARM_USD,
+} from "./company";
 
 /** Longest slug before a de-duplication suffix (ids cap at 48 characters). */
 const SLUG_MAX = 40;
@@ -41,6 +46,7 @@ export function seedCompany(id: string, name: string, subtitle: string, now: Dat
 		id,
 		name,
 		subtitle,
+		spendAlarmUsd: DEFAULT_SPEND_ALARM_USD,
 		layout: withCompanySign(DEFAULT_LAYOUT, name, subtitle),
 		createdAt: stamp,
 		updatedAt: stamp,

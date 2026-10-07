@@ -76,7 +76,7 @@ export const IPC = {
 	companiesChanged: "companies:current-changed",
 	companiesSwitch: "companies:switch",
 	companiesCreate: "companies:create",
-	companiesRename: "companies:rename",
+	companiesUpdateSettings: "companies:update-settings",
 	companiesSaveLayout: "companies:save-layout",
 	companiesEnsureWorkspace: "companies:ensure-workspace",
 	/** Workforce actions (invoke): hire-dialog defaults, hire, fire, restart. */

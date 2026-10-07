@@ -1,30 +1,42 @@
 import "./company-form.css";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+export interface CompanyFormValues {
+	readonly name: string;
+	readonly subtitle: string;
+	/** Only when the form shows the spend alarm field. */
+	readonly spendAlarmUsd: number | undefined;
+}
+
 interface CompanyFormProps {
 	readonly heading: string;
 	readonly submitLabel: string;
 	readonly initialName: string;
 	readonly initialSubtitle: string;
+	/** Show the runaway-spend alarm field with this value (company settings); omitted for a new company. */
+	readonly initialSpendAlarmUsd?: number;
 	/** Persist the company; a rejection is shown in the form. */
-	readonly onSubmit: (name: string, subtitle: string) => Promise<void>;
+	readonly onSubmit: (values: CompanyFormValues) => Promise<void>;
 	readonly onCancel: () => void;
 }
 
-/** Name + subtitle form used by the company menu for "New company…" and "Rename…". */
+/** Company form used by the company menu for "New company…" and the current company's settings. */
 export function CompanyForm(props: CompanyFormProps) {
 	const [name, setName] = useState(props.initialName);
 	const [subtitle, setSubtitle] = useState(props.initialSubtitle);
+	const [alarm, setAlarm] = useState(String(props.initialSpendAlarmUsd ?? ""));
 	const [error, setError] = useState<string | undefined>();
 	const [busy, setBusy] = useState(false);
 	const nameRef = useRef<HTMLInputElement>(null);
 	useEffect(() => nameRef.current?.focus(), []);
+	const withAlarm = props.initialSpendAlarmUsd !== undefined;
 
 	const submit = (event: FormEvent): void => {
 		event.preventDefault();
 		setBusy(true);
 		setError(undefined);
-		props.onSubmit(name.trim(), subtitle.trim()).then(
+		const spendAlarmUsd = withAlarm ? Number(alarm) : undefined;
+		props.onSubmit({ name: name.trim(), subtitle: subtitle.trim(), spendAlarmUsd }).then(
 			() => setBusy(false),
 			(reason: unknown) => {
 				setBusy(false);
@@ -55,6 +67,20 @@ export function CompanyForm(props: CompanyFormProps) {
 					onChange={(event) => setSubtitle(event.target.value)}
 				/>
 			</label>
+			{withAlarm ? (
+				<label className="company-form-field">
+					<span>Spend alarm: an agent spending more than this many US dollars in 30 minutes</span>
+					<input
+						type="number"
+						min={0.5}
+						max={10_000}
+						step={0.5}
+						required
+						value={alarm}
+						onChange={(event) => setAlarm(event.target.value)}
+					/>
+				</label>
+			) : null}
 			{error ? <p className="company-form-error">{error}</p> : null}
 			<div className="company-form-actions">
 				<button type="button" className="company-form-cancel" onClick={props.onCancel}>

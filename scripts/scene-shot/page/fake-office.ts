@@ -143,7 +143,14 @@ const fakeOffice = {
 	},
 	// A sample day's AI spend, so the wall placard shows a figure as it does in the app.
 	stats: {
-		costToday: async () => ({ state: "ok", day: "2026-10-06", usd: 47.18, sessions: 9 }),
+		costToday: async () => ({
+			state: "ok",
+			day: "2026-10-06",
+			usd: 47.18,
+			sessions: 9,
+			agents: [],
+			untracked: [],
+		}),
 		onCostToday: () => unsubscribe,
 		memories: async () => ({ projects: [] }),
 		remember: async () => ({ ok: false, reason: "scene-shot" }),
