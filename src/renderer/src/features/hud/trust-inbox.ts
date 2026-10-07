@@ -1,6 +1,7 @@
 import type { AppError } from "@shared/app-errors";
 import { agentActivity, agentName } from "@shared/herdr/agent-label";
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
+import { askSnoozeKey, blockedSnoozeKey, type Snooze } from "@shared/inbox-snooze";
 import type { SeenDone } from "@shared/office-stats";
 import type { HumanAsk } from "@shared/work-board";
 import type { Spender } from "./spend";
@@ -85,4 +86,33 @@ export function trustInbox({
 		...spending,
 		...done.map((agent) => ({ kind: "done" as const, agent })),
 	];
+}
+
+/** The key an item snoozes under: asks by bead id, blocked agents by name; other kinds don't snooze. */
+export function snoozeKeyOf(item: TrustItem): string | null {
+	if (item.kind === "ask") return askSnoozeKey(item.ask.id);
+	if (item.kind === "blocked") return blockedSnoozeKey(item.agent.name);
+	return null;
+}
+
+/** A snoozed item and when it comes back. */
+export interface SnoozedItem {
+	readonly item: TrustItem;
+	readonly until: number;
+}
+
+/** The inbox without its snoozed items (`awake`), and those items with their return time. */
+export function splitSnoozed(
+	items: readonly TrustItem[],
+	snoozes: readonly Snooze[],
+): { readonly awake: TrustItem[]; readonly snoozed: SnoozedItem[] } {
+	const until = new Map(snoozes.map((snooze) => [snooze.key, snooze.until]));
+	const awake: TrustItem[] = [];
+	const snoozed: SnoozedItem[] = [];
+	for (const item of items) {
+		const at = until.get(snoozeKeyOf(item) ?? "");
+		if (at === undefined) awake.push(item);
+		else snoozed.push({ item, until: at });
+	}
+	return { awake, snoozed };
 }

@@ -10,6 +10,7 @@ import type { CompaniesApi } from "./company/company";
 import type { RosterApi } from "./company/roster";
 import type { WorkforceApi } from "./company/workforce";
 import type { HerdrEvent, SessionSnapshot } from "./herdr/schema";
+import type { InboxSnoozeApi } from "./inbox-snooze";
 import type { MailQueueApi } from "./mail-queue";
 import type { ModelsApi } from "./models";
 import type { OfficeStatsApi } from "./office-stats";
@@ -140,6 +141,11 @@ export const IPC = {
 	alertsSetMuted: "alerts:set-muted",
 	alertsChime: "alerts:chime",
 	alertsOpen: "alerts:open",
+	/** Trust Inbox snoozes: the list, snooze and unsnooze (invoke), changes (main → renderer). */
+	snoozesList: "snoozes:list",
+	snoozesSnooze: "snoozes:snooze",
+	snoozesUnsnooze: "snoozes:unsnooze",
+	snoozesChanged: "snoozes:changed",
 	/** Renderer errors: the list (invoke), a report (send), dismiss and open devtools (invoke), changes (main → renderer). */
 	appErrorsList: "app-errors:list",
 	appErrorsReport: "app-errors:report",
@@ -204,6 +210,7 @@ export interface OfficeApi {
 	readonly voice: VoiceApi;
 	readonly whatsNew: WhatsNewApi;
 	readonly alerts: AlertsApi;
+	readonly snoozes: InboxSnoozeApi;
 	readonly errors: AppErrorsApi;
 	readonly agents: AgentsApi;
 	readonly worktrees: WorktreesApi;

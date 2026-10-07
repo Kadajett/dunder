@@ -1,13 +1,15 @@
 import type { SessionSnapshot } from "@shared/herdr/schema";
+import { blockedSnoozeKey } from "@shared/inbox-snooze";
 import { type ReactNode, useEffect, useRef } from "react";
 import type { OfficeModel } from "../../office/model/office-model";
-import { markSeen, useTrustInbox } from "../inbox-store";
+import { markSeen, useInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
 import { useHud } from "../view-store";
 import { AskCard } from "./AskCard";
 import { DoneDetail } from "./DoneDetail";
 import { ErrorCard } from "./ErrorCard";
 import { openAgentScreen } from "./open-agent";
+import { SnoozedPeek, SnoozeMenu } from "./Snooze";
 import { SpendCard } from "./SpendCard";
 
 const KIND_LINE = {
@@ -51,7 +53,9 @@ function AgentCard({ item, model }: { readonly item: AgentItem; readonly model: 
 					<button type="button" className="secondary" onClick={() => markSeen(agent)}>
 						Mark seen
 					</button>
-				) : null}
+				) : (
+					<SnoozeMenu snoozeKey={blockedSnoozeKey(agent.name)} />
+				)}
 			</div>
 		</article>
 	);
@@ -95,25 +99,23 @@ function InboxItem({ item, model }: { readonly item: TrustItem; readonly model: 
 	);
 }
 
-/** Trust Inbox: blocked agents, the app's own errors, what agents asked of Jeremy, runaway spend and finished work he has not seen. */
+/** Trust Inbox: blocked agents, the app's own errors, what agents asked of Jeremy, runaway spend and finished work he has not seen; snoozed items wait under 'N snoozed'. */
 export function InboxPanel(props: {
 	readonly model: OfficeModel;
 	readonly snapshot: SessionSnapshot | null;
 }) {
-	const items = useTrustInbox(props.snapshot);
-	if (items.length === 0) {
-		return (
-			<p className="hud-panel-empty">
-				Nothing needs you. Blocked agents, app errors, agents' asks, agents spending fast and
-				finished work you have not seen yet land here.
-			</p>
-		);
-	}
+	const { awake, snoozed } = useInbox(props.snapshot);
 	return (
 		<>
-			{items.map((item) => (
-				<InboxItem key={itemKey(item)} item={item} model={props.model} />
-			))}
+			<SnoozedPeek snoozed={snoozed} />
+			{awake.length === 0 ? (
+				<p className="hud-panel-empty">
+					Nothing needs you. Blocked agents, app errors, agents' asks, agents spending fast and
+					finished work you have not seen yet land here.
+				</p>
+			) : (
+				awake.map((item) => <InboxItem key={itemKey(item)} item={item} model={props.model} />)
+			)}
 		</>
 	);
 }

@@ -8,8 +8,16 @@ import { useAppErrors } from "../errors/errors-store";
 import { useHumanAsks } from "../work/asks-store";
 import { useWorkCards } from "../work/work-store";
 import { useCostToday } from "./live-data";
+import { useSnoozes } from "./snooze-store";
 import { runawaySpenders } from "./spend";
-import { type InboxAgent, inboxAgents, type TrustItem, trustInbox } from "./trust-inbox";
+import {
+	type InboxAgent,
+	inboxAgents,
+	type SnoozedItem,
+	splitSnoozed,
+	type TrustItem,
+	trustInbox,
+} from "./trust-inbox";
 
 const log = createLogger("trust-inbox");
 
@@ -29,21 +37,33 @@ function loadSeen(): void {
 	);
 }
 
-/** What needs the user right now (Trust Inbox): the live snapshot, app errors, the asks on the work board, runaway spend. */
-export function useTrustInbox(snapshot: SessionSnapshot | null): TrustItem[] {
+/**
+ * The Trust Inbox: what needs the user right now (`awake`: the live snapshot,
+ * app errors, the asks on the work board, runaway spend), and what he snoozed.
+ */
+export function useInbox(snapshot: SessionSnapshot | null): {
+	readonly awake: TrustItem[];
+	readonly snoozed: SnoozedItem[];
+} {
 	useEffect(loadSeen, []);
 	const seen = useSeen((state) => state.seen);
 	const asks = useHumanAsks();
 	const errors = useAppErrors((state) => state.errors);
+	const snoozes = useSnoozes((state) => state.snoozes);
 	const cost = useCostToday();
 	const threshold = useCompany().spendAlarmUsd;
 	const cards = useWorkCards();
 	const agents = useMemo(() => inboxAgents(snapshot), [snapshot]);
 	const spenders = useMemo(() => runawaySpenders(cost, threshold, cards), [cost, threshold, cards]);
 	return useMemo(
-		() => trustInbox({ agents, seen, asks, spenders, errors }),
-		[agents, seen, asks, spenders, errors],
+		() => splitSnoozed(trustInbox({ agents, seen, asks, spenders, errors }), snoozes),
+		[agents, seen, asks, spenders, errors, snoozes],
 	);
+}
+
+/** What needs the user right now, snoozed items left out (the badge counts these). */
+export function useTrustInbox(snapshot: SessionSnapshot | null): TrustItem[] {
+	return useInbox(snapshot).awake;
 }
 
 /**

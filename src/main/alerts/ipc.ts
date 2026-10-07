@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { snoozeChoiceSchema, snoozeKeySchema } from "@shared/inbox-snooze";
 import { IPC } from "@shared/ipc";
 import { createLogger } from "@shared/log/logger";
 import { app, BrowserWindow, ipcMain, Notification } from "electron";
@@ -31,10 +32,12 @@ function mainWindow(): BrowserWindow | undefined {
 	return BrowserWindow.getAllWindows().find((window) => !window.isDestroyed());
 }
 
-/** Needs-you alerts over Electron's notifications and the office window. */
+/** Needs-you alerts over Electron's notifications and the office window; loads mute and snoozes at once. */
 export function createAlerts(): AlertService {
-	return new AlertService({
+	const alerts = new AlertService({
 		settingsPath: join(app.getPath("userData"), "alerts.json"),
+		snoozesPath: join(app.getPath("userData"), "inbox-snoozes.json"),
+		emitSnoozes: (snoozes) => mainWindow()?.webContents.send(IPC.snoozesChanged, snoozes),
 		now: Date.now,
 		isFocused: () => BrowserWindow.getAllWindows().some((window) => window.isFocused()),
 		show: showNotification,
@@ -48,10 +51,19 @@ export function createAlerts(): AlertService {
 			window.webContents.send(IPC.alertsOpen, target);
 		},
 	});
+	void alerts.start();
+	return alerts;
 }
 
-/** `window.office.alerts` handlers. */
+/** `window.office.alerts` and `window.office.snoozes` handlers. */
 export function registerAlertsIpc(alerts: AlertService): void {
 	ipcMain.handle(IPC.alertsMuted, () => alerts.muted());
 	ipcMain.handle(IPC.alertsSetMuted, (_event, muted: unknown) => alerts.setMuted(muted === true));
+	ipcMain.handle(IPC.snoozesList, () => alerts.snoozes());
+	ipcMain.handle(IPC.snoozesSnooze, (_event, key: unknown, choice: unknown) =>
+		alerts.snooze(snoozeKeySchema.parse(key), snoozeChoiceSchema.parse(choice)),
+	);
+	ipcMain.handle(IPC.snoozesUnsnooze, (_event, key: unknown) =>
+		alerts.unsnooze(snoozeKeySchema.parse(key)),
+	);
 }

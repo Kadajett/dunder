@@ -16,6 +16,7 @@ import { HireDialog } from "../features/hire/HireDialog";
 import { connectRoster } from "../features/hire/roster-store";
 import { connectAlerts } from "../features/hud/alerts-store";
 import { HudPanels } from "../features/hud/HudPanels";
+import { connectSnoozes } from "../features/hud/snooze-store";
 import { TopBar } from "../features/hud/TopBar";
 import { useReportBusy } from "../features/hud/update-busy";
 import { useHud } from "../features/hud/view-store";
@@ -58,6 +59,7 @@ export function App() {
 	useEffect(connectWork, []);
 	useEffect(connectPool, []);
 	useEffect(connectAppErrors, []);
+	useEffect(connectSnoozes, []);
 	useEffect(connectAlerts, []);
 	useReportBusy();
 	return (

@@ -185,6 +185,12 @@ const api: OfficeApi = {
 		onChime: (listener) => listen(IPC.alertsChime, listener),
 		onOpen: (listener) => listen(IPC.alertsOpen, listener),
 	},
+	snoozes: {
+		list: () => ipcRenderer.invoke(IPC.snoozesList),
+		onChanged: (listener) => listen(IPC.snoozesChanged, listener),
+		snooze: (key, choice) => ipcRenderer.invoke(IPC.snoozesSnooze, key, choice),
+		unsnooze: (key) => ipcRenderer.invoke(IPC.snoozesUnsnooze, key),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

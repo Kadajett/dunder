@@ -1,0 +1,95 @@
+/* 'Snooze ▾' on a card, and its three choices. */
+.snooze-menu {
+	position: relative;
+	display: inline-flex;
+}
+
+.snooze-options {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	min-width: 160px;
+	padding: 4px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	background: var(--panel);
+	box-shadow: 0 8px 20px #6b553a33;
+}
+
+.hud-card-actions .snooze-options button {
+	width: 100%;
+	padding: 6px 10px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--ink);
+	font: 500 12px var(--font-ui);
+	text-align: left;
+}
+
+.hud-card-actions .snooze-options button:hover,
+.hud-card-actions .snooze-options button:focus-visible {
+	background: #efe6d6;
+}
+
+/* 'N snoozed' at the top of the inbox, and the peek. */
+.snoozed {
+	margin-bottom: 8px;
+}
+
+.snoozed-toggle {
+	padding: 3px 10px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--ink-soft);
+	font: 600 11px var(--font-ui);
+	cursor: pointer;
+}
+
+.snoozed-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 6px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.snoozed-list li {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: center;
+	gap: 2px 8px;
+	padding: 6px 8px;
+	border-radius: 8px;
+	background: #f6f0e4;
+	font: 400 11.5px var(--font-ui);
+}
+
+.snoozed-what {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.snoozed-until {
+	grid-column: 1;
+	color: var(--ink-soft);
+	font-size: 10.5px;
+}
+
+.snoozed-unsnooze {
+	grid-column: 2;
+	grid-row: 1 / span 2;
+	padding: 3px 8px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--ink);
+	font: 600 11px var(--font-ui);
+	cursor: pointer;
+}
