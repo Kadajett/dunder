@@ -31,7 +31,13 @@ localStorage.clear();
  * Fresh launch (after an update and 3 h away): the What's new and Away cards are due. Every other
  * state is the steady office, those cards long dismissed, so each surface can be judged on its own.
  */
-const FRESH_LAUNCH = ["01-default", "01b-away", "09b-pool-table-fresh", "11-everything"];
+const FRESH_LAUNCH = [
+	"01-default",
+	"01b-away",
+	"01c-whats-new",
+	"09b-pool-table-fresh",
+	"11-everything",
+];
 const freshLaunch = FRESH_LAUNCH.includes(
 	new URLSearchParams(location.search).get("state") ?? "01-default",
 );
@@ -347,6 +353,8 @@ const whatsNew: WhatsNew = {
 			subject: "whats-new: ask what's off on a thumbs down (office-q1a)",
 			tryIt: "Thumb a row down on this card",
 			rating: null,
+			type: "task",
+			internal: false,
 		},
 		{
 			id: "office-u8e",
@@ -354,6 +362,8 @@ const whatsNew: WhatsNew = {
 			subject: "chief: markdown tables (office-u8e)",
 			tryIt: "Ask Max for a spend table",
 			rating: "up",
+			type: "feature",
+			internal: false,
 		},
 		{
 			id: "office-e3r",
@@ -361,6 +371,8 @@ const whatsNew: WhatsNew = {
 			subject: "inbox: snooze until 9:00 (office-e3r)",
 			tryIt: null,
 			rating: null,
+			type: "feature",
+			internal: false,
 		},
 		{
 			id: "office-7hk",
@@ -368,6 +380,8 @@ const whatsNew: WhatsNew = {
 			subject: "away: summary card (office-7hk)",
 			tryIt: "Lock the screen for 2 h",
 			rating: null,
+			type: "feature",
+			internal: false,
 		},
 		{
 			id: "office-f2d",
@@ -375,6 +389,8 @@ const whatsNew: WhatsNew = {
 			subject: "pool: autopilot plays Jeremy's shot after 20 s (office-f2d)",
 			tryIt: null,
 			rating: "down",
+			type: "bug",
+			internal: false,
 		},
 		{
 			id: "office-j8s",
@@ -382,6 +398,17 @@ const whatsNew: WhatsNew = {
 			subject: "call: mic check (office-j8s)",
 			tryIt: "Start a call, then Mic",
 			rating: null,
+			type: "bug",
+			internal: false,
+		},
+		{
+			id: "office-k2p",
+			title: "hud:shot captures every HUD state",
+			subject: "office-k2p: hud-shot harness",
+			tryIt: null,
+			rating: null,
+			type: "task",
+			internal: true,
 		},
 	],
 	others: ["Bump three to r180", "Fix flaky pool test"],

@@ -120,6 +120,12 @@ async function poolTable(): Promise<void> {
 const STATES: Record<string, () => Promise<void>> = {
 	"01-default": async () => undefined,
 	"01b-away": async () => useWhatsNew.setState({ card: null }),
+	"01c-whats-new": async () => {
+		await until(() => document.querySelector(".whats-new__review") !== null, 10_000);
+		if (!click(".whats-new__review")) notes.push("what's new toggle not found");
+		await wait(100);
+		if (!click(".whats-new__others .whats-new__more")) notes.push("'Also changed' not found");
+	},
 	"02-inbox": async () => useHud.setState({ panel: "inbox" }),
 	"03-team": async () => useHud.setState({ panel: "team" }),
 	"04-brain": async () => useHud.setState({ panel: "brain" }),

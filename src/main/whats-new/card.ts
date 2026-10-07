@@ -1,10 +1,6 @@
 import type { UpdateCommit } from "@shared/app-update";
+import { beadOfSubject } from "@shared/change-notes.mts";
 
-const BEAD_ID = String.raw`[a-z][a-z0-9]*-[a-z0-9]+(?:\.[0-9]+)*`;
-/** `office-dk7.2: summary`: an engineer's commit on their bead branch. */
-const BEAD_COMMIT = new RegExp(`^(${BEAD_ID}): `, "i");
-/** `Merge bead/office-dk7.2 (…)`: Max merging a bead branch. */
-const BEAD_MERGE = new RegExp(`^Merge bead/(${BEAD_ID})(?![\\w.-])`, "i");
 /** Branch plumbing (`Merge branch 'master' into bead/…`): no change of its own to report. */
 const PLUMBING_MERGE = /^Merge (?:remote-tracking )?branch /;
 const TRY_IT = /^\s*try it:\s*(.*\S)\s*$/i;
@@ -30,16 +26,13 @@ export function beadsOfCommits(commits: readonly UpdateCommit[]): CommitBeads {
 	const beads = new Map<string, CommitBead & { readonly merge: boolean }>();
 	const others: string[] = [];
 	for (const { subject } of commits) {
-		const commit = BEAD_COMMIT.exec(subject)?.[1];
-		const merge = BEAD_MERGE.exec(subject)?.[1];
-		const id = (commit ?? merge)?.toLowerCase();
-		if (id === undefined) {
+		const named = beadOfSubject(subject);
+		if (!named) {
 			if (!PLUMBING_MERGE.test(subject)) others.push(subject);
 			continue;
 		}
-		const seen = beads.get(id);
-		if (!seen || (seen.merge && commit !== undefined))
-			beads.set(id, { id, subject, merge: commit === undefined });
+		const seen = beads.get(named.id);
+		if (!seen || (seen.merge && !named.merge)) beads.set(named.id, { ...named, subject });
 	}
 	return { beads: [...beads.values()].map(({ id, subject }) => ({ id, subject })), others };
 }

@@ -10,6 +10,7 @@ const log = createLogger("hud-shot");
 const STATES = [
 	"01-default",
 	"01b-away",
+	"01c-whats-new",
 	"02-inbox",
 	"03-team",
 	"04-brain",

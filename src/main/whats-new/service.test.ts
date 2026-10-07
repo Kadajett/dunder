@@ -15,10 +15,12 @@ const LOG: UpdateCommit[] = [
 const DETAILS: BeadDetail[] = [
 	{
 		id: "office-c3y",
-		title: "What's new card",
+		title: "idea: What's new card",
 		notes: "abc on bead/office-c3y\nTry it: relaunch and rate a row",
+		issue_type: "feature",
 	},
 ];
+const PATHS = new Map([["office-c3y", ["src/renderer/a.tsx", "src/renderer/a.test.ts"]]]);
 
 let statePath: string;
 
@@ -31,7 +33,7 @@ function service(overrides: Partial<WhatsNewDeps> = {}) {
 	const deps: WhatsNewDeps = {
 		built: BUILT,
 		statePath,
-		git: { isAncestor: async () => true, log: async () => LOG },
+		git: { isAncestor: async () => true, log: async () => LOG, paths: async () => PATHS },
 		details: async () => DETAILS,
 		comment: async (id, text) => {
 			calls.push(`comment ${id} ${text}`);
@@ -55,7 +57,7 @@ describe("WhatsNewService", () => {
 		expect(JSON.parse(await readFile(statePath, "utf8"))).toMatchObject({ lastSeenBuild: BUILT });
 	});
 
-	it("lists the beads since the last seen build with title and try-it, other commits apart", async () => {
+	it("lists the beads since the last seen build with display title, try-it, type and reach, other commits apart", async () => {
 		await seen();
 		expect(await service().whatsNew.get()).toEqual({
 			built: BUILT,
@@ -67,6 +69,8 @@ describe("WhatsNewService", () => {
 					subject: "office-c3y: What's new card",
 					tryIt: "relaunch and rate a row",
 					rating: null,
+					type: "feature",
+					internal: false,
 				},
 			],
 			others: ["Bump vite"],
@@ -109,7 +113,11 @@ describe("WhatsNewService", () => {
 		expect(await noBd.whatsNew.rate("office-c3y", "up", "")).toMatchObject({ ok: false });
 		expect(noBd.calls).toEqual([]);
 		const noGit = service({
-			git: { isAncestor: async () => true, log: () => Promise.reject(new Error("git failed")) },
+			git: {
+				isAncestor: async () => true,
+				log: () => Promise.reject(new Error("git failed")),
+				paths: async () => PATHS,
+			},
 		});
 		expect(await noGit.whatsNew.get()).toBeNull();
 	});
@@ -124,6 +132,7 @@ describe("WhatsNewService", () => {
 					logs.push(args);
 					return LOG;
 				},
+				paths: async () => PATHS,
 			},
 			details: async () => [],
 		});
@@ -134,5 +143,25 @@ describe("WhatsNewService", () => {
 			beads: [],
 			others: ["Bump vite", "office-c3y: What's new card"],
 		});
+	});
+
+	it("marks a bead whose commits touch only internal paths, and still lists the card when the file list fails", async () => {
+		await seen();
+		const internal = service({
+			git: {
+				isAncestor: async () => true,
+				log: async () => LOG,
+				paths: async () => new Map([["office-c3y", ["scripts/hud-shot.mts", "docs/agents/x.md"]]]),
+			},
+		});
+		expect((await internal.whatsNew.get())?.beads[0]?.internal).toBe(true);
+		const noPaths = service({
+			git: {
+				isAncestor: async () => true,
+				log: async () => LOG,
+				paths: () => Promise.reject(new Error("no")),
+			},
+		});
+		expect((await noPaths.whatsNew.get())?.beads[0]?.internal).toBe(false);
 	});
 });

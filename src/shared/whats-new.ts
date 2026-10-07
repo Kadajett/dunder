@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { workIdSchema } from "./work-board";
 
-/** Rows shown before the rest fold under "more". */
-export const WHATS_NEW_ROWS = 8;
+/** Rows in 'Try these' (beads with a Try it line); the rest fold into 'Also changed'. */
+export const WHATS_NEW_TRY_ROWS = 3;
 /** Commits listed when the last seen build is not an ancestor (history rewritten). */
 export const WHATS_NEW_RECENT = 20;
 export const WHATS_NEW_FEEDBACK_MAX = 500;
@@ -19,6 +19,10 @@ export interface WhatsNewBead {
 	/** The last `Try it:` line of the bead's notes (without the prefix), if any. */
 	readonly tryIt: string | null;
 	readonly rating: WhatsNewRating | null;
+	/** bd's issue_type (feature, bug, task, …); null when bd couldn't be read. */
+	readonly type: string | null;
+	/** Its commits touch only tooling, agent docs, tests or CI ('Under the hood'). */
+	readonly internal: boolean;
 }
 
 /** The card after an update; main sends null when there is nothing to show. */
