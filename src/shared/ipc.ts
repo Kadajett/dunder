@@ -14,7 +14,6 @@ import type { InboxSnoozeApi } from "./inbox-snooze";
 import type { MailQueueApi } from "./mail-queue";
 import type { ModelsApi } from "./models";
 import type { OfficeStatsApi } from "./office-stats";
-import type { PlanApi } from "./plan";
 import type { PoolApi } from "./pool";
 import type { ScreensApi, Unsubscribe } from "./screens";
 import type { StaffApi } from "./staff";
@@ -163,12 +162,6 @@ export const IPC = {
 	awayGet: "away:get",
 	awayDismiss: "away:dismiss",
 	awaySummary: "away:summary",
-	/** Morning plan (office-4as): today's plan, decisions (invoke), changes (main → renderer). */
-	planToday: "plan:today",
-	planChanged: "plan:changed",
-	planApprove: "plan:approve",
-	planEdit: "plan:edit",
-	planDiscuss: "plan:discuss",
 } as const;
 
 export type BridgeStatus =
@@ -223,5 +216,4 @@ export interface OfficeApi {
 	readonly agents: AgentsApi;
 	readonly worktrees: WorktreesApi;
 	readonly away: AwayApi;
-	readonly plan: PlanApi;
 }
