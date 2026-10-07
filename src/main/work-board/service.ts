@@ -17,8 +17,14 @@ import { type SpendOf, withSpend } from "./spend";
 
 const log = createLogger("work-board");
 
-/** How often bd is re-read; agents and the CLI change beads behind the app's back. */
+/** How often the board checks for changes; agents and the CLI change beads behind the app's back. */
 export const WORK_POLL_MS = 5_000;
+/**
+ * With a change stamp, bd itself is read only when the stamp moves, or this
+ * often regardless (writes the stamp misses, e.g. comments; spend that grows).
+ * Each read runs four bd processes on the embedded Dolt database.
+ */
+export const WORK_FULL_READ_MS = 60_000;
 /** The Done lane looks back this far. */
 const DONE_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Closed beads this recent still count towards their epic's spend. */
@@ -47,6 +53,11 @@ export interface WorkBoardDeps {
 		cards: readonly WorkCard[],
 		now: number,
 	) => Promise<ShippingStats>;
+	/**
+	 * Something cheap that changes when beads are written (file mtimes), checked
+	 * every `WORK_POLL_MS` instead of reading bd. Absent: bd is read every time.
+	 */
+	readonly changeStamp?: () => Promise<string>;
 }
 
 /** A board as read from bd, before main stamps its revision. */
@@ -112,6 +123,8 @@ export class WorkBoardService {
 	#queued: Promise<void> | undefined;
 	#started = false;
 	#cancelTimer: (() => void) | undefined;
+	/** The change stamp at the last full read, and when that was. */
+	#lastRead: { stamp: string; at: number } | undefined;
 
 	constructor(deps: WorkBoardDeps) {
 		this.#deps = deps;
@@ -240,9 +253,23 @@ export class WorkBoardService {
 	}
 
 	async #tick(): Promise<void> {
-		await this.refresh();
+		await this.#refreshIfChanged().catch((error: unknown) =>
+			log.warn("board check failed", { error }),
+		);
 		if (this.#started)
 			this.#cancelTimer = this.#deps.setTimer(() => void this.#tick(), WORK_POLL_MS);
+	}
+
+	/** Read bd when the change stamp moved or the full-read interval passed (always, without a stamp). */
+	async #refreshIfChanged(): Promise<void> {
+		const changeStamp = this.#deps.changeStamp;
+		if (!changeStamp) return this.refresh();
+		const stamp = await changeStamp();
+		const now = this.#deps.now();
+		const last = this.#lastRead;
+		if (last && last.stamp === stamp && now - last.at < WORK_FULL_READ_MS) return;
+		await this.refresh();
+		this.#lastRead = { stamp, at: now };
 	}
 
 	#bd(args: readonly string[]): Promise<string> {

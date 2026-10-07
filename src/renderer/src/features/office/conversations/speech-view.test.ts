@@ -27,7 +27,11 @@ describe("speechView", () => {
 	});
 
 	it("keeps spoken messages as full bubbles, hovered or not", () => {
-		const saying = { kind: "saying", message: { ...message, state: "delivered" } } as const;
+		const saying = {
+			kind: "saying",
+			message: { ...message, state: "delivered" },
+			until: 20_000,
+		} as const;
 		const shown = { kind: "saying", to: "raina", text: "line-up is ready" };
 		expect(speechView(saying, undefined, false)).toEqual(shown);
 		expect(speechView(saying, undefined, true)).toEqual(shown);

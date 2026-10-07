@@ -1,8 +1,13 @@
 import "./speech.css";
 import { Html } from "@react-three/drei";
-import { type ReactNode, useEffect, useState } from "react";
-import { freshPost, useBoardPosts } from "../../brainstorm/board-posts";
-import { speechFor, useConversations } from "./conversation-store";
+import { type ReactNode, useEffect, useReducer } from "react";
+import {
+	type BoardPost,
+	freshPost,
+	POST_BUBBLE_MS,
+	useBoardPosts,
+} from "../../brainstorm/board-posts";
+import { type Speech, speechFor, useConversations } from "./conversation-store";
 import { type SpeechView, speechView } from "./speech-view";
 
 const MAX_CHARS = 140;
@@ -10,14 +15,30 @@ const MAX_CHARS = 140;
 const MARK_DROP = 0.4;
 const OVERLAY_STYLE = { pointerEvents: "none" } as const;
 
-/** Re-render once a second so bubbles expire on time. */
-function useNow(): number {
-	const [now, setNow] = useState(Date.now);
+/**
+ * Re-render once at `at` (ms), when what the bubble shows times out; nothing
+ * ticks while it shows nothing or something with no deadline (a waiting mark).
+ */
+function useRenderAt(at: number | null): void {
+	const [, rerender] = useReducer((count: number) => count + 1, 0);
 	useEffect(() => {
-		const timer = window.setInterval(() => setNow(Date.now()), 1_000);
-		return () => window.clearInterval(timer);
-	}, []);
-	return now;
+		if (at === null) return;
+		let timer = 0;
+		// A timer can fire a hair early; re-render only once `at` has really passed.
+		const fire = (): void => {
+			const left = at - Date.now();
+			if (left > 0) timer = window.setTimeout(fire, left);
+			else rerender();
+		};
+		fire();
+		return () => window.clearTimeout(timer);
+	}, [at]);
+}
+
+/** When the speech or board post on show stops being shown; null when nothing on show times out. */
+function shownUntil(speech: Speech | undefined, post: BoardPost | undefined): number | null {
+	if (speech?.kind === "saying") return speech.until;
+	return post ? post.at + POST_BUBBLE_MS : null;
 }
 
 function clip(text: string): string {
@@ -92,9 +113,10 @@ export function SpeechBubble({
 }) {
 	const heard = useConversations((state) => state.heard);
 	const posts = useBoardPosts((state) => state.posts);
-	const now = useNow();
+	const now = Date.now();
 	const speech = speechFor(heard, agentName, now);
 	const post = speech ? undefined : freshPost(posts, agentName, now);
+	useRenderAt(shownUntil(speech, post));
 	const view = speechView(speech, post?.text, hovered);
 	const waitingFor = view?.kind === "waiting" && view.caption === null ? view.to : null;
 	const bubble = view ? bubbleFor(view) : null;

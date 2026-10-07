@@ -3,6 +3,7 @@ import { createLogger } from "@shared/log/logger";
 import type { WorkBoard } from "@shared/work-board";
 import { app } from "electron";
 import { runBd } from "../beads/bd";
+import { beadsStamp } from "../beads/stamp";
 import { postToMailbox } from "../switchboard/service";
 import { ActivityClock } from "./activity";
 import { gitIn, MergeChecks } from "./merges";
@@ -35,6 +36,7 @@ export function createWorkBoard(
 	return new WorkBoardService({
 		runBd,
 		cwd,
+		changeStamp: () => beadsStamp(cwd),
 		now: Date.now,
 		setTimer: (callback, ms) => {
 			const timer = setTimeout(callback, ms);

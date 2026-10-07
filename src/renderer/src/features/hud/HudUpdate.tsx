@@ -8,6 +8,7 @@ import type {
 import { useEffect, useId, useState } from "react";
 import { useCall } from "../chief/call/call-store";
 import { BatchedChip } from "./BatchedChip";
+import { useSecondsLeft } from "./countdown";
 import { RollbackSection } from "./HudRollback";
 import { applyUpdate, requesters, skipUpdate } from "./update-actions";
 
@@ -32,16 +33,6 @@ export function useUpdateStatus(): UpdateStatus {
 		};
 	}, []);
 	return status;
-}
-
-/** Whole seconds until `applyAt`, ticking down. */
-function useSecondsLeft(applyAt: number): number {
-	const [now, setNow] = useState(Date.now);
-	useEffect(() => {
-		const timer = setInterval(() => setNow(Date.now()), 250);
-		return () => clearInterval(timer);
-	}, []);
-	return Math.max(0, Math.ceil((applyAt - now) / 1000));
 }
 
 function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown }) {
@@ -71,7 +62,7 @@ function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown })
 }
 
 function WaitLine({ held }: { readonly held: UpdateHeld }) {
-	const seconds = useSecondsLeft(held.startsAt ?? 0);
+	const seconds = useSecondsLeft(held.startsAt);
 	if (held.busy !== null) return <>applies when you're free ({held.busy})</>;
 	return <>you're free: countdown in {seconds} s</>;
 }
