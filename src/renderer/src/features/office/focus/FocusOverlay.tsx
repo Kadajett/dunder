@@ -1,5 +1,6 @@
 import "./focus.css";
 import { useEffect } from "react";
+import { useShortcutSheet } from "../../../shortcuts";
 import { useChief } from "../../chief/chief-store";
 import { TerminalView } from "../../terminal/TerminalView";
 import { useFocus } from "./focus-store";
@@ -25,7 +26,7 @@ export function FocusOverlay() {
 	useEffect(() => {
 		if (phase === null) return;
 		const onKey = (event: KeyboardEvent): void => {
-			if (!leavesFocus("screen", event)) return;
+			if (useShortcutSheet.getState().open || !leavesFocus("screen", event)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			leave();

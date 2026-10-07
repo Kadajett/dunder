@@ -1,5 +1,6 @@
 import "./tv-fullscreen.css";
 import { useEffect, useMemo, useState } from "react";
+import { useShortcutSheet } from "../../../shortcuts";
 import { channelBadge, channelForKey, TV_CHANNELS } from "./channels";
 import { letterbox } from "./letterbox";
 import { Pen, SCREEN_H, SCREEN_W } from "./paint/kit";
@@ -22,18 +23,37 @@ function useWindowSize(): { readonly width: number; readonly height: number } {
 	}, []);
 	return size;
 }
+function selectChannel(
+	key: string,
+	select: (channel: (typeof TV_CHANNELS)[number]["id"]) => void,
+): boolean {
+	const channel = channelForKey(key);
+	if (!channel) return false;
+	select(channel);
+	return true;
+}
 
 /** Remote control on the keyboard: 1–5 pick a channel, ←/→ flip, Esc closes. */
 function useRemoteKeys(): void {
 	const { select, step, setFullscreen } = useTv.getState();
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent): void => {
-			const picked = channelForKey(event.key);
-			if (picked) select(picked);
-			else if (event.key === "ArrowRight") step(1);
-			else if (event.key === "ArrowLeft") step(-1);
-			else if (event.key === "Escape") setFullscreen(false);
-			else return;
+			if (useShortcutSheet.getState().open) return;
+			if (!selectChannel(event.key, select)) {
+				switch (event.key) {
+					case "ArrowRight":
+						step(1);
+						break;
+					case "ArrowLeft":
+						step(-1);
+						break;
+					case "Escape":
+						setFullscreen(false);
+						break;
+					default:
+						return;
+				}
+			}
 			event.preventDefault();
 			event.stopPropagation();
 		};
