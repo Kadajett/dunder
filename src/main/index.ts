@@ -21,6 +21,7 @@ import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
 import { registerCompaniesIpc } from "./companies/ipc";
 import { createCompanies } from "./companies/service";
+import { createIssueSync } from "./github-issues/create";
 import { createHerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
@@ -152,6 +153,8 @@ const workBoard = createWorkBoard(app.getAppPath(), aiCost, (board) => {
 	broadcast(IPC.workChanged, board);
 	alerts.updateBoard(board);
 });
+/** GitHub issues labelled 'office' onto the board (pull-only: nothing goes back to GitHub). */
+const issueSync = createIssueSync(app.getAppPath(), () => void workBoard.refresh());
 /** Renderer errors Jeremy sees in the Trust Inbox (no devtools needed). */
 const appErrors = new AppErrorsService({
 	emit: (errors) => broadcast(IPC.appErrorsChanged, errors),
@@ -278,6 +281,7 @@ app.whenReady().then(() => {
 	startInBackground("brainstorm", brainstorm.start());
 	startInBackground("plan", plan.start());
 	workBoard.start();
+	issueSync.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
@@ -299,6 +303,7 @@ function stopServices(): void {
 	pool.stop();
 	brainstorm.stop();
 	workBoard.stop();
+	issueSync.stop();
 	appErrors.stop();
 	plan.stop();
 }
