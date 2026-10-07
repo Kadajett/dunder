@@ -1,6 +1,6 @@
 import { IPC } from "@shared/ipc";
 import { POCKET_IDS } from "@shared/pool";
-import { ipcMain } from "electron";
+import { ipcMain, type WebContents } from "electron";
 import { z } from "zod";
 import type { PoolService } from "./service";
 
@@ -29,4 +29,17 @@ export function registerPoolIpc(pool: PoolService): void {
 			...(calledPocket ? { calledPocket } : {}),
 		});
 	});
+}
+
+/**
+ * A reloaded, crashed or closed page is not in table view: hand Jeremy's pool
+ * turns to the autopilot, whatever the page last said.
+ */
+export function clearPoolViewingWithPage(pool: PoolService, contents: WebContents): void {
+	const notViewing = (): void => pool.setViewing(false);
+	contents.on("did-start-navigation", (details) => {
+		if (details.isMainFrame && !details.isSameDocument) notViewing();
+	});
+	contents.on("render-process-gone", notViewing);
+	contents.on("destroyed", notViewing);
 }

@@ -28,7 +28,7 @@ import { CostTracker } from "./office-stats/cost-tracker";
 import { registerOfficeStatsIpc } from "./office-stats/ipc";
 import { createSeenDoneStore } from "./office-stats/seen-done";
 import { createPool } from "./pool/create";
-import { registerPoolIpc } from "./pool/ipc";
+import { clearPoolViewingWithPage, registerPoolIpc } from "./pool/ipc";
 import { createStaffDesk } from "./staff-desk/create";
 import { createSwitchboardService } from "./switchboard/service";
 import { ObservePool } from "./terminal/observe-pool";
@@ -222,6 +222,7 @@ function createWindow(): void {
 	});
 	window.once("ready-to-show", () => window.show());
 	guardNavigation(window.webContents);
+	clearPoolViewingWithPage(pool, window.webContents);
 	const devUrl = process.env["ELECTRON_RENDERER_URL"];
 	if (devUrl) void window.loadURL(devUrl);
 	else void window.loadFile(join(__dirname, "../renderer/index.html"));
