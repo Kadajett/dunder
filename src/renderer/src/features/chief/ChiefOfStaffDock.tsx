@@ -35,16 +35,19 @@ function Dock({ model }: { readonly model: OfficeModel }) {
 					onClose={close}
 				/>
 			)}
-			<button type="button" className="chief__pill" onClick={toggle} aria-expanded={expanded}>
-				<ChiefAvatar style={style} size={40} />
-				<span className="chief__who">
-					<span className="chief__name">{displayName(name)}</span>
-					<span className="chief__meta">
-						{role} · {onCall ? "ON A CALL" : presenceLabel(presence)}
+			{/* The launcher only while the dock is closed: open, the chat's own header says who it is. */}
+			{expanded ? null : (
+				<button type="button" className="chief__pill" onClick={toggle} aria-expanded={false}>
+					<ChiefAvatar style={style} size={40} />
+					<span className="chief__who">
+						<span className="chief__name">{displayName(name)}</span>
+						<span className="chief__meta">
+							{role} · {onCall ? "ON A CALL" : presenceLabel(presence)}
+						</span>
 					</span>
-				</span>
-				<span className="chief__dot" />
-			</button>
+					<span className="chief__dot" />
+				</button>
+			)}
 		</section>
 	);
 }

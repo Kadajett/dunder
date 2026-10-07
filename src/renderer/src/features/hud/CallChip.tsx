@@ -3,11 +3,12 @@ import { useCall } from "../chief/call/call-store";
 import { useChiefChat } from "../chief/chat-store";
 import { useChief } from "../chief/chief-store";
 
-/** In the top bar for the length of a voice call with the chief; opens his dock. */
+/** In the top bar during a voice call with the chief, while his dock is closed: the way back to the call. */
 export function CallChip() {
 	const active = useCall((s) => s.active);
+	const dockOpen = useChief((state) => state.expanded);
 	const name = useChiefChat((state) => state.status?.name) ?? CHIEF_NAME;
-	if (!active) return null;
+	if (!active || dockOpen) return null;
 	return (
 		<button
 			type="button"

@@ -59,19 +59,19 @@ export function useCallWiring(presence: ChiefPresence): void {
 	useEffect(() => hangUp, []);
 }
 
-/** The phone in the chat header: starts a call, or says why calls are off. */
+/** The phone in the chat header: starts a call, or says why calls are off. Gone during a call: the strip owns it. */
 export function CallButton({ name }: { readonly name: string }) {
 	const availability = useCall((state) => state.availability);
 	const active = useCall((state) => state.active);
+	if (active) return null;
 	const off = availability?.available === false ? availability.reason : null;
-	const title = off ? `Calls are off: ${off}` : active ? `On a call with ${name}` : `Call ${name}`;
 	return (
 		<button
 			type="button"
-			className={`chief-call__start${active ? " chief-call__start--live" : ""}`}
+			className="chief-call__start"
 			aria-label={`Call ${name}`}
-			title={title}
-			disabled={availability?.available !== true || active}
+			title={off ? `Calls are off: ${off}` : `Call ${name}`}
+			disabled={availability?.available !== true}
 			onClick={startCall}
 		>
 			<PhoneIcon />
