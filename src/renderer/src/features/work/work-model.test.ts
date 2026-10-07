@@ -1,6 +1,14 @@
 import type { WorkCard } from "@shared/work-board";
 import { describe, expect, it } from "vitest";
-import { applyEdit, forAgent, groupByLane, pillText, shortId } from "./work-model";
+import {
+	applyEdit,
+	elapsedFor,
+	forAgent,
+	groupByLane,
+	isStaleInProgress,
+	pillText,
+	shortId,
+} from "./work-model";
 
 const AT = "2026-10-06T12:00:00.000Z";
 
@@ -15,6 +23,7 @@ function card(id: string, lane: WorkCard["lane"], priority: WorkCard["priority"]
 		waitingOn: [],
 		description: "",
 		acceptance: "",
+		startedAt: null,
 		updatedAt: "2026-10-01T00:00:00.000Z",
 		spend: null,
 		epicSpend: null,
@@ -88,6 +97,37 @@ describe("shortId", () => {
 		expect(shortId("office-344.2")).toBe("344.2");
 		expect(shortId("herdr-office-hgr.4.1")).toBe("hgr.4.1");
 		expect(shortId("plain")).toBe("plain");
+	});
+});
+
+describe("in-progress age", () => {
+	const now = Date.parse("2026-10-06T12:00:00.000Z");
+	const iso = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString();
+
+	it("marks a bead stale only after both age and quiet-time thresholds", () => {
+		const inProgress = card("w-1", "in_progress");
+		expect(isStaleInProgress({ ...inProgress, startedAt: iso(121), updatedAt: iso(46) }, now)).toBe(
+			true,
+		);
+		expect(isStaleInProgress({ ...inProgress, startedAt: iso(60), updatedAt: iso(50) }, now)).toBe(
+			false,
+		);
+		expect(isStaleInProgress({ ...inProgress, startedAt: iso(180), updatedAt: iso(20) }, now)).toBe(
+			false,
+		);
+		expect(isStaleInProgress({ ...inProgress, startedAt: iso(120), updatedAt: iso(46) }, now)).toBe(
+			false,
+		);
+		expect(isStaleInProgress({ ...inProgress, startedAt: iso(121), updatedAt: iso(45) }, now)).toBe(
+			false,
+		);
+		expect(isStaleInProgress({ ...inProgress, startedAt: null, updatedAt: iso(90) }, now)).toBe(
+			false,
+		);
+	});
+
+	it("formats the elapsed age as hours and minutes", () => {
+		expect(elapsedFor(iso(160), now)).toBe("2 h 40 m");
 	});
 });
 

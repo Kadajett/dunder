@@ -38,6 +38,7 @@ const card = (id: string, lane: WorkCard["lane"]): WorkCard => ({
 	description: "",
 	acceptance: "",
 	updatedAt: iso(T0),
+	startedAt: null,
 	spend: null,
 	epicSpend: null,
 });

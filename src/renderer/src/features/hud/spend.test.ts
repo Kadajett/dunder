@@ -27,6 +27,7 @@ const card = (id: string, assignee: string, lane: WorkCard["lane"]): WorkCard =>
 	description: "",
 	acceptance: "",
 	updatedAt: "",
+	startedAt: null,
 	spend: null,
 	epicSpend: null,
 });

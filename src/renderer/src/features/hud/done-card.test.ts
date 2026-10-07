@@ -16,6 +16,7 @@ const card = (id: string, fields: Partial<WorkCard>): WorkCard => ({
 	description: "",
 	acceptance: "",
 	updatedAt: hoursAgo(1),
+	startedAt: null,
 	spend: null,
 	epicSpend: null,
 	...fields,

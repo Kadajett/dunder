@@ -141,6 +141,7 @@ function toCard({ bead, lane, waitingOn }: Placed, epics: ReadonlyMap<string, st
 		description: bead.description ?? "",
 		acceptance: bead.acceptance_criteria ?? "",
 		updatedAt: bead.updated_at,
+		startedAt: bead.started_at ?? null,
 		// Priced by the service, which knows the agents' spend (see spend.ts).
 		spend: null,
 		epicSpend: null,
