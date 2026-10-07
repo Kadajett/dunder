@@ -61,13 +61,17 @@ describe("tryItOf", () => {
 
 describe("planCard", () => {
 	it("shows nothing under dev, for the build already seen, or on the first launch ever", () => {
-		expect(planCard(undefined, "abc", true)).toEqual({ kind: "none" });
-		expect(planCard("abc", "abc", true)).toEqual({ kind: "none" });
-		expect(planCard("abc", undefined, false)).toEqual({ kind: "first-launch" });
+		expect(planCard(undefined, "abc", "ahead")).toEqual({ kind: "none" });
+		expect(planCard("abc", "abc", "ahead")).toEqual({ kind: "none" });
+		expect(planCard("abc", undefined, "apart")).toEqual({ kind: "first-launch" });
 	});
 
 	it("lists what is new since the last seen build, or recent commits when history was rewritten", () => {
-		expect(planCard("new", "old", true)).toEqual({ kind: "since", from: "old" });
-		expect(planCard("new", "old", false)).toEqual({ kind: "recent" });
+		expect(planCard("new", "old", "ahead")).toEqual({ kind: "since", from: "old" });
+		expect(planCard("new", "old", "apart")).toEqual({ kind: "recent" });
+	});
+
+	it("shows nothing after going back to an older build (a rollback): those commits aren't new", () => {
+		expect(planCard("good", "bad", "behind")).toEqual({ kind: "none" });
 	});
 });
