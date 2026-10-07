@@ -1,4 +1,5 @@
 import "./fake-office";
+
 import "@fontsource/inter/600.css";
 import { Canvas } from "@react-three/fiber";
 import { fitOrthographic, VIEW_DIRECTION } from "@renderer/features/office/camera-fit";

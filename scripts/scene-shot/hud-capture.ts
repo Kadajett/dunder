@@ -25,8 +25,16 @@ const STATES = [
 	"11-everything",
 	"12-update-batched",
 	"13-tv-shipping",
+	"13-plan-proposed",
+	"13-plan-edit",
 	"14-day-end",
+	"15-agent-card",
+	"16-whats-new-feedback",
+	"17-bead-chips",
+	"18-mic-picker",
+	"19-spend-alert",
 	"19-agent-card-hover-click",
+	"20-sounds-off-call",
 ];
 const OUT_DIR = "docs/screenshots/hud";
 const WIDTH = 1600;
@@ -155,7 +163,7 @@ async function shoot(cdp: Cdp, baseUrl: string, outDir: string, state: string): 
 	return result;
 }
 
-/** Captures `states` (all when empty); resolves false if any crashed or assertion failed. */
+/** Captures `states` (all when empty); resolves false on readiness, crash, or scenario assertion failures. */
 export async function captureHud(
 	baseUrl: string,
 	repo: string,
@@ -177,9 +185,11 @@ export async function captureHud(
 	}
 	const notReady = results.filter((result) => !result.ready).map((result) => result.state);
 	const crashed = results.filter((result) => result.crashed.length > 0).map((r) => r.state);
-	const failed = results.filter((result) => result.failures.length > 0).map((r) => r.state);
-	const ok = notReady.length === 0 && crashed.length === 0 && failed.length === 0;
-	const summary = { states: results.length, notReady, crashed, failed, outDir };
+	const failures = results
+		.filter((result) => result.failures.length > 0)
+		.map((result) => ({ state: result.state, failures: result.failures }));
+	const ok = notReady.length === 0 && crashed.length === 0 && failures.length === 0;
+	const summary = { states: results.length, notReady, crashed, failures, outDir };
 	if (ok) log.info("hud-shot: all states ok", summary);
 	else log.error("hud-shot: failures", summary);
 	return ok;

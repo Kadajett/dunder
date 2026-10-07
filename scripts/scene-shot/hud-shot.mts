@@ -1,8 +1,8 @@
 /**
  * `npm run hud:shot [-- state …]`: the HUD screenshot harness. Screenshots the real App over a
  * stubbed `window.office` in headless Chrome, with no Electron and no workforce, one PNG plus a
- * rects/overlaps JSON per HUD state, into docs/screenshots/hud/. Exits 1 if a state never got
- * ready or showed a crash notice.
+ * rects/overlaps JSON per HUD state, into docs/screenshots/hud/. Exits 1 if a state never gets
+ * ready, shows a crash notice, or fails a scenario assertion.
  *
  * The capture code runs through Vite's SSR loader so it can use the app's
  * `@shared` modules (the logger) the same way the app does.
