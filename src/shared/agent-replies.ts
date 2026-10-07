@@ -5,7 +5,14 @@ export interface AgentReply {
 	readonly at: number;
 }
 
-/** `window.office.agents`: what live agents said, read from their session logs on demand. */
+/** Longest reason Jeremy can give for an interrupt. */
+export const INTERRUPT_REASON_MAX = 300;
+
+export type InterruptResult =
+	| { readonly ok: true }
+	| { readonly ok: false; readonly reason: string };
+
+/** `window.office.agents`: what live agents said, read from their session logs on demand; and stopping one. */
 export interface AgentsApi {
 	/**
 	 * The named agent's final reply of its last turn; null when it has no omp
@@ -13,4 +20,9 @@ export interface AgentsApi {
 	 * turn main last saw it start.
 	 */
 	lastReply(name: string): Promise<AgentReply | null>;
+	/**
+	 * Stop the agent's current turn (Escape), wait until it stops, then tell it
+	 * why and to report where it is; Max hears about it too.
+	 */
+	interrupt(name: string, reason: string): Promise<InterruptResult>;
 }

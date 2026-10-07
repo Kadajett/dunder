@@ -4,6 +4,7 @@ import { chiefAvailable, sendToChief } from "../../chief/chat-store";
 import type { OfficeModel } from "../../office/model/office-model";
 import { formatUsd, tellMaxText } from "../spend";
 import type { TrustItem } from "../trust-inbox";
+import { InterruptControl } from "./InterruptControl";
 import { openAgentScreen } from "./open-agent";
 
 type SpendItem = Extract<TrustItem, { kind: "spend" }>;
@@ -59,6 +60,7 @@ export function SpendCard({
 					{told === "told Max" ? "Told Max" : "Tell Max"}
 				</button>
 			</div>
+			<InterruptControl name={agent.name} status={agent.status} />
 			{told && told !== "told Max" && told !== "sending…" ? (
 				<p className="hud-card-line">{told}</p>
 			) : null}

@@ -159,6 +159,7 @@ const api: OfficeApi = {
 	},
 	agents: {
 		lastReply: (name) => ipcRenderer.invoke(IPC.agentsLastReply, name),
+		interrupt: (name, reason) => ipcRenderer.invoke(IPC.agentsInterrupt, name, reason),
 	},
 	worktrees: {
 		find: (query) => ipcRenderer.invoke(IPC.worktreesFind, query),

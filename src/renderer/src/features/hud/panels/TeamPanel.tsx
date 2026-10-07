@@ -15,6 +15,7 @@ import { poolStatusOf, usePool } from "../../pool/pool-store";
 import { useWorkCards } from "../../work/work-store";
 import { OpenInEditor } from "../../worktrees/OpenInEditor";
 import { StatTiles } from "../StatTiles";
+import { InterruptControl } from "./InterruptControl";
 import { openAgentScreen } from "./open-agent";
 
 const STATUS_LABEL = {
@@ -102,6 +103,7 @@ function TeamCard(props: {
 					Open screen
 				</button>
 			</div>
+			<InterruptControl name={agent.name} status={agent.status} />
 			<OpenInEditor agent={agent.name} beads={beads} />
 		</article>
 	);
