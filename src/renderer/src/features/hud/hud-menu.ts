@@ -9,6 +9,8 @@ export interface MenuState {
 	/** The editor has a saved layout to start from; until then it can't open. */
 	readonly editReady: boolean;
 	readonly brainstorming: boolean;
+	/** The master Sounds switch (chimes, Max's voice on a call). */
+	readonly sounds: boolean;
 }
 
 /** Panels reached through the menu; the Trust Inbox has its own button in the bar. */
@@ -21,6 +23,8 @@ export type MenuAction =
 	| { readonly kind: "whiteboard" }
 	/** Open the topic dialog, or end the running brainstorm. */
 	| { readonly kind: "brainstorm" }
+	/** Turn every app sound on or off. */
+	| { readonly kind: "sounds" }
 	/** Open the window's devtools (its keyboard shortcut is taken by the office). */
 	| { readonly kind: "devtools" };
 
@@ -93,6 +97,18 @@ export function menuSections(state: MenuState): readonly MenuSection[] {
 			})),
 		},
 		{ heading: "Layout", entries: [editEntry(state)] },
+		{
+			heading: "Sound",
+			entries: [
+				{
+					label: "Sounds",
+					role: "menuitemcheckbox",
+					checked: state.sounds,
+					hint: state.sounds ? "chimes, Max's voice" : "off: Max in captions",
+					action: { kind: "sounds" },
+				},
+			],
+		},
 		{
 			heading: "Help",
 			entries: [

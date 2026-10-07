@@ -3,6 +3,7 @@ import { createLogger } from "@shared/log/logger";
 import type { CallResume, VoiceAvailability } from "@shared/voice";
 import { create } from "zustand";
 import { chime } from "../../audio/chime";
+import { soundsOn, useSounds } from "../../audio/sound-store";
 import { sendToChief } from "../chat-store";
 import { playMp3, stopPlayback } from "./call-audio";
 import { closeMic, openMic, savedMicId, saveMicId, setMicMuted, setMicPlaying } from "./call-mic";
@@ -39,6 +40,8 @@ interface CallState {
 	readonly error: string | null;
 	/** A gentle note, e.g. "Didn't catch that". */
 	readonly hint: string | null;
+	/** Max's last spoken line, shown instead of played while Sounds are off. */
+	readonly caption: string | null;
 	readonly watch: TurnWatch | null;
 	/** When this round of the call's turns started; earlier messages never count. */
 	readonly since: number;
@@ -55,6 +58,7 @@ const IDLE = {
 	heard: null,
 	error: null,
 	hint: null,
+	caption: null,
 	watch: null,
 	since: 0,
 	startedAt: 0,
@@ -71,6 +75,8 @@ let unsubscribe: (() => void) | null = null;
 let turns: Promise<void> = Promise.resolve();
 /** Bumped to drop speech whose TTS request was overtaken (barge-in, hang up). */
 let speech = 0;
+/** The line Max is saying now, to caption if Sounds go off mid-sentence. */
+let saying = "";
 
 function cancelGrace(): void {
 	window.clearTimeout(graceTimer);
@@ -220,6 +226,7 @@ async function sendTurn(text: string, heard: string | null = text): Promise<void
 		watch: NEW_TURN,
 		heard,
 		error: null,
+		caption: null,
 		hint: heard === null ? useCall.getState().hint : null,
 	});
 	const result = await sendToChief(text, { call: true });
@@ -248,9 +255,25 @@ function noteMessage(message: ChiefMessage): void {
 	void speak(spoken);
 }
 
+/** Sounds are off: Max's line goes in the strip as a caption, unplayed. */
+function caption(text: string): void {
+	useCall.setState((state) => ({
+		caption: text,
+		phase: state.phase === "hearing" ? state.phase : restingPhase(state.watch),
+	}));
+}
+
+// Sounds switched off while Max talks: cut him off and caption the rest.
+useSounds.subscribe(({ on }) => {
+	if (on || useCall.getState().phase !== "speaking") return;
+	silence();
+	caption(saying);
+});
+
 async function speak(text: string): Promise<void> {
 	// Talking over him already: the caption in the chat is the answer.
 	if (useCall.getState().phase === "hearing") return;
+	if (!soundsOn()) return caption(text);
 	const mine = ++speech;
 	const voice = voiceApi();
 	const result = voice
@@ -259,6 +282,7 @@ async function speak(text: string): Promise<void> {
 				.catch((error: unknown) => ({ ok: false as const, reason: reasonOf(error) }))
 		: null;
 	if (mine !== speech || !result || !useCall.getState().active) return;
+	if (!soundsOn()) return caption(text);
 	if (!result.ok) {
 		useCall.setState((state) => ({
 			phase: restingPhase(state.watch),
@@ -266,7 +290,8 @@ async function speak(text: string): Promise<void> {
 		}));
 		return;
 	}
-	useCall.setState({ phase: "speaking", error: null });
+	saying = text;
+	useCall.setState({ phase: "speaking", error: null, caption: null });
 	setMicPlaying(true);
 	await playMp3(result.value).catch((error: unknown) => log.warn("playback failed", { error }));
 	if (mine !== speech) return;

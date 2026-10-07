@@ -1,5 +1,6 @@
 import type { UpdateStatus } from "@shared/app-update";
 import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { setSoundsOn, soundsOn, useSounds } from "../audio/sound-store";
 import { useBrainstormDialog } from "../brainstorm/BrainstormDialog";
 import { endBrainstorm, useBrainstorm, useBrainstormStore } from "../brainstorm/brainstorm-store";
 import { useEdit } from "../edit/edit-store";
@@ -31,6 +32,9 @@ function runAction(action: MenuAction): void {
 		case "brainstorm":
 			if (useBrainstormStore.getState().current) endBrainstorm();
 			else useBrainstormDialog.getState().setOpen(true);
+			return;
+		case "sounds":
+			setSoundsOn(!soundsOn());
 			return;
 		case "devtools":
 			openDevtools();
@@ -93,6 +97,7 @@ function MenuPopup({ update, onClose }: MenuPopupProps) {
 	const editing = useEdit((state) => state.editing);
 	const editReady = useEdit((state) => state.base !== null);
 	const brainstorming = useBrainstorm() !== null;
+	const sounds = useSounds((state) => state.on);
 	const menu = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		menu.current?.querySelector<HTMLElement>(ITEMS)?.focus();
@@ -136,7 +141,7 @@ function MenuPopup({ update, onClose }: MenuPopupProps) {
 				aria-label="Office"
 				onKeyDown={onKeyDown}
 			>
-				{menuSections({ panel, view, editing, editReady, brainstorming }).map((section) => (
+				{menuSections({ panel, view, editing, editReady, brainstorming, sounds }).map((section) => (
 					<Fragment key={section.heading}>
 						<p className="hud-menu-heading">{section.heading}</p>
 						{section.entries.map((entry) => (

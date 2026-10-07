@@ -7,6 +7,7 @@ const BASE: MenuState = {
 	editing: false,
 	editReady: true,
 	brainstorming: false,
+	sounds: true,
 };
 
 const entries = (state: MenuState) => menuSections(state).flatMap((section) => section.entries);
@@ -16,7 +17,7 @@ const checked = (state: MenuState) =>
 		.map((entry) => entry.label);
 
 describe("menuSections", () => {
-	it("holds every former top-bar action except the inbox, plus the whiteboard, brainstorms and devtools", () => {
+	it("holds every former top-bar action except the inbox, plus the whiteboard, brainstorms, Sounds and devtools", () => {
 		expect(entries(BASE).map((entry) => entry.action)).toEqual([
 			{ kind: "panel", panel: "clients" },
 			{ kind: "panel", panel: "brain" },
@@ -26,6 +27,7 @@ describe("menuSections", () => {
 			{ kind: "view", view: "office" },
 			{ kind: "view", view: "classic" },
 			{ kind: "edit" },
+			{ kind: "sounds" },
 			{ kind: "devtools" },
 		]);
 	});
@@ -37,11 +39,14 @@ describe("menuSections", () => {
 		expect(brainstorm({ ...BASE, brainstorming: true })).toBe("End brainstorm");
 	});
 
-	it("checks the open panel and the current view", () => {
-		expect(checked(BASE)).toEqual(["Office"]);
-		expect(checked({ ...BASE, panel: "brain", view: "classic" })).toEqual(["Brain", "Classic"]);
+	it("checks the open panel, the current view and Sounds while on", () => {
+		expect(checked(BASE)).toEqual(["Office", "Sounds"]);
+		expect(checked({ ...BASE, panel: "brain", view: "classic", sounds: false })).toEqual([
+			"Brain",
+			"Classic",
+		]);
 		// The inbox opens from the bar, so no menu panel shows as open.
-		expect(checked({ ...BASE, panel: "inbox" })).toEqual(["Office"]);
+		expect(checked({ ...BASE, panel: "inbox" })).toEqual(["Office", "Sounds"]);
 	});
 
 	it("offers to leave edit mode while editing, and disables entering until a layout loads", () => {

@@ -250,3 +250,15 @@
 	font-size: 12px;
 	line-height: 1.4;
 }
+
+/* office-bj5: with Sounds off, Max's spoken line shows here instead of playing. */
+.chief-call__caption {
+	margin: 0;
+	padding: 6px 8px;
+	border-left: 3px solid #a07a1f;
+	border-radius: 6px;
+	background: #fdf6e3;
+	font-size: 13px;
+	line-height: 1.35;
+	color: var(--ink);
+}
