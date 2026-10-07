@@ -9,15 +9,16 @@ import {
 	type PoolShotInput,
 	type PoolView,
 } from "@shared/pool";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useChief } from "../chief/chief-store";
-import { isLeaveChord, LEAVE_CHORD_LABEL } from "../office/focus/FocusOverlay";
 import { type ScreenRect, useFocus } from "../office/focus/focus-store";
+import { LEAVE_CHORD_LABEL, leavesFocus } from "../office/focus/leave-keys";
 import { AimLayer } from "./AimLayer";
 import { startingCue } from "./aim";
 import { PoolHud } from "./PoolHud";
-import { ballsNow, usePool } from "./pool-store";
+import { usePool } from "./pool-store";
 import type { TablePoint } from "./table-space";
+import { viewingSync } from "./viewing";
 
 /** Pockets as they sit on screen (head end left, table +y up). */
 const POCKET_NAMES: Readonly<Record<PocketId, string>> = {
@@ -105,7 +106,6 @@ function TableTurn({ cloth, view, balls, message, run }: TurnProps) {
 /** The table as it plays right now, plus the last failed action's reason. */
 function TablePlay({ cloth }: { readonly cloth: ScreenRect }) {
 	const view = usePool((state) => state.view);
-	const frame = usePool((state) => state.frame);
 	const [message, setMessage] = useState<string | null>(null);
 	if (!view) return null;
 	const run: Run = (action) => {
@@ -120,7 +120,7 @@ function TablePlay({ cloth }: { readonly cloth: ScreenRect }) {
 			key={`${view.stage}:${view.shot}:${view.turn}:${view.ballInHand}`}
 			cloth={cloth}
 			view={view}
-			balls={ballsNow(view, frame)}
+			balls={view.balls}
 			message={message}
 			run={run}
 		/>
@@ -132,7 +132,7 @@ function useLeaveKeys(active: boolean, leave: () => void): void {
 	useEffect(() => {
 		if (!active) return;
 		const onKey = (event: KeyboardEvent): void => {
-			if (event.key !== "Escape" && !isLeaveChord(event)) return;
+			if (!leavesFocus("table", event)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			leave();
@@ -142,16 +142,38 @@ function useLeaveKeys(active: boolean, leave: () => void): void {
 	}, [active, leave]);
 }
 
-/** Tell main Jeremy is at the table while the view is settled: out of it, autopilot plays his visits. */
+/** The window has Jeremy's attention: focused and not hidden or minimised. */
+function windowActive(): boolean {
+	return document.visibilityState === "visible" && document.hasFocus();
+}
+
+/**
+ * Tell main whether Jeremy is at the table: while the view is settled in an
+ * active window. Out of it (left, blurred, minimised, the page gone) the
+ * autopilot plays his visits.
+ */
 function useViewing(settled: boolean): void {
+	const [active, setActive] = useState(windowActive);
 	useEffect(() => {
-		if (!settled || !("pool" in window.office)) return;
-		const pool = window.office.pool;
-		void pool.setViewing(true);
+		const update = (): void => setActive(windowActive());
+		window.addEventListener("focus", update);
+		window.addEventListener("blur", update);
+		document.addEventListener("visibilitychange", update);
 		return () => {
-			void pool.setViewing(false);
+			window.removeEventListener("focus", update);
+			window.removeEventListener("blur", update);
+			document.removeEventListener("visibilitychange", update);
 		};
-	}, [settled]);
+	}, []);
+	const sync = useMemo(
+		() =>
+			"pool" in window.office
+				? viewingSync((viewing) => void window.office.pool.setViewing(viewing))
+				: null,
+		[],
+	);
+	useEffect(() => sync?.({ settled, active }), [sync, settled, active]);
+	useEffect(() => () => sync?.({ settled: false, active: false }), [sync]);
 }
 
 /**

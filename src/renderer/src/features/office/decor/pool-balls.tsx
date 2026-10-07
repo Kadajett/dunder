@@ -1,7 +1,7 @@
-import { BALL_COLORS, EIGHT_BALL, groupOf, POOL_TABLE, type PoolBall } from "@shared/pool";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { BALL_COLORS, EIGHT_BALL, groupOf, POOL_TABLE, type PoolFrame } from "@shared/pool";
+import { useMemo, useRef } from "react";
 import {
-	type BufferGeometry,
 	Color,
 	CylinderGeometry,
 	IcosahedronGeometry,
@@ -29,9 +29,6 @@ const BAND = new CylinderGeometry(R * 1.05, R * 1.05, R * 1.05, 8, 1, true).rota
 const COLOURED = new MeshStandardMaterial({ flatShading: true, roughness: 0.45 });
 const RING = new MeshStandardMaterial({ flatShading: true, roughness: 0.45 });
 
-const scratch = new Matrix4();
-const tint = new Color();
-
 /** Base colour of a ball: a stripe takes the colour of its number minus 8. */
 function colourOf(id: number): string {
 	const base = groupOf(id) === "stripes" ? id - EIGHT_BALL : id;
@@ -47,53 +44,90 @@ const WHITE = new MeshStandardMaterial({
 	roughness: 0.45,
 });
 
-interface BallSetProps {
-	readonly balls: readonly PoolBall[];
-	readonly geometry: BufferGeometry;
-	readonly material: MeshStandardMaterial;
-	/** Tint each instance with its ball's colour (the material's own colour otherwise). */
-	readonly tinted: boolean;
+/** Each ball's colour, made once: painting a frame allocates nothing. */
+const TINTS = Array.from({ length: MAX_BALLS }, (_, id) => new Color(colourOf(id)));
+const scratch = new Matrix4();
+
+/** [id, x, y] for each ball on the table, as frames carry them. */
+export type BallSpots = PoolFrame["balls"];
+
+type SetName = "solids" | "white" | "rings";
+
+/** How many instances each mesh shows after the last `paint` (reused, not reallocated). */
+const counts = { solids: 0, white: 0, rings: 0 };
+
+function place(mesh: InstancedMesh, slot: number, x: number, y: number): void {
+	// Table space: pool x along x, pool y (counter-clockwise from x, seen from above) along -z.
+	scratch.makeTranslation(x, POOL_SURFACE_Y + R, -y);
+	mesh.setMatrixAt(slot, scratch);
 }
 
-/** One instanced mesh holding `balls`, rewritten whenever they change. */
-function BallSet({ balls, geometry, material, tinted }: BallSetProps) {
-	const ref = useRef<InstancedMesh>(null);
-	useLayoutEffect(() => {
-		const mesh = ref.current;
-		if (!mesh) return;
-		balls.forEach((ball, index) => {
-			// Table space: pool x along x, pool y (counter-clockwise from x, seen from above) along -z.
-			scratch.makeTranslation(ball.x, POOL_SURFACE_Y + R, -ball.y);
-			mesh.setMatrixAt(index, scratch);
-			if (tinted) mesh.setColorAt(index, tint.set(colourOf(ball.id)));
-		});
-		mesh.count = balls.length;
-		mesh.instanceMatrix.needsUpdate = true;
-		if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-	}, [balls, tinted]);
-	return <instancedMesh ref={ref} args={[geometry, material, MAX_BALLS]} frustumCulled={false} />;
+/** Write `balls` into the three instanced meshes (solids and the 8, white balls, stripe rings); counts land in `counts`. */
+function paint(
+	solids: InstancedMesh,
+	white: InstancedMesh,
+	rings: InstancedMesh,
+	balls: BallSpots,
+): void {
+	counts.solids = 0;
+	counts.white = 0;
+	counts.rings = 0;
+	for (const [id, x, y] of balls) {
+		const tint = TINTS[id];
+		if (id >= 1 && id <= EIGHT_BALL) {
+			place(solids, counts.solids, x, y);
+			if (tint) solids.setColorAt(counts.solids, tint);
+			counts.solids += 1;
+			continue;
+		}
+		place(white, counts.white, x, y);
+		counts.white += 1;
+		if (groupOf(id) !== "stripes") continue;
+		place(rings, counts.rings, x, y);
+		if (tint) rings.setColorAt(counts.rings, tint);
+		counts.rings += 1;
+	}
 }
 
 /**
- * The balls still on the table, in table space (the pool frame of `@shared/pool`,
- * metres, before the station scale). Three instanced meshes whatever the count:
- * solids and the 8, white balls (cue and stripes), and the stripes' rings.
+ * The balls on the table, in table space (the pool frame of `@shared/pool`,
+ * metres, before the station scale): three instanced meshes whatever the
+ * count. `read` is asked every frame and the meshes rewritten only when it
+ * answers with a different array, so 30 Hz play costs no React work.
  */
-export function PoolBalls({ balls }: { readonly balls: readonly PoolBall[] }) {
-	const sets = useMemo(() => {
-		const onTable = balls.filter((ball) => ball.pocket === null);
-		const stripes = onTable.filter((ball) => groupOf(ball.id) === "stripes");
-		return {
-			solids: onTable.filter((ball) => ball.id >= 1 && ball.id <= EIGHT_BALL),
-			white: onTable.filter((ball) => ball.id === 0 || stripes.includes(ball)),
-			stripes,
+export function PoolBalls({ read }: { readonly read: () => BallSpots }) {
+	const meshes = useRef<Record<SetName, InstancedMesh | null>>({
+		solids: null,
+		white: null,
+		rings: null,
+	});
+	const painted = useRef<BallSpots | null>(null);
+	const refs = useMemo(() => {
+		const slot = (name: SetName) => (mesh: InstancedMesh | null) => {
+			meshes.current[name] = mesh;
 		};
-	}, [balls]);
+		return { solids: slot("solids"), white: slot("white"), rings: slot("rings") };
+	}, []);
+	useFrame(() => {
+		const balls = read();
+		const { solids, white, rings } = meshes.current;
+		if (balls === painted.current || !solids || !white || !rings) return;
+		painted.current = balls;
+		paint(solids, white, rings, balls);
+		solids.count = counts.solids;
+		white.count = counts.white;
+		rings.count = counts.rings;
+		solids.instanceMatrix.needsUpdate = true;
+		white.instanceMatrix.needsUpdate = true;
+		rings.instanceMatrix.needsUpdate = true;
+		if (solids.instanceColor) solids.instanceColor.needsUpdate = true;
+		if (rings.instanceColor) rings.instanceColor.needsUpdate = true;
+	});
 	return (
 		<group userData={DYNAMIC}>
-			<BallSet balls={sets.solids} geometry={BALL} material={COLOURED} tinted />
-			<BallSet balls={sets.white} geometry={BALL} material={WHITE} tinted={false} />
-			<BallSet balls={sets.stripes} geometry={BAND} material={RING} tinted />
+			<instancedMesh ref={refs.solids} args={[BALL, COLOURED, MAX_BALLS]} frustumCulled={false} />
+			<instancedMesh ref={refs.white} args={[BALL, WHITE, MAX_BALLS]} frustumCulled={false} />
+			<instancedMesh ref={refs.rings} args={[BAND, RING, MAX_BALLS]} frustumCulled={false} />
 		</group>
 	);
 }

@@ -3,15 +3,7 @@ import { useEffect } from "react";
 import { useChief } from "../../chief/chief-store";
 import { TerminalView } from "../../terminal/TerminalView";
 import { useFocus } from "./focus-store";
-
-/** Leaving focus is bound to this chord, never to Esc (omp, vim and every TUI need Esc). */
-export const LEAVE_CHORD_LABEL = "Ctrl+Shift+O";
-
-export function isLeaveChord(event: KeyboardEvent): boolean {
-	return (
-		event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.code === "KeyO"
-	);
-}
+import { LEAVE_CHORD_LABEL, leavesFocus } from "./leave-keys";
 
 /** Terminal font size that keeps ~38 rows on the monitor's screen. */
 function fontSizeFor(height: number): number {
@@ -33,7 +25,7 @@ export function FocusOverlay() {
 	useEffect(() => {
 		if (phase === null) return;
 		const onKey = (event: KeyboardEvent): void => {
-			if (!isLeaveChord(event)) return;
+			if (!leavesFocus("screen", event)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			leave();

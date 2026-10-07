@@ -1,19 +1,26 @@
 import "./pool-label.css";
 import { Html, useCursor } from "@react-three/drei";
-import type { ThreeEvent } from "@react-three/fiber";
+import { type ThreeEvent, useFrame } from "@react-three/fiber";
 import { POOL_TABLE, type PoolFrame } from "@shared/pool";
 import { type ReactNode, useRef, useState } from "react";
-import { Euler, Quaternion, Vector3 } from "three";
+import { Euler, type Group, Quaternion, Vector3 } from "three";
 import { CueStick } from "../office/decor/cue-stick";
-import { POOL_SURFACE_Y, PoolBalls } from "../office/decor/pool-balls";
+import { type BallSpots, POOL_SURFACE_Y, PoolBalls } from "../office/decor/pool-balls";
 import { restingRack } from "../office/decor/pool-rack";
 import { useFocus } from "../office/focus/focus-store";
 import { DYNAMIC } from "../office/scene/StaticBatch";
 import { enterTableView } from "./enter-table-view";
-import { ballsNow, usePool } from "./pool-store";
+import { latestFrame, spotsNow, tableSpots, usePool } from "./pool-store";
 import { cueTip, type Strike, strikeOf } from "./stroke";
 
-const RESTING_RACK = restingRack();
+/** Before main answers (or without the pool API): a fresh rack. */
+const RESTING_SPOTS = tableSpots(restingRack());
+
+/** The balls to draw this frame; read outside React, so rolling balls never re-render anything. */
+function currentSpots(): BallSpots {
+	const view = usePool.getState().view;
+	return view ? spotsNow(view, latestFrame()) : RESTING_SPOTS;
+}
 /** The label floats this high over the cloth (table metres): above the players' heads, clear of the far rail. */
 const LABEL_HEIGHT = 2.3;
 /** Hover ring round the table on the floor (table metres, before the station scale). */
@@ -25,23 +32,29 @@ const euler = new Euler();
 
 /** The house cue during a strike: thrust through the cue ball the way it went, gone once the stroke is over. */
 function Stroke() {
-	const frame = usePool((state) => state.frame);
+	const group = useRef<Group>(null);
+	const seen = useRef<PoolFrame | null>(null);
 	const first = useRef<PoolFrame | null>(null);
 	const strike = useRef<Strike | null>(null);
-	if (frame && first.current?.shot !== frame.shot) {
-		first.current = frame;
-		strike.current = null;
-	}
-	if (frame && first.current && !strike.current) strike.current = strikeOf(first.current, frame);
-	const current = strike.current;
-	const tip = current && frame?.shot === current.shot ? cueTip(current, frame.t) : null;
-	if (!current || !tip) return null;
+	useFrame(() => {
+		const cue = group.current;
+		const frame = latestFrame();
+		if (!cue || frame === seen.current) return;
+		seen.current = frame;
+		if (frame && first.current?.shot !== frame.shot) {
+			first.current = frame;
+			strike.current = null;
+		}
+		if (frame && first.current && !strike.current) strike.current = strikeOf(first.current, frame);
+		const current = strike.current;
+		const tip = current && frame?.shot === current.shot ? cueTip(current, frame.t) : null;
+		cue.visible = tip !== null;
+		if (!current || !tip) return;
+		cue.position.set(tip.x, POOL_SURFACE_Y + POOL_TABLE.ballRadius, -tip.y);
+		cue.rotation.set(0, current.angle, 0);
+	});
 	return (
-		<group
-			userData={DYNAMIC}
-			position={[tip.x, POOL_SURFACE_Y + POOL_TABLE.ballRadius, -tip.y]}
-			rotation={[0, current.angle, 0]}
-		>
+		<group ref={group} userData={DYNAMIC} visible={false}>
 			<CueStick />
 		</group>
 	);
@@ -70,13 +83,11 @@ function TableLabel() {
  * the in-world label. The house cue lies on the cloth only while nobody plays.
  */
 export function PoolPlay({ restingCue }: { readonly restingCue: ReactNode }) {
-	const view = usePool((state) => state.view);
-	const frame = usePool((state) => state.frame);
-	const balls = view ? ballsNow(view, frame) : RESTING_RACK;
+	const resting = usePool((state) => !state.view || state.view.stage === "resting");
 	return (
 		<>
-			{!view || view.stage === "resting" ? restingCue : null}
-			<PoolBalls balls={balls} />
+			{resting ? restingCue : null}
+			<PoolBalls read={currentSpots} />
 			<Stroke />
 			<TableLabel />
 		</>
