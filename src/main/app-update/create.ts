@@ -2,13 +2,13 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { UpdateStatus } from "@shared/app-update";
 import { buildApp } from "./build";
-import { checkCheckout } from "./git";
+import { checkCheckout, dependenciesChanged } from "./git";
 import { builtCommit, relaunchApp } from "./relaunch";
 import { officeUpdateRequestsPath } from "./requests";
 import { AppUpdater } from "./service";
 
 export interface AppUpdateOptions {
-	/** The app checkout: where git is polled and `npm run build` runs. */
+	/** The app checkout: where git is polled and `npm install` / `npm run build` run. */
 	readonly root: string;
 	readonly userData: string;
 	emit(status: UpdateStatus): void;
@@ -25,7 +25,10 @@ export function createAppUpdater(options: AppUpdateOptions): AppUpdater {
 		statePath: join(options.userData, "app-update.json"),
 		emit: options.emit,
 		check: () => checkCheckout(options.root, built ?? "HEAD"),
-		build: (onLog) => buildApp(options.root, onLog),
+		build: async (onLog) => {
+			const install = await dependenciesChanged(options.root, built, "HEAD");
+			return buildApp(options.root, onLog, { install });
+		},
 		relaunch: () => void relaunchApp(options.shutdown),
 	});
 }
