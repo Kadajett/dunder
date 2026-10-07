@@ -1,11 +1,11 @@
 import { POOL_TABLE } from "@shared/pool";
+import { PoolPlay, PoolTableClick } from "../../pool/PoolPlay";
 import { DYNAMIC } from "../scene/StaticBatch";
 import { STATION_SCALE } from "../scene/station";
 import { CueStick } from "./cue-stick";
 import { PALETTE } from "./palette";
 import { Block } from "./parts";
-import { POOL_SURFACE_Y, PoolBalls } from "./pool-balls";
-import { restingRack } from "./pool-rack";
+import { POOL_SURFACE_Y } from "./pool-balls";
 
 /*
  * Table space, in metres before the station scale (the table's group applies
@@ -155,7 +155,7 @@ function Body() {
 }
 
 /** The house cue, laid on the cloth along the near rail between games; play hides it. */
-export function RestingCue() {
+function RestingCue() {
 	return (
 		<group userData={DYNAMIC} position={[0.487, POOL_SURFACE_Y + 0.015, HALF_W - 0.1]}>
 			<CueStick />
@@ -165,19 +165,20 @@ export function RestingCue() {
 
 /**
  * A blocky eight-ball table, the long axis along local x (+x the rack end), on
- * the station scale like desks and people. At rest it shows a fresh rack.
+ * the station scale like desks and people. Play (the balls where the engine
+ * has them, the cue's stroke, the label) draws in its table space; a click
+ * opens Jeremy's table view.
  */
 export function PoolTable() {
 	return (
 		<group scale={STATION_SCALE}>
-			<Body />
-			<Rails />
-			<Cushions />
-			<Pockets />
-			<RestingCue />
-			<PoolBalls balls={RESTING_RACK} />
+			<PoolTableClick>
+				<Body />
+				<Rails />
+				<Cushions />
+				<Pockets />
+			</PoolTableClick>
+			<PoolPlay restingCue={<RestingCue />} />
 		</group>
 	);
 }
-
-const RESTING_RACK = restingRack();

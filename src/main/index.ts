@@ -155,6 +155,7 @@ const appUpdate = createAppUpdater({
 /** The pool table: idle agents play 8-ball with the built-in AI; Jeremy can join from the app. */
 const pool = createPool({
 	isOpen: (paneId) => terminals.isOpen(paneId),
+	inBrainstorm: (name) => brainstorm.service.current()?.agents.includes(name) ?? false,
 	emit: (view) => broadcast(IPC.poolChanged, view),
 	emitFrame: (frame) => broadcast(IPC.poolFrame, frame),
 });

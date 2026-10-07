@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { animateRig } from "./animate";
 import { Block, Blocks } from "./Block";
 import { animateExercise } from "./exercise";
+import { HELD_CUE } from "./held-cue";
 import { pantsColorFor } from "./outfits";
 import { armPart, facePart, headPart, upperPart } from "./parts";
 import {
@@ -104,6 +105,7 @@ export function MiiCharacter({
 							position={[index === 0 ? SHOULDER_X : -SHOULDER_X, SHOULDER_Y, 0]}
 						>
 							<Blocks items={arm} />
+							{index === 0 && activity === "cue" ? <Blocks items={HELD_CUE} /> : null}
 						</group>
 					))}
 				</group>

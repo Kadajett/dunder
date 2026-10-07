@@ -1,3 +1,4 @@
+import { CUE_ARM_LEAN } from "./held-cue";
 import {
 	type ArmAngles,
 	type MiiActivity,
@@ -78,6 +79,10 @@ function armPose(pose: MiiPose, activity: MiiActivity, i: number, t: number): vo
 		const tap = activity === "typing" ? 0.09 * Math.max(0, Math.sin(t * 14 + i * 2.2)) : 0;
 		arm.x = rest.x - tap;
 		arm.z = rest.z;
+	} else if (activity === "cue" && i === 0) {
+		// Hand out in front, gripping the cue that stands on the floor.
+		arm.x = -CUE_ARM_LEAN + 0.03 * Math.sin(t * 1.3);
+		arm.z = 0.16;
 	} else if (pose === "walking") {
 		arm.x = -0.45 * Math.sin(WALK * t + i * Math.PI);
 		arm.z = side * 0.1;

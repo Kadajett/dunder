@@ -3,16 +3,13 @@ import {
 	EIGHT_BALL,
 	FOOT_SPOT,
 	HEAD_SPOT,
-	HEAD_STRING_X,
 	POOL_TABLE,
 	type PoolBall,
-	type PoolBallInHand,
 } from "@shared/pool";
 import { nextRandom, shuffle } from "./rng";
 
 const R = POOL_TABLE.ballRadius;
 const HALF_L = POOL_TABLE.length / 2;
-const HALF_W = POOL_TABLE.width / 2;
 /** Racked balls sit this far apart so none starts overlapping a neighbour. */
 const RACK_GAP = 0.0002;
 
@@ -73,18 +70,6 @@ function isFree(balls: readonly PoolBall[], x: number, y: number, except: number
 		(ball) =>
 			ball.pocket !== null || ball.id === except || Math.hypot(ball.x - x, ball.y - y) >= 2 * R,
 	);
-}
-
-/** Where ball in hand may put the cue ball: on the cloth, clear of every ball, behind the head string for a kitchen. */
-export function canPlaceCue(
-	balls: readonly PoolBall[],
-	spot: { readonly x: number; readonly y: number },
-	area: PoolBallInHand,
-): boolean {
-	if (!Number.isFinite(spot.x) || !Number.isFinite(spot.y)) return false;
-	if (Math.abs(spot.x) > HALF_L - R || Math.abs(spot.y) > HALF_W - R) return false;
-	if (area === "kitchen" && spot.x > HEAD_STRING_X) return false;
-	return isFree(balls, spot.x, spot.y, CUE_BALL);
 }
 
 /** Move one ball (placing it back on the table when it was potted). */

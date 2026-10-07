@@ -3,7 +3,7 @@ import type { Vec2 } from "@shared/layout/schema";
 import type { Placement } from "../scene/station";
 import { FACE_CAMERA } from "./workout-spots";
 
-type WalkPurpose = "outing" | "return" | "workout" | "visit" | "meeting";
+type WalkPurpose = "outing" | "return" | "workout" | "visit" | "meeting" | "pool";
 
 /** Go and talk to a colleague (a delivered office message), on the brain's clock. */
 export interface VisitWindow {
@@ -21,7 +21,8 @@ export interface VisitWindow {
  * one sometimes stretches its legs and visits a spot in the office. A
  * workout signal overrides everything, then a brainstorm (standing with the
  * others at the whiteboard, working away in the terminal); a colleague visit
- * (delivering an office message in person) overrides status.
+ * (delivering an office message in person) overrides status; a place at the
+ * pool table (the engine seats idle agents) overrides wandering.
  */
 export type Brain =
 	| { readonly mode: "seated"; readonly nextOutingAt: number }
@@ -40,7 +41,9 @@ export type Brain =
 	  }
 	| { readonly mode: "exercising"; readonly at: Placement }
 	/** Standing with the others at the whiteboard during a brainstorm. */
-	| { readonly mode: "meeting"; readonly at: Placement };
+	| { readonly mode: "meeting"; readonly at: Placement }
+	/** Standing at the pool table, cue in hand, while the engine has the agent in a game. */
+	| { readonly mode: "playing"; readonly at: Placement };
 
 /** A workout the agent takes part in, on the brain's clock (seconds). */
 export interface WorkoutWindow {
@@ -59,6 +62,8 @@ export type BrainEvent =
 			readonly visit?: VisitWindow | undefined;
 			/** The agent takes part in the running brainstorm. */
 			readonly meeting?: boolean;
+			/** Where to stand at the pool table while the engine has the agent in a game. */
+			readonly pool?: Placement | undefined;
 	  }
 	| { readonly type: "arrived"; readonly now: number };
 
@@ -158,6 +163,31 @@ function whileSeated(
 const visitOf = (brain: Brain): VisitWindow | undefined =>
 	brain.mode === "walking" || brain.mode === "hanging" ? brain.visit : undefined;
 
+const samePlace = (a: Placement, b: Placement): boolean =>
+	Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z) < 0.05;
+
+/**
+ * At the pool table: walk to the given spot (a new one when the shooter
+ * changes), stand there while the game goes on, and head back to the desk as
+ * soon as the engine lets the agent go.
+ */
+function whileAtPool(brain: Brain, event: Tick, world: BrainWorld): Brain | undefined {
+	const spot = event.pool;
+	const goal =
+		brain.mode === "playing"
+			? brain.at
+			: brain.mode === "walking" && brain.purpose === "pool"
+				? brain.goal
+				: undefined;
+	if (!spot) return goal ? goHome(event, world) : undefined;
+	if (goal && samePlace(goal, spot)) {
+		return brain.mode === "playing" && brain.at.rotationY !== spot.rotationY
+			? { mode: "playing", at: spot }
+			: brain;
+	}
+	return walkTo(world, event.position, spot, "pool") ?? { mode: "playing", at: spot };
+}
+
 /**
  * Delivering a message in person: walk to the colleague whatever the herdr
  * status says (the agent's turn keeps running in its terminal), chat until
@@ -195,6 +225,8 @@ function onTick(brain: Brain, event: Tick, world: BrainWorld): Brain {
 	if (gathering) return gathering;
 	const visiting = whileVisiting(brain, event, world);
 	if (visiting) return visiting;
+	const pooling = whileAtPool(brain, event, world);
+	if (pooling) return pooling;
 	const { now } = event;
 	if (brain.mode === "seated") return whileSeated(brain, event, world);
 	const busy = isBusy(event.status);
@@ -211,6 +243,7 @@ export function stepBrain(brain: Brain, event: BrainEvent, world: BrainWorld): B
 	if (brain.purpose === "return") return sitDown(event.now, world);
 	if (brain.purpose === "workout") return { mode: "exercising", at: brain.goal };
 	if (brain.purpose === "meeting") return { mode: "meeting", at: brain.goal };
+	if (brain.purpose === "pool") return { mode: "playing", at: brain.goal };
 	if (brain.visit)
 		return { mode: "hanging", at: brain.goal, until: brain.visit.until, visit: brain.visit };
 	return {

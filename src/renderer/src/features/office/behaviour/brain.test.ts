@@ -238,3 +238,54 @@ describe("gathering for a brainstorm", () => {
 		});
 	});
 });
+
+describe("playing pool", () => {
+	const rail: Placement = { position: { x: -9, z: -3 }, rotationY: 1 };
+	const otherRail: Placement = { position: { x: -11, z: -3 }, rotationY: -1 };
+	const poolTick = (now: number, pool: Placement | undefined, position: Vec2 = seat.position) =>
+		({ ...tick("idle", now, position), pool }) as const;
+
+	it("walks a seated agent to its spot at the table and stands there with the game", () => {
+		const walking = stepBrain(
+			initialBrain(0, () => 0.9),
+			poolTick(1, rail),
+			world(),
+		);
+		expect(walking).toMatchObject({ mode: "walking", purpose: "pool", goal: rail });
+		const playing = stepBrain(walking, { type: "arrived", now: 5 }, world());
+		expect(playing).toEqual({ mode: "playing", at: rail });
+		expect(stepBrain(playing, poolTick(6, rail, rail.position), world())).toBe(playing);
+	});
+
+	it("moves round the table when its spot changes (it became the shooter)", () => {
+		const playing: Brain = { mode: "playing", at: rail };
+		const moving = stepBrain(playing, poolTick(10, otherRail, rail.position), world());
+		expect(moving).toMatchObject({ mode: "walking", purpose: "pool", goal: otherRail });
+	});
+
+	it("goes back to its desk as soon as the engine lets it go", () => {
+		const playing: Brain = { mode: "playing", at: rail };
+		const home = stepBrain(playing, poolTick(10, undefined, rail.position), world());
+		expect(home).toMatchObject({ mode: "walking", purpose: "return", goal: seat });
+		const halfway: Brain = {
+			mode: "walking",
+			purpose: "pool",
+			path: [seat.position, rail.position],
+			goal: rail,
+		};
+		expect(stepBrain(halfway, poolTick(11, undefined, { x: -4, z: -1 }), world())).toMatchObject({
+			purpose: "return",
+		});
+	});
+
+	it("leaves the table for a workout and comes back after it", () => {
+		const playing: Brain = { mode: "playing", at: rail };
+		const during = stepBrain(playing, { ...poolTick(110, rail, rail.position), workout }, world());
+		expect(during).toMatchObject({ mode: "walking", purpose: "workout" });
+		const exercising = stepBrain(during, { type: "arrived", now: 115 }, world());
+		const after = stepBrain(exercising, poolTick(171, rail, gym.position), world());
+		expect(after).toMatchObject({ purpose: "return" });
+		const back = stepBrain(after, poolTick(172, rail, { x: -1, z: 1 }), world());
+		expect(back).toMatchObject({ mode: "walking", purpose: "pool", goal: rail });
+	});
+});

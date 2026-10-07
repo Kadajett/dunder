@@ -19,8 +19,12 @@ const MAX_BALLS = 16;
 
 /** Low-poly, like the rest of the office: twenty-ish facets read as a ball at any zoom. */
 const BALL = new IcosahedronGeometry(R, 1);
-/** A stripe is a white ball wearing an open ring of its colour round the middle. */
-const BAND = new CylinderGeometry(R * 1.05, R * 1.05, R * 1.05, 8, 1, true);
+/**
+ * A stripe is a white ball wearing an open ring of its colour. The ring stands
+ * on edge (axis level), so the colour shows from the office camera and from
+ * straight above in table view, where a level ring would leave a white disc.
+ */
+const BAND = new CylinderGeometry(R * 1.05, R * 1.05, R * 1.05, 8, 1, true).rotateX(Math.PI / 2);
 
 const COLOURED = new MeshStandardMaterial({ flatShading: true, roughness: 0.45 });
 const RING = new MeshStandardMaterial({ flatShading: true, roughness: 0.45 });

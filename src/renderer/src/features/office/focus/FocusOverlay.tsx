@@ -7,7 +7,7 @@ import { useFocus } from "./focus-store";
 /** Leaving focus is bound to this chord, never to Esc (omp, vim and every TUI need Esc). */
 export const LEAVE_CHORD_LABEL = "Ctrl+Shift+O";
 
-function isLeaveChord(event: KeyboardEvent): boolean {
+export function isLeaveChord(event: KeyboardEvent): boolean {
 	return (
 		event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.code === "KeyO"
 	);
@@ -24,8 +24,8 @@ function fontSizeFor(height: number): number {
  * a visible way back.
  */
 export function FocusOverlay() {
-	const phase = useFocus((state) => state.phase);
-	const target = useFocus((state) => state.target);
+	const target = useFocus((state) => (state.target?.kind === "screen" ? state.target : null));
+	const phase = useFocus((state) => (state.target?.kind === "screen" ? state.phase : null));
 	const rect = useFocus((state) => state.rect);
 	const leave = useFocus((state) => state.leave);
 	const dockOpen = useChief((state) => state.expanded);
@@ -43,7 +43,7 @@ export function FocusOverlay() {
 		return () => window.removeEventListener("keydown", onKey, true);
 	}, [phase, leave]);
 
-	if (phase === null || !target) return null;
+	if (phase === null || target === null) return null;
 	const showTerminal = phase === "focused" && rect !== null;
 	return (
 		<div className="focus-layer" data-phase={phase} data-dock={dockOpen ? "open" : "closed"}>

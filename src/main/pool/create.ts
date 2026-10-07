@@ -54,6 +54,7 @@ export function latestOnly<T>(write: (value: T) => Promise<void>): (value: T) =>
 
 export interface PoolOptions {
 	readonly isOpen: (paneId: string) => boolean;
+	readonly inBrainstorm: (name: string) => boolean;
 	readonly emit: (view: PoolView) => void;
 	readonly emitFrame: (frame: PoolFrame) => void;
 }
@@ -65,6 +66,7 @@ export function createPool(options: PoolOptions): PoolService {
 	return new PoolService({
 		seed: randomInt(2 ** 31),
 		isOpen: options.isOpen,
+		inBrainstorm: options.inBrainstorm,
 		emit: options.emit,
 		emitFrame: options.emitFrame,
 		saveDigest: save,

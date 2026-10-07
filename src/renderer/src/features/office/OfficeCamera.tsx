@@ -12,9 +12,9 @@ import {
 	capturePose,
 	easeInOutCubic,
 	focusLookAt,
-	focusPose,
 	lerpPose,
-	projectScreen,
+	projectTarget,
+	targetPose,
 } from "./focus/camera-pose";
 import { focusArea } from "./focus/focus-layout";
 import { useFocus } from "./focus/focus-store";
@@ -51,7 +51,8 @@ interface Tween {
 
 /**
  * Isometric orthographic camera framed on the room (pan and zoom only), plus
- * the focus tween: head-on to a clicked monitor and back to where it was.
+ * the focus tween: head-on to a clicked monitor, or above the pool table, and
+ * back to where it was.
  */
 export function OfficeCamera({ room }: { readonly room: Room }) {
 	const camera = useThree((state) => state.camera) as OrthographicCamera;
@@ -90,22 +91,22 @@ export function OfficeCamera({ room }: { readonly room: Room }) {
 				saved.current = capturePose(camera);
 				savedTarget.current = orbit?.target.clone() ?? null;
 			}
-			const to = focusPose(target.screen, size, focusArea(size, dockOpen));
+			const to = targetPose(target, size, focusArea(size, dockOpen));
 			tween.current = {
 				from: capturePose(camera),
 				to,
 				started: performance.now(),
 				done: () => {
 					orbit?.target.copy(focusLookAt(to));
-					focus.settled(projectScreen(target.screen, camera, size));
+					focus.settled(projectTarget(target, camera, size));
 				},
 			};
 		} else if (phase === "focused" && target && !tween.current) {
 			// Window resized or dock toggled while focused: re-frame and move the terminal with it.
-			const pose = focusPose(target.screen, size, focusArea(size, dockOpen));
+			const pose = targetPose(target, size, focusArea(size, dockOpen));
 			applyPose(camera, pose);
 			orbit?.target.copy(focusLookAt(pose));
-			focus.settled(projectScreen(target.screen, camera, size));
+			focus.settled(projectTarget(target, camera, size));
 		} else if (phase === "leaving" && saved.current) {
 			const back = saved.current;
 			const backTarget = savedTarget.current;

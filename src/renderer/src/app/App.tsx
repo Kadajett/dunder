@@ -23,6 +23,8 @@ import { useOfficeModel } from "../features/office/model/office-model";
 import { connectModels } from "../features/office/models/models-store";
 import { OfficeView } from "../features/office/OfficeView";
 import { TvFullscreen } from "../features/office/tv/TvFullscreen";
+import { connectPool } from "../features/pool/pool-store";
+import { TableView } from "../features/pool/TableView";
 import { WhiteboardOverlay } from "../features/whiteboard/WhiteboardOverlay";
 import { WorkBar } from "../features/work/WorkBar";
 import { connectWork } from "../features/work/work-store";
@@ -47,6 +49,7 @@ export function App() {
 	useEffect(connectBoardPosts, []);
 	useEffect(connectFeed, []);
 	useEffect(connectWork, []);
+	useEffect(connectPool, []);
 	return (
 		<div className="office-app" data-view={view}>
 			{view === "office" ? (
@@ -55,6 +58,7 @@ export function App() {
 					<WorldCards model={model} layout={layout} snapshot={snapshot} />
 					<EditDock />
 					<FocusOverlay />
+					<TableView />
 					<TvFullscreen />
 				</>
 			) : (

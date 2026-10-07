@@ -1,9 +1,10 @@
 import { Canvas } from "@react-three/fiber";
 import type { Layout } from "@shared/layout/schema";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useChief } from "../chief/chief-store";
 import { EditLayer } from "../edit/EditLayer";
 import { useEdit } from "../edit/edit-store";
+import { poolTableOf } from "../pool/table-space";
 import { useWorlds } from "./behaviour/useWorlds";
 import { AgentActor, type AgentActorProps } from "./characters/AgentActor";
 import { SpeechBubble } from "./conversations/SpeechBubble";
@@ -31,12 +32,15 @@ export interface OfficeViewProps {
 /** The isometric office: a pure function of the layout and live herdr state (plus edit mode's pick layer). */
 export function OfficeView({ layout, model }: OfficeViewProps) {
 	const worlds = useWorlds(layout, model.seated);
-	const focusedDesk = useFocus((state) => state.target?.deskId);
+	const focusedDesk = useFocus((state) =>
+		state.target?.kind === "screen" ? state.target.deskId : undefined,
+	);
 	const select = useSelection((state) => state.select);
 	const clearSelection = useSelection((state) => state.clear);
 	const openChief = useChief((state) => state.open);
 	const editing = useEdit((state) => state.editing);
 	const seatByDesk = new Map(model.seated.map((seat) => [seat.desk.id, seat]));
+	const poolTable = useMemo(() => poolTableOf(layout), [layout]);
 
 	return (
 		<Canvas
@@ -85,6 +89,7 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 						agent={agent}
 						world={world}
 						phase={index * 0.7}
+						poolTable={poolTable}
 						onSelect={() => select({ kind: "agent", paneId: agent.paneId })}
 					/>
 				);
@@ -100,8 +105,11 @@ function Colleague({
 	agent,
 	world,
 	phase,
+	poolTable,
 	onSelect,
-}: Pick<AgentActorProps, "agent" | "world" | "phase"> & { readonly onSelect: () => void }) {
+}: Pick<AgentActorProps, "agent" | "world" | "phase" | "poolTable"> & {
+	readonly onSelect: () => void;
+}) {
 	const [hovered, setHovered] = useState(false);
 	return (
 		<Clickable onSelect={onSelect} onHoverChange={setHovered}>
@@ -109,6 +117,7 @@ function Colleague({
 				agent={agent}
 				world={world}
 				phase={phase}
+				poolTable={poolTable}
 				overlay={<SpeechBubble agentName={agent.name} height={2.35} hovered={hovered} />}
 			/>
 		</Clickable>

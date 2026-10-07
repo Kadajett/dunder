@@ -1,8 +1,8 @@
-import { CUE_BALL, type PoolShotInput } from "@shared/pool";
+import { CUE_BALL, canPlaceCue, type PoolShotInput } from "@shared/pool";
 import { MAX_SPEED, type Simulation, simulate } from "./physics";
 import { judge } from "./rules";
 import { isOnEight, type PoolGame } from "./state";
-import { canPlaceCue, placeBall } from "./table";
+import { placeBall } from "./table";
 
 /** Why the shot can't be taken, or null when it can. */
 export function shotProblem(game: PoolGame, input: PoolShotInput): string | null {

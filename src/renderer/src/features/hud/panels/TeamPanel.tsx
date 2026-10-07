@@ -11,6 +11,7 @@ import type { LiveAgent } from "../../office/model/live-agents";
 import type { OfficeModel } from "../../office/model/office-model";
 import { ModelPicker } from "../../office/models/ModelPicker";
 import { useModels } from "../../office/models/models-store";
+import { poolStatusOf, usePool } from "../../pool/pool-store";
 import { StatTiles } from "../StatTiles";
 import { openAgentScreen } from "./open-agent";
 
@@ -52,6 +53,7 @@ function TeamCard(props: {
 	const live = useModels((state) => state.live[agent.name]);
 	const seat = props.model.seated.find((seated) => seated.agent.paneId === agent.paneId);
 	const latest = useFeed((state) => state.items.find((item) => item.paneId === agent.paneId));
+	const pool = usePool((state) => poolStatusOf(state.view, agent.name));
 	return (
 		<article className="hud-card">
 			<div className="hud-card-head">
@@ -64,6 +66,7 @@ function TeamCard(props: {
 			{hired?.role ? <p className="hud-card-line">{hired.role}</p> : null}
 			<div className="hud-team-rows">
 				<Row label="now" value={latest && `${formatClock(latest.at)} ${latest.action}`} />
+				<Row label="pool" value={pool} />
 				<Row label="room" value={agent.workspaceLabel ? `#${agent.workspaceLabel}` : undefined} />
 				<Row label="harness" value={hired?.harness ?? agent.kind} />
 				<Row label="model" value={modelLabel(agent.kind, live)} />

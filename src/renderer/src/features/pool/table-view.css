@@ -1,0 +1,247 @@
+/* Table view: the game strip on top and the aiming layer over the pool table. */
+.pool-hud {
+	position: absolute;
+	top: 16px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	max-width: calc(100% - 32px);
+	color: #f6efe2;
+	font: 500 12px var(--font-ui);
+	pointer-events: none;
+}
+
+.focus-layer[data-dock="open"] .pool-hud {
+	left: 16px;
+	right: var(--chief-dock-reserve);
+	width: max-content;
+	margin-inline: auto;
+	transform: none;
+}
+
+.pool-hud > * {
+	pointer-events: auto;
+}
+
+.pool-hud-row {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 7px 8px 7px 14px;
+	border-radius: 12px;
+	background: #24221ff0;
+	box-shadow: 0 8px 24px #00000040;
+	white-space: nowrap;
+}
+
+.pool-side {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pool-side + .pool-side::before {
+	content: "vs";
+	color: #bfb6a6;
+	font: 400 11px var(--font-mono);
+}
+
+.pool-players {
+	display: flex;
+	gap: 6px;
+}
+
+.pool-player[data-shooter="true"] {
+	padding: 1px 7px;
+	border-radius: 6px;
+	background: #f6efe2;
+	color: var(--ink);
+	font-weight: 700;
+}
+
+.pool-dots {
+	display: flex;
+	gap: 3px;
+}
+
+.pool-dots i {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 1px #00000040;
+}
+
+.pool-open {
+	color: #bfb6a6;
+	font: 400 11px var(--font-mono);
+}
+
+.pool-button {
+	border: 0;
+	border-radius: 8px;
+	padding: 6px 12px;
+	background: #3a3631;
+	color: #f6efe2;
+	font: 700 12px var(--font-ui);
+	cursor: pointer;
+}
+
+.pool-button[data-primary] {
+	background: #f6efe2;
+	color: var(--ink);
+}
+
+.pool-banner,
+.pool-prompt,
+.pool-last,
+.pool-error {
+	padding: 4px 12px;
+	border-radius: 8px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 100%;
+}
+
+.pool-banner {
+	background: #e8b931;
+	color: var(--ink);
+	font: 800 14px var(--font-ui);
+}
+
+.pool-prompt {
+	background: #2f6b45f0;
+	font-weight: 700;
+}
+
+.pool-last {
+	background: #24221fcc;
+	color: #d9d0bf;
+	font: 400 11px var(--font-mono);
+}
+
+.pool-error {
+	background: #8f2a22f0;
+	font-weight: 600;
+}
+
+.pool-aim {
+	position: absolute;
+	overflow: visible;
+	touch-action: none;
+	cursor: default;
+}
+
+.pool-aim[data-interactive="true"] {
+	cursor: crosshair;
+}
+
+.pool-aim[data-drag="place"] {
+	cursor: grabbing;
+}
+
+.pool-guide line {
+	stroke: #ffffffd9;
+	stroke-width: 1.5px;
+	stroke-dasharray: 6 5;
+	vector-effect: non-scaling-stroke;
+}
+
+.pool-guide .pool-cue {
+	stroke: #d8b27a;
+	stroke-width: 7px;
+	stroke-linecap: round;
+	stroke-dasharray: none;
+}
+
+.pool-ghost {
+	fill: none;
+	stroke: #ffffffd9;
+	stroke-width: 1.5px;
+	vector-effect: non-scaling-stroke;
+}
+
+.pool-kitchen rect {
+	fill: #ffffff14;
+}
+
+.pool-kitchen line {
+	stroke: #ffffff8c;
+	stroke-width: 1px;
+	vector-effect: non-scaling-stroke;
+}
+
+.pool-in-hand .pool-cue-ball {
+	fill: #f4f1e8;
+	stroke: #00000059;
+	stroke-width: 1px;
+	vector-effect: non-scaling-stroke;
+}
+
+.pool-in-hand .pool-grab {
+	fill: #ffffff1a;
+	stroke: #ffffff8c;
+	stroke-width: 1px;
+	stroke-dasharray: 3 3;
+	vector-effect: non-scaling-stroke;
+	cursor: grab;
+}
+
+.pool-in-hand[data-legal="false"] .pool-cue-ball {
+	fill: #e0453a;
+}
+
+.pool-in-hand[data-legal="false"] .pool-grab {
+	stroke: #e0453a;
+}
+
+.pool-pocket {
+	position: absolute;
+	padding: 0;
+	border: 2px solid #ffffffb3;
+	border-radius: 50%;
+	background: #ffffff26;
+	cursor: pointer;
+}
+
+.pool-pocket:hover {
+	background: #ffffff4d;
+}
+
+.pool-pocket[data-called="true"] {
+	border: 3px solid #e8b931;
+	background: #e8b931b3;
+	box-shadow: 0 0 12px #e8b931;
+}
+
+.pool-power {
+	position: absolute;
+	width: 14px;
+	border-radius: 7px;
+	background: #24221ff0;
+	box-shadow: 0 4px 14px #00000040;
+	pointer-events: none;
+}
+
+.pool-power span {
+	position: absolute;
+	left: 3px;
+	right: 3px;
+	bottom: 3px;
+	max-height: calc(100% - 6px);
+	border-radius: 4px;
+	background: linear-gradient(#e0453a, #e8b931 50%, #5fbf6a);
+	background-size: 100% 100%;
+}
+
+.pool-power b {
+	position: absolute;
+	top: -20px;
+	left: 50%;
+	transform: translateX(-50%);
+	color: #f6efe2;
+	font: 700 11px var(--font-mono);
+}

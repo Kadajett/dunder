@@ -1,0 +1,11 @@
+/* The in-world label over the pool table: a small felt-green tag, like the office callouts. */
+.pool-label {
+	padding: 4px 10px 5px;
+	border-radius: 8px;
+	background: #1f5a42eb;
+	box-shadow: 0 4px 12px #00000033;
+	color: #f4f1e8;
+	font: 600 11px / 1.25 var(--font-mono);
+	white-space: nowrap;
+	user-select: none;
+}
