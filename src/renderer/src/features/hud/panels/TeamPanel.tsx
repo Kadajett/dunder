@@ -1,4 +1,5 @@
 import "../../office/interaction/cards.css";
+import "./team.css";
 import { avatarStyleFor } from "@shared/avatar/style";
 import type { RosterAgent } from "@shared/company/roster";
 import { type AgentModel, shortModelName } from "@shared/models";
@@ -12,7 +13,7 @@ import type { OfficeModel } from "../../office/model/office-model";
 import { ModelPicker } from "../../office/models/ModelPicker";
 import { useModels } from "../../office/models/models-store";
 import { poolStatusOf, usePool } from "../../pool/pool-store";
-import { useWorkCards } from "../../work/work-store";
+import { useWork, useWorkCards } from "../../work/work-store";
 import { OpenInEditor } from "../../worktrees/OpenInEditor";
 import { StatTiles } from "../StatTiles";
 import { InterruptControl } from "./InterruptControl";
@@ -75,7 +76,14 @@ function TeamCard(props: {
 				<span className="hud-mii" style={{ background: color }}>
 					<i className={`status-dot status-${agent.status}`} />
 				</span>
-				<strong>{agent.name}</strong>
+				<button
+					type="button"
+					className="hud-team-name"
+					title={`Show ${agent.name}'s beads on the work board`}
+					onClick={() => useWork.getState().showAgent(agent.name)}
+				>
+					{agent.name}
+				</button>
 				<span className="hud-card-meta">{STATUS_LABEL[agent.status]}</span>
 			</div>
 			{hired?.role ? <p className="hud-card-line">{hired.role}</p> : null}

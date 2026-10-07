@@ -182,4 +182,22 @@ describe("work store", () => {
 		expect(useWork.getState().creating).toEqual([]);
 		expect(useWork.getState().errors[ADD_ERROR]).toBe("Couldn't add “Nope”: no bd");
 	});
+
+	it("reveals a card out of a filter that hides it, but keeps the filter when the card is that agent's", () => {
+		useWork.setState({ agentFilter: null });
+		fake.push(
+			board(
+				1,
+				{ ...card("o-1", "done"), assignee: "carl" },
+				{ ...card("o-2", "ready"), assignee: "theo" },
+			),
+		);
+		useWork.getState().showAgent("theo");
+		expect(useWork.getState()).toMatchObject({ open: true, agentFilter: "theo" });
+		useWork.getState().reveal("o-2");
+		expect(useWork.getState().agentFilter).toBe("theo");
+		useWork.getState().reveal("o-1");
+		expect(useWork.getState()).toMatchObject({ agentFilter: null, expanded: "o-1" });
+		expect(useWork.getState().collapsed.done).toBe(false);
+	});
 });

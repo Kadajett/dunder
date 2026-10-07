@@ -1,0 +1,17 @@
+/* Team card: the agent's name opens the work board filtered to their beads. */
+.hud-team-name {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	font: 700 12px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	cursor: pointer;
+}
+
+.hud-team-name:hover {
+	text-decoration-color: var(--ink-soft);
+}

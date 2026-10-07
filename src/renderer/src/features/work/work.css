@@ -279,3 +279,16 @@
 	line-height: 1;
 	cursor: pointer;
 }
+
+/* "theo ×": the bar shows one agent's beads. */
+.work-filter {
+	align-self: center;
+	padding: 3px 9px;
+	border: 1px solid #e2d8c6;
+	border-radius: 999px;
+	background: #efe6d6;
+	color: var(--ink);
+	font: 600 11px var(--font-mono);
+	white-space: nowrap;
+	cursor: pointer;
+}

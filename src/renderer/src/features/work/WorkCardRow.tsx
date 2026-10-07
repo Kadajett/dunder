@@ -7,7 +7,7 @@ import { epicTitle, spendLabel, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
 import { laneLabels, priorities, shortId, waitedFor } from "./work-model";
-import { assignCard, moveCard, setCardPriority } from "./work-store";
+import { assignCard, moveCard, setCardPriority, useWork } from "./work-store";
 import "./work-card.css";
 
 /** How long a bead has waited for Max's review, re-read every minute. */
@@ -82,16 +82,48 @@ function AssigneeChip({ card }: { readonly card: WorkCard }) {
 			onSelect: () => void assignCard(card.id, null),
 		},
 	];
+	const assignee = card.assignee;
+	if (!assignee)
+		return (
+			<WorkMenuButton
+				className="work-chip work-chip--assignee"
+				label="Unassigned: assign"
+				menuLabel="Assignee"
+				items={items}
+			>
+				<span className="work-chip__text">unassigned</span>
+			</WorkMenuButton>
+		);
 	return (
-		<WorkMenuButton
-			className="work-chip work-chip--assignee"
-			label={card.assignee ? `Assigned to ${card.assignee}: change` : "Unassigned: assign"}
-			menuLabel="Assignee"
-			items={items}
+		<span className="work-chip work-chip--assignee work-chip--split">
+			<AgentFilterButton agent={assignee} />
+			<WorkMenuButton
+				className="work-chip__change"
+				label={`Assigned to ${assignee}: change`}
+				menuLabel="Assignee"
+				items={items}
+			>
+				▾
+			</WorkMenuButton>
+		</span>
+	);
+}
+
+/** The assignee's name: shows only their beads (again: everyone's). */
+function AgentFilterButton({ agent }: { readonly agent: string }) {
+	const filtered = useWork((state) => state.agentFilter === agent);
+	const filterAgent = useWork((state) => state.filterAgent);
+	return (
+		<button
+			type="button"
+			className="work-chip__filter"
+			aria-pressed={filtered}
+			title={filtered ? "Show everyone's beads" : `Show only ${agent}'s beads`}
+			onClick={() => filterAgent(filtered ? null : agent)}
 		>
-			{card.assignee ? <AgentDot name={card.assignee} /> : null}
-			<span className="work-chip__text">{card.assignee ?? "unassigned"}</span>
-		</WorkMenuButton>
+			<AgentDot name={agent} />
+			<span className="work-chip__text">{agent}</span>
+		</button>
 	);
 }
 
