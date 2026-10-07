@@ -1,4 +1,5 @@
 import type { AppError } from "@shared/app-errors";
+import { agentActivity, agentName } from "@shared/herdr/agent-label";
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
 import type { SeenDone } from "@shared/office-stats";
 import type { HumanAsk } from "@shared/work-board";
@@ -36,13 +37,12 @@ export function inboxAgents(snapshot: SessionSnapshot | null): InboxAgent[] {
 	if (!snapshot) return [];
 	const labels = new Map(snapshot.workspaces.map((ws) => [ws.workspace_id, ws.label]));
 	return snapshot.agents.map((agent) => ({
-		name: agent.name ?? `${agent.agent}-${agent.pane_id.replace(":", "-")}`,
+		name: agentName(agent),
 		paneId: agent.pane_id,
 		status: agent.agent_status,
 		seq: agent.state_change_seq,
 		workspaceLabel: labels.get(agent.workspace_id),
-		// omp titles read `π > Send greeting message to Ava`: drop the prompt glyph.
-		activity: agent.terminal_title_stripped?.replace(/^\S{1,3}\s*>\s+/u, "") || undefined,
+		activity: agentActivity(agent),
 	}));
 }
 
