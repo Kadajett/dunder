@@ -79,6 +79,25 @@ export interface HumanAsk {
 	readonly createdAt: string;
 }
 
+/**
+ * Four honest figures about the office's throughput (no per-agent board):
+ * beads (not epics or asks) closed today against yesterday (local days),
+ * and today's medians. A median is null until a bead today has the data.
+ */
+export interface ShippingStats {
+	readonly today: number;
+	readonly yesterday: number;
+	/** started_at → closed_at. */
+	readonly leadMs: number | null;
+	/** Entered Review → closed (as the board saw it enter). */
+	readonly reviewMs: number | null;
+	/** The assignee's AI spend from start to close (~USD). */
+	readonly usd: number | null;
+	/** Queue lengths now. */
+	readonly ready: number;
+	readonly inReview: number;
+}
+
 export type WorkBoard =
 	/** Cards grouped by lane in `workLanes` order; within a lane by priority, then most recently updated. */
 	| {
@@ -90,6 +109,8 @@ export type WorkBoard =
 			readonly asks: readonly HumanAsk[];
 			/** Every bead closed in the last 24 h (the Done lane shows only the newest few), for the Today pill. */
 			readonly closedToday?: readonly string[];
+			/** The office's throughput, for the TV's SHIPPING channel. */
+			readonly shipping?: ShippingStats;
 	  }
 	/** bd is missing or failing; the bar says so instead of showing stale cards. */
 	| { readonly state: "unavailable"; readonly reason: string };

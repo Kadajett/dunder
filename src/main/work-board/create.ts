@@ -1,9 +1,12 @@
+import { join } from "node:path";
 import { createLogger } from "@shared/log/logger";
 import type { WorkBoard } from "@shared/work-board";
+import { app } from "electron";
 import { runBd } from "../beads/bd";
 import { postToMailbox } from "../switchboard/service";
 import { gitIn, MergeChecks } from "./merges";
 import { WorkBoardService } from "./service";
+import { ReviewClock, shippingStats } from "./shipping";
 import type { SpendOf } from "./spend";
 
 const log = createLogger("work-board");
@@ -25,6 +28,8 @@ export function createWorkBoard(
 			log.warn("agent not told", { agent, error }),
 		);
 	const merges = new MergeChecks(gitIn(cwd), notify);
+	const spendOf: SpendOf = (agent, from, to) => spend.spendBetween(agent, from, to);
+	const reviews = new ReviewClock(join(app.getPath("userData"), "review-clock.json"));
 	return new WorkBoardService({
 		runBd,
 		cwd,
@@ -35,7 +40,15 @@ export function createWorkBoard(
 		},
 		emit,
 		notify,
-		spendOf: (agent, from, to) => spend.spendBetween(agent, from, to),
+		spendOf,
 		checkMerges: (cards) => merges.annotate(cards),
+		shipping: async (closed, cards, now) =>
+			shippingStats({
+				closed,
+				cards,
+				reviewSince: await reviews.observe(cards, now),
+				spendOf,
+				now,
+			}),
 	});
 }

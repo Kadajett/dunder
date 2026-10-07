@@ -4,6 +4,7 @@ export const TV_CHANNELS = [
 	{ id: "weather", name: "SF WEATHER" },
 	{ id: "activity", name: "ACTIVITY" },
 	{ id: "clock", name: "WORLD CLOCK" },
+	{ id: "shipping", name: "SHIPPING" },
 	{ id: "standby", name: "HERDR TV" },
 ] as const;
 
