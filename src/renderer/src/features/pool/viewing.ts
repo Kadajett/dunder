@@ -1,22 +1,16 @@
-/** What decides whether Jeremy is at the pool table right now. */
-export interface ViewingState {
-	/** The table view is open and the camera has settled over it. */
-	readonly settled: boolean;
-	/** The window is focused and visible: he can actually see it. */
-	readonly active: boolean;
-}
+import { VIEWING_PING_MS } from "@shared/pool";
 
 /**
- * Keeps main's `jeremy.viewing` in step: true only while the table view is
- * settled in an active window (blur, minimise or leaving hands his turns to
- * the autopilot), and sent only when it changes.
+ * While the table view is open, tell main so at once and every
+ * `VIEWING_PING_MS`, whatever the window's focus: Jeremy aims with the chat
+ * dock or another window focused, and his shot must stay his. Returns the
+ * stop, which tells main the view closed (his grace starts then).
  */
-export function viewingSync(send: (viewing: boolean) => void): (state: ViewingState) => void {
-	let sent: boolean | undefined;
-	return ({ settled, active }) => {
-		const viewing = settled && active;
-		if (viewing === sent) return;
-		sent = viewing;
-		send(viewing);
+export function pingViewing(send: (viewing: boolean) => void): () => void {
+	send(true);
+	const timer = setInterval(() => send(true), VIEWING_PING_MS);
+	return () => {
+		clearInterval(timer);
+		send(false);
 	};
 }

@@ -139,8 +139,11 @@ export interface PoolView {
 	readonly result: PoolResult | null;
 	readonly jeremy: {
 		readonly joined: boolean;
+		/** His table view is open (it pings main every `VIEWING_PING_MS`). */
 		readonly viewing: boolean;
 		readonly yourTurn: boolean;
+		/** When the engine plays his shot for him (epoch ms): only on his shot while he is out of table view. */
+		readonly autopilotAt: number | null;
 	};
 	/** The in-world label over the table; empty while the table rests. */
 	readonly label: string;
@@ -180,7 +183,16 @@ export interface PoolApi {
 	join(): Promise<PoolActionResult>;
 	/** Leave the game or end practice; an emptied side forfeits. */
 	leave(): Promise<PoolActionResult>;
-	/** Whether Jeremy is in table view: out of it, autopilot plays his visits. */
+	/**
+	 * The table view is open (`true`, sent every `VIEWING_PING_MS` while it is)
+	 * or closed (`false`). Jeremy's shot never autoplays while the pings come;
+	 * the engine takes it `VIEWING_GRACE_MS` after he leaves or they stop.
+	 */
 	setViewing(viewing: boolean): Promise<void>;
 	shoot(input: PoolShotInput): Promise<PoolActionResult>;
 }
+
+/** How often an open table view tells main it is still open. */
+export const VIEWING_PING_MS = 2_000;
+/** How long Jeremy's shot waits for him after he leaves the table view (or its pings stop). */
+export const VIEWING_GRACE_MS = 10_000;

@@ -1,6 +1,12 @@
 import { agent, snapshot } from "@shared/herdr/fixtures/snapshot";
 import type { AgentStatus } from "@shared/herdr/schema";
-import { JEREMY, type PoolFrame, type PoolView } from "@shared/pool";
+import {
+	JEREMY,
+	type PoolFrame,
+	type PoolView,
+	VIEWING_GRACE_MS,
+	VIEWING_PING_MS,
+} from "@shared/pool";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ELIGIBLE_AFTER_MS, WINNER_PAUSE_MS } from "./lounge";
 import { PoolService, WALK_MS } from "./service";
@@ -120,19 +126,25 @@ describe("PoolService", () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	it("waits for Jeremy's shot while he's in table view, and plays it on autopilot when he isn't", () => {
+	it("never plays Jeremy's shot while his table view pings, and plays it after the grace once he leaves", () => {
 		const { service } = harness();
 		service.start();
 		expect(service.join()).toEqual({ ok: true });
-		service.setViewing(true);
+		// The open table view pings every 2 s, whatever the window's focus.
+		const aim = (ms: number): void => {
+			for (let waited = 0; waited < ms; waited += VIEWING_PING_MS) {
+				service.setViewing(true);
+				vi.advanceTimersByTime(VIEWING_PING_MS);
+			}
+		};
+		aim(60_000);
 		expect(service.view()).toMatchObject({
 			mode: "practice",
 			shooter: JEREMY,
 			ballInHand: "kitchen",
-			jeremy: { yourTurn: true },
+			shot: 0,
+			jeremy: { viewing: true, yourTurn: true, autopilotAt: null },
 		});
-		vi.advanceTimersByTime(WALK_MS * 3);
-		expect(service.view().shot).toBe(0);
 
 		expect(service.shoot({ angle: 0, power: 0.9 })).toEqual({
 			ok: false,
@@ -143,14 +155,34 @@ describe("PoolService", () => {
 			ok: false,
 			reason: "wait for the balls to stop",
 		});
-		vi.advanceTimersByTime(60_000);
+		aim(60_000);
 		expect(service.view()).toMatchObject({ moving: false, shot: 1 });
 
+		// He leaves: the HUD gets the time the engine takes over, after the grace.
 		service.setViewing(false);
+		const left = Date.now();
+		const at = service.view().jeremy.autopilotAt ?? 0;
+		expect(at).toBeGreaterThan(left + VIEWING_GRACE_MS);
+		vi.advanceTimersByTime(at - left - 1);
+		expect(service.view().moving).toBe(false);
+		vi.advanceTimersByTime(1);
+		expect(service.view().moving).toBe(true);
 		vi.advanceTimersByTime(60_000);
 		expect(service.view().shot).toBeGreaterThan(1);
 		expect(service.leave()).toEqual({ ok: true });
 		expect(service.view().stage).toBe("resting");
+		service.stop();
+	});
+
+	it("takes Jeremy's shot once the table view's pings stop, even if it never said it closed", () => {
+		const { service } = harness();
+		service.start();
+		service.join();
+		service.setViewing(true);
+		vi.advanceTimersByTime(VIEWING_GRACE_MS + WALK_MS - 1);
+		expect(service.view().moving).toBe(false);
+		vi.advanceTimersByTime(1);
+		expect(service.view().moving).toBe(true);
 		service.stop();
 	});
 

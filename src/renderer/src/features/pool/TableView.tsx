@@ -9,7 +9,7 @@ import {
 	type PoolShotInput,
 	type PoolView,
 } from "@shared/pool";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useChief } from "../chief/chief-store";
 import { type ScreenRect, useFocus } from "../office/focus/focus-store";
 import { LEAVE_CHORD_LABEL, leavesFocus } from "../office/focus/leave-keys";
@@ -18,7 +18,7 @@ import { startingCue } from "./aim";
 import { PoolHud } from "./PoolHud";
 import { usePool } from "./pool-store";
 import type { TablePoint } from "./table-space";
-import { viewingSync } from "./viewing";
+import { pingViewing } from "./viewing";
 
 /** Pockets as they sit on screen (head end left, table +y up). */
 const POCKET_NAMES: Readonly<Record<PocketId, string>> = {
@@ -142,38 +142,17 @@ function useLeaveKeys(active: boolean, leave: () => void): void {
 	}, [active, leave]);
 }
 
-/** The window has Jeremy's attention: focused and not hidden or minimised. */
-function windowActive(): boolean {
-	return document.visibilityState === "visible" && document.hasFocus();
-}
-
 /**
- * Tell main whether Jeremy is at the table: while the view is settled in an
- * active window. Out of it (left, blurred, minimised, the page gone) the
- * autopilot plays his visits.
+ * Keep Jeremy's shot his while the table view is open (entering, settled or
+ * leaving), focused window or not: main hears a ping every 2 s, and plays his
+ * shot only once they have stopped for the grace.
  */
-function useViewing(settled: boolean): void {
-	const [active, setActive] = useState(windowActive);
+function useViewing(open: boolean): void {
 	useEffect(() => {
-		const update = (): void => setActive(windowActive());
-		window.addEventListener("focus", update);
-		window.addEventListener("blur", update);
-		document.addEventListener("visibilitychange", update);
-		return () => {
-			window.removeEventListener("focus", update);
-			window.removeEventListener("blur", update);
-			document.removeEventListener("visibilitychange", update);
-		};
-	}, []);
-	const sync = useMemo(
-		() =>
-			"pool" in window.office
-				? viewingSync((viewing) => void window.office.pool.setViewing(viewing))
-				: null,
-		[],
-	);
-	useEffect(() => sync?.({ settled, active }), [sync, settled, active]);
-	useEffect(() => () => sync?.({ settled: false, active: false }), [sync]);
+		if (!open || !("pool" in window.office)) return;
+		const pool = window.office.pool;
+		return pingViewing((viewing) => void pool.setViewing(viewing));
+	}, [open]);
 }
 
 /**
@@ -186,9 +165,8 @@ export function TableView() {
 	const rect = useFocus((state) => state.rect);
 	const leave = useFocus((state) => state.leave);
 	const dockOpen = useChief((state) => state.expanded);
-	const settled = phase === "focused";
 	useLeaveKeys(phase !== null, leave);
-	useViewing(settled);
+	useViewing(phase !== null);
 
 	if (phase === null) return null;
 	return (
@@ -199,7 +177,7 @@ export function TableView() {
 				aria-label="Back to office"
 				onClick={leave}
 			/>
-			{settled && rect ? <TablePlay cloth={rect} /> : null}
+			{phase === "focused" && rect ? <TablePlay cloth={rect} /> : null}
 			<div className="focus-bar">
 				<button type="button" className="focus-back" onClick={leave}>
 					← Back to office

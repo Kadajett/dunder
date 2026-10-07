@@ -1,21 +1,23 @@
-import type { PoolFrame, PoolView } from "@shared/pool";
-import { describe, expect, it } from "vitest";
+import { type PoolFrame, type PoolView, VIEWING_GRACE_MS } from "@shared/pool";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { spotsNow, tableSpots } from "./pool-store";
-import { viewingSync } from "./viewing";
+import { pingViewing } from "./viewing";
 
-describe("viewing sync", () => {
-	it("tells main Jeremy is at the table only while it is settled in an active window, and only on change", () => {
-		const sent: boolean[] = [];
-		const sync = viewingSync((viewing) => sent.push(viewing));
-		sync({ settled: false, active: true });
-		sync({ settled: true, active: true });
-		sync({ settled: true, active: true });
-		// Alt-tab away: his turns go to the autopilot; back again: they wait for him.
-		sync({ settled: true, active: false });
-		sync({ settled: true, active: true });
-		// Leaving the table view.
-		sync({ settled: false, active: true });
-		expect(sent).toEqual([false, true, false, true, false]);
+describe("viewing pings", () => {
+	beforeEach(() => vi.useFakeTimers({ now: 0 }));
+	afterEach(() => vi.useRealTimers());
+
+	it("keeps main hearing from an open table view well inside the grace, and says when it closes", () => {
+		const sent: [number, boolean][] = [];
+		const stop = pingViewing((viewing) => sent.push([Date.now(), viewing]));
+		vi.advanceTimersByTime(60_000);
+		stop();
+		vi.advanceTimersByTime(60_000);
+		const times = sent.map(([at]) => at);
+		const gaps = times.slice(1).map((at, index) => at - (times[index] ?? 0));
+		expect(Math.max(...gaps)).toBeLessThan(VIEWING_GRACE_MS / 2);
+		expect(sent.slice(0, -1).every(([, viewing]) => viewing)).toBe(true);
+		expect(sent.at(-1)).toEqual([60_000, false]);
 	});
 });
 

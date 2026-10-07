@@ -64,8 +64,15 @@ function turnOf(lounge: Lounge): TurnFields {
 	};
 }
 
-/** What the renderer and `office-pool state` see of the table. */
-export function viewOf(lounge: Lounge, moving: boolean): PoolView {
+/**
+ * What the renderer and `office-pool state` see of the table. `autopilotAt`:
+ * when the engine plays Jeremy's shot for him, if it will.
+ */
+export function viewOf(
+	lounge: Lounge,
+	moving: boolean,
+	autopilotAt: number | null = null,
+): PoolView {
 	const game = lounge.stage === "resting" ? null : lounge.game;
 	const sides = game ? sidesOf(game) : [];
 	const result = game && lounge.stage === "finished" ? resultOf(game) : null;
@@ -82,7 +89,7 @@ export function viewOf(lounge: Lounge, moving: boolean): PoolView {
 		last: game?.last ?? null,
 		recent: lounge.recent,
 		result,
-		jeremy: { ...lounge.jeremy, yourTurn: turn.shooter === JEREMY && !moving },
+		jeremy: { ...lounge.jeremy, yourTurn: turn.shooter === JEREMY && !moving, autopilotAt },
 		label: labelOf(lounge, sides, result),
 	};
 }
