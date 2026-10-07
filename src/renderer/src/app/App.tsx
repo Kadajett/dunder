@@ -34,7 +34,7 @@ import { connectPool } from "../features/pool/pool-store";
 import { TableView } from "../features/pool/TableView";
 import { WhiteboardOverlay } from "../features/whiteboard/WhiteboardOverlay";
 import { WorkBar } from "../features/work/WorkBar";
-import { connectWork } from "../features/work/work-store";
+import { connectWork } from "../features/work/work-connect";
 
 /**
  * The app is the office: the 3D room (or its Classic grid) with the HUD on

@@ -2,6 +2,7 @@ import type { WorkCard } from "@shared/work-board";
 import { useMemo, useState } from "react";
 import { TodayPill } from "../plan/TodayPill";
 import { WorkLaneSection } from "./WorkLaneSection";
+import { WorkUndoToast } from "./WorkUndoToast";
 import { boardSummary, forAgent, groupByLane, pillText } from "./work-model";
 import { useWork, useWorkCards } from "./work-store";
 import "./work.css";
@@ -114,6 +115,7 @@ export function WorkBar() {
 				<TodayPill />
 				<WorkBody cards={cards} />
 			</div>
+			<WorkUndoToast />
 		</aside>
 	);
 }
