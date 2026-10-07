@@ -108,6 +108,11 @@ export class CostTracker {
 		return spendInSpan([...this.#sessions.values()], agent, from, to);
 	}
 
+	/** What the whole office spent from `from` to `to` (epoch ms); null with no omp session known. */
+	totalBetween(from: number, to: number): number | null {
+		return spendInSpan([...this.#sessions.values()], null, from, to);
+	}
+
 	async poll(): Promise<void> {
 		if (this.#polling) return;
 		this.#polling = true;

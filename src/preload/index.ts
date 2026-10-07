@@ -164,6 +164,11 @@ const api: OfficeApi = {
 		find: (query) => ipcRenderer.invoke(IPC.worktreesFind, query),
 		open: (path) => ipcRenderer.invoke(IPC.worktreesOpen, path),
 	},
+	away: {
+		get: () => ipcRenderer.invoke(IPC.awayGet),
+		onSummary: (listener) => listen(IPC.awaySummary, listener),
+		dismiss: () => ipcRenderer.invoke(IPC.awayDismiss),
+	},
 	voice: {
 		available: () => ipcRenderer.invoke(IPC.voiceAvailable),
 		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),

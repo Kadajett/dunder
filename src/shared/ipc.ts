@@ -2,6 +2,7 @@ import type { AgentsApi } from "./agent-replies";
 import type { AlertsApi } from "./alerts";
 import type { AppErrorsApi } from "./app-errors";
 import type { AppUpdateApi } from "./app-update";
+import type { AwayApi } from "./away";
 import type { BrainstormApi } from "./brainstorm";
 import type { CalisthenicsApi } from "./calisthenics";
 import type { ChiefApi } from "./chief";
@@ -150,6 +151,10 @@ export const IPC = {
 	/** Agents' worktrees of the app repo: find one, open it in the editor (invoke). */
 	worktreesFind: "worktrees:find",
 	worktreesOpen: "worktrees:open",
+	/** "While you were away": the waiting summary and dismiss (invoke), a new one (main → renderer). */
+	awayGet: "away:get",
+	awayDismiss: "away:dismiss",
+	awaySummary: "away:summary",
 } as const;
 
 export type BridgeStatus =
@@ -202,4 +207,5 @@ export interface OfficeApi {
 	readonly errors: AppErrorsApi;
 	readonly agents: AgentsApi;
 	readonly worktrees: WorktreesApi;
+	readonly away: AwayApi;
 }

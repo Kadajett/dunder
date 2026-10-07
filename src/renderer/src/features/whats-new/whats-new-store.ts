@@ -9,19 +9,33 @@ interface WhatsNewState {
 	readonly card: WhatsNew | null;
 	/** Why a row's rating didn't stick, by bead id. */
 	readonly errors: Readonly<Record<string, string>>;
+	/** Main has answered (card or not), so cards that queue behind it can show. */
+	readonly settled: boolean;
 }
 
-export const useWhatsNew = create<WhatsNewState>(() => ({ card: null, errors: {} }));
+export const useWhatsNew = create<WhatsNewState>(() => ({
+	card: null,
+	errors: {},
+	settled: false,
+}));
 
 const api = () => ("whatsNew" in window.office ? window.office.whatsNew : null);
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /** Ask main for the card once per window. */
 export function loadWhatsNew(): void {
-	void api()
-		?.get()
-		.then((card) => useWhatsNew.setState({ card }))
-		.catch((error: unknown) => log.warn("no what's new card", { error }));
+	const whatsNew = api();
+	if (!whatsNew) {
+		useWhatsNew.setState({ settled: true });
+		return;
+	}
+	void whatsNew
+		.get()
+		.then((card) => useWhatsNew.setState({ card, settled: true }))
+		.catch((error: unknown) => {
+			log.warn("no what's new card", { error });
+			useWhatsNew.setState({ settled: true });
+		});
 }
 
 function setRating(id: string, rating: WhatsNewRating | null): void {
