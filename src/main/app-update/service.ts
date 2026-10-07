@@ -36,7 +36,7 @@ export const CHECK_INTERVAL_MS = 30_000;
 const LOG_EMIT_MS = 500;
 const stateSchema = z.object({
 	offset: z.number().int().nonnegative(),
-	/** The build Jeremy rolled back from: not offered by agents until HEAD moves past it. */
+	/** The build Jeremy rolled back from: agents' updates stay off until an update of his applies. */
 	rolledBackFrom: z.string().optional(),
 	/** When an update (or rollback) last applied: agents' updates batch for the interval after it. */
 	lastAppliedAt: z.number().optional(),
@@ -142,13 +142,9 @@ export class AppUpdater {
 			.check()
 			.then(
 				(check) => {
-					const pinned = this.#state.rolledBackFrom;
-					this.#set(afterCheck(this.#status, this.#deps.built ?? "", check, pinned));
-					// A newer commit landed (or he updated anyway): agents may update again.
-					if (pinned && check.head !== pinned) {
-						const { rolledBackFrom: _left, ...state } = this.#state;
-						void this.#saveState(state);
-					}
+					this.#set(
+						afterCheck(this.#status, this.#deps.built ?? "", check, this.#state.rolledBackFrom),
+					);
 				},
 				// git briefly unavailable (e.g. mid-rebase lock): keep the last status, try next tick.
 				(error: unknown) => log.warn("update check failed", { error }),
@@ -216,8 +212,10 @@ export class AppUpdater {
 			return;
 		}
 		this.#set({ state: "building", logTail: "Built. Relaunching on the new build…" });
-		// The window restarts with every update, whoever asked for it.
-		await this.#saveState({ ...this.#state, lastAppliedAt: this.#now() });
+		// The window restarts with every update, whoever asked for it; an update unpins a rollback
+		// (agents can't apply while pinned, so this one is Jeremy's).
+		const { rolledBackFrom: _unpinned, ...state } = this.#state;
+		await this.#saveState({ ...state, lastAppliedAt: this.#now() });
 		this.#deps.relaunch();
 	}
 

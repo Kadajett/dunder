@@ -23,8 +23,9 @@ export function canApply(status: UpdateStatus): status is ApplicableStatus {
 
 /**
  * Fold a fresh check into the status. Checks never interrupt a build or the
- * dev server. A HEAD Jeremy rolled back from (`rolledBackFrom`) is offered
- * without any agent's countdown, marked as the one he left.
+ * dev server. While Jeremy's rollback pin (`rolledBackFrom`) holds, whatever
+ * is offered is marked as rolled back (and how many commits landed on top of
+ * the build he left), with no agent's countdown.
  */
 export function afterCheck(
 	current: UpdateStatus,
@@ -41,7 +42,12 @@ export function afterCheck(
 		commits: check.commits.slice(0, MAX_LISTED_COMMITS),
 		behind: check.commits.length,
 	};
-	if (check.head === rolledBackFrom) return { state: "available", ...behind, rolledBack: true };
+	if (rolledBackFrom !== undefined) {
+		const at = check.commits.findIndex((commit) => commit.sha === rolledBackFrom);
+		// Not in built..HEAD (history rewritten under it): count everything as newer.
+		const newer = at === -1 ? check.commits.length : at;
+		return { state: "available", ...behind, rolledBack: { from: rolledBackFrom, newer } };
+	}
 	const plan = canApply(current) ? planOf(current) : {};
 	return { state: "available", ...behind, ...plan };
 }

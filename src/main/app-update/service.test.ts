@@ -198,7 +198,7 @@ describe("rolling back", () => {
 		};
 	}
 
-	it("swaps the kept build back in, relaunches, and keeps agents off the bad build until HEAD moves", async () => {
+	it("swaps the kept build back in, relaunches, and keeps agents off until Jeremy updates", async () => {
 		const paths = files();
 		const bad = setup({ head: BUILT, commits: [] });
 		Object.assign(bad.deps, paths);
@@ -220,28 +220,36 @@ describe("rolling back", () => {
 		after.updateSnapshot(office());
 		await after.start();
 		await vi.waitFor(() =>
-			expect(after.status()).toMatchObject({ state: "available", rolledBack: true }),
+			expect(after.status()).toMatchObject({
+				state: "available",
+				rolledBack: { from: BUILT, newer: 0 },
+			}),
 		);
 		await after.receive([good.request()]);
 		expect(after.status()).not.toHaveProperty("countdown");
 
-		// A fix lands. The rollback restarted the batch window, so an ordinary request waits for
-		// it; a hotfix counts down now.
-		good.deps.check.mockResolvedValue(NEW);
-		await after.check();
-		await after.receive([good.request()]);
-		expect(after.status()).toMatchObject({ state: "available", batched: { by: "max" } });
-		await after.receive([good.request({ hotfix: true })]);
-		expect(after.status()).toMatchObject({
-			state: "available",
-			countdown: { by: "max", extra: 1 },
+		// A newer commit lands on top of the bad one: it may still carry the break, so neither an
+		// ordinary request nor a hotfix puts Jeremy back on it.
+		good.deps.check.mockResolvedValue({
+			head: HEAD,
+			commits: [
+				{ sha: HEAD, subject: "fix the panel?" },
+				{ sha: BUILT, subject: "broke the panel" },
+			],
 		});
-		expect(after.status()).not.toHaveProperty("rolledBack");
-		await vi.waitFor(() =>
-			expect(JSON.parse(readFileSync(paths.statePath, "utf8"))).not.toHaveProperty(
-				"rolledBackFrom",
-			),
-		);
+		await after.check();
+		await after.receive([good.request(), good.request({ hotfix: true })]);
+		expect(after.status()).toMatchObject({ rolledBack: { from: BUILT, newer: 1 } });
+		expect(after.status()).not.toHaveProperty("countdown");
+		expect(after.status()).not.toHaveProperty("batched");
+		expect(after.status()).not.toHaveProperty("held");
+
+		// Only his own Update unpins.
+		const applying = after.apply("anyway, by Jeremy");
+		good.build.resolve({ ok: true });
+		await applying;
+		expect(good.deps.relaunch).toHaveBeenCalledOnce();
+		expect(JSON.parse(readFileSync(paths.statePath, "utf8"))).not.toHaveProperty("rolledBackFrom");
 		after.stop();
 	});
 
