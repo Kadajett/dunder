@@ -175,6 +175,8 @@ describe("batched agent updates", () => {
 	it("drops the kept update on Skip, and once there is nothing left to apply", async () => {
 		const skipped = await started(HOUR);
 		await skipped.updater.receive([skipped.request("tv channels")]);
+		// Writes land in order: once the pending update is on disk, the Skip's write follows it.
+		await vi.waitFor(() => expect(savedState(skipped.paths)).toHaveProperty("pending"));
 		skipped.updater.cancel();
 		skipped.updater.stop();
 		await vi.waitFor(() => expect(savedState(skipped.paths)).not.toHaveProperty("pending"));
