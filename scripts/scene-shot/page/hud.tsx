@@ -1,4 +1,4 @@
-import { NOW, POOL_PLAYING, refreshHeld, reports, setPool, unstubbed } from "./fake-office-hud";
+import { POOL_PLAYING, refreshHeld, reports, setPool, unstubbed } from "./fake-office-hud";
 import { batched, countdown } from "./hud-update-states";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/600.css";
@@ -17,6 +17,7 @@ import { useWhatsNew } from "@renderer/features/whats-new/whats-new-store";
 import { useWork } from "@renderer/features/work/work-store";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { agentCard } from "./hud-agent-card";
 import { startCall } from "./hud-call";
 
 /**
@@ -122,6 +123,7 @@ const STATES: Record<string, () => Promise<void>> = {
 	"13-tv-shipping": withoutNotices(() => useTv.getState().select("shipping")),
 	// Evening: the fake posts Max's wrap-up and today's unrated 'Try these' for this state.
 	"14-day-end": async () => undefined,
+	"19-agent-card-hover-click": agentCard,
 };
 
 /** Last touches right before the shot, for state that runs out while the scene settles. */
@@ -246,6 +248,7 @@ declare global {
 			readonly reports: unknown[];
 			readonly unstubbed: string[];
 			readonly crashed: string[];
+			readonly failures: string[];
 		};
 	}
 }
@@ -255,7 +258,12 @@ async function run(): Promise<void> {
 	const scenario = STATES[state];
 	if (!scenario) throw new Error(`unknown state ${state}`);
 	await settleFrames();
-	await scenario();
+	let scenarioFailure: string | undefined;
+	try {
+		await scenario();
+	} catch (error) {
+		scenarioFailure = error instanceof Error ? error.message : String(error);
+	}
 	await settleFrames();
 	refreshHeld();
 	FINISH[state]?.();
@@ -267,6 +275,7 @@ async function run(): Promise<void> {
 		notes,
 		reports,
 		unstubbed,
+		failures: scenarioFailure ? [scenarioFailure] : [],
 		crashed: [...document.querySelectorAll(".error-notice")].map((el) => el.textContent ?? ""),
 	};
 	document.body.dataset["sceneReady"] = "true";

@@ -70,11 +70,6 @@ export function OfficeView({ layout, model }: OfficeViewProps) {
 							desk={desk}
 							status={seat?.agent.status ?? "empty"}
 							paneId={seat?.agent.paneId}
-							onHoverAgent={
-								editing || !seat
-									? undefined
-									: () => select({ kind: "agent", paneId: seat.agent.paneId })
-							}
 							screenLive={focusedDesk !== desk.id}
 							onOpenScreen={
 								editing ? undefined : seat ? () => openScreen(seat) : yours ? openChief : undefined
@@ -117,13 +112,7 @@ function Colleague({
 }) {
 	const [hovered, setHovered] = useState(false);
 	return (
-		<Clickable
-			onSelect={onSelect}
-			onHoverChange={(over) => {
-				setHovered(over);
-				if (over) onSelect();
-			}}
-		>
+		<Clickable onSelect={onSelect} onHoverChange={setHovered}>
 			<AgentActor
 				agent={agent}
 				world={world}

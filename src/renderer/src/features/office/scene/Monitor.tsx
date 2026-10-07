@@ -25,11 +25,10 @@ export interface MonitorProps {
 	/** Hidden while this screen is focused (a real terminal covers it). */
 	readonly live: boolean;
 	readonly onOpen: (() => void) | undefined;
-	readonly onHoverAgent: (() => void) | undefined;
 }
 
 /** A desk monitor showing its agent's live terminal; click to open the screen. */
-export function Monitor({ status, paneId, live, onOpen, onHoverAgent }: MonitorProps) {
+export function Monitor({ status, paneId, live, onOpen }: MonitorProps) {
 	const [hovered, setHovered] = useState(false);
 	useCursor(hovered && onOpen !== undefined);
 	const { texture } = useScreenTexture(paneId, { visible: live });
@@ -42,12 +41,11 @@ export function Monitor({ status, paneId, live, onOpen, onHoverAgent }: MonitorP
 					},
 				}
 			: {}),
-		...(onOpen || onHoverAgent
+		...(onOpen
 			? {
 					onPointerOver: (event: ThreeEvent<PointerEvent>) => {
 						event.stopPropagation();
 						setHovered(true);
-						onHoverAgent?.();
 					},
 					onPointerOut: () => setHovered(false),
 				}
