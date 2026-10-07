@@ -22,6 +22,7 @@ import type { VoiceApi } from "./voice";
 import type { WhatsNewApi } from "./whats-new";
 import type { WhiteboardApi } from "./whiteboard";
 import type { WorkBoardApi } from "./work-board";
+import type { WorktreesApi } from "./worktrees";
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -146,6 +147,9 @@ export const IPC = {
 	appErrorsChanged: "app-errors:changed",
 	/** A live agent's final reply of its last turn (invoke). */
 	agentsLastReply: "agents:last-reply",
+	/** Agents' worktrees of the app repo: find one, open it in the editor (invoke). */
+	worktreesFind: "worktrees:find",
+	worktreesOpen: "worktrees:open",
 } as const;
 
 export type BridgeStatus =
@@ -197,4 +201,5 @@ export interface OfficeApi {
 	readonly alerts: AlertsApi;
 	readonly errors: AppErrorsApi;
 	readonly agents: AgentsApi;
+	readonly worktrees: WorktreesApi;
 }

@@ -160,6 +160,10 @@ const api: OfficeApi = {
 	agents: {
 		lastReply: (name) => ipcRenderer.invoke(IPC.agentsLastReply, name),
 	},
+	worktrees: {
+		find: (query) => ipcRenderer.invoke(IPC.worktreesFind, query),
+		open: (path) => ipcRenderer.invoke(IPC.worktreesOpen, path),
+	},
 	voice: {
 		available: () => ipcRenderer.invoke(IPC.voiceAvailable),
 		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),

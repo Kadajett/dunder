@@ -53,6 +53,7 @@ import { createWorkBoard } from "./work-board/create";
 import { registerWorkBoardIpc } from "./work-board/ipc";
 import { registerWorkforceIpc } from "./workforce/ipc";
 import { createStaffing, createWorkforce } from "./workforce/service";
+import { createWorktrees, registerWorktreesIpc } from "./worktrees/ipc";
 
 configureMainLogging(process.env, !app.isPackaged);
 // Before anything reads userData or the state dir: carry a herdr office install over.
@@ -258,6 +259,7 @@ function registerHandlers(): void {
 	registerVoiceIpc(createVoice());
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerAlertsIpc(alerts);
+	registerWorktreesIpc(createWorktrees(companies));
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),

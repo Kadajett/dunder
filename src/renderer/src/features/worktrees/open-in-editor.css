@@ -1,0 +1,40 @@
+/* "Open in editor" on agent and work cards: the button, the branch line, and any error. */
+.open-editor {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 8px;
+	margin-top: 6px;
+}
+
+.open-editor__branch {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--ink-soft);
+	font: 500 10.5px var(--font-mono);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.open-editor__error {
+	flex-basis: 100%;
+	margin: 0;
+	color: var(--status-blocked);
+	font-size: 11.5px;
+	line-height: 1.35;
+}
+
+.open-editor__button {
+	padding: 6px 10px;
+	border: 0;
+	border-radius: 8px;
+	background: #efe6d6;
+	color: var(--ink);
+	font: 700 11.5px var(--font-ui);
+	cursor: pointer;
+}
+
+.open-editor__button:disabled {
+	opacity: 0.45;
+	cursor: default;
+}

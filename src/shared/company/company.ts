@@ -13,6 +13,8 @@ export const companyIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,47}$/);
 
 /** An agent spending more than this (US dollars) in the alarm window gets a Trust Inbox item. */
 export const DEFAULT_SPEND_ALARM_USD = 5;
+/** How "Open in editor" opens an agent's worktree: the program (and flags) before the folder. */
+export const DEFAULT_EDITOR_COMMAND = "code";
 
 export const companySchema = z.object({
 	version: z.literal(COMPANY_VERSION),
@@ -21,6 +23,8 @@ export const companySchema = z.object({
 	subtitle: z.string().trim().max(120),
 	/** Runaway-spend alarm threshold per agent (companies saved before it get the default). */
 	spendAlarmUsd: z.number().positive().max(10_000).default(DEFAULT_SPEND_ALARM_USD),
+	/** "Open in editor" runs `<editorCommand> <worktree>` (companies saved before it get `code`). */
+	editorCommand: z.string().trim().min(1).max(200).default(DEFAULT_EDITOR_COMMAND),
 	layout: layoutSchema,
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
@@ -28,7 +32,10 @@ export const companySchema = z.object({
 export type Company = z.infer<typeof companySchema>;
 
 /** What the company menu's settings form edits. */
-export type CompanySettings = Pick<Company, "name" | "subtitle" | "spendAlarmUsd">;
+export type CompanySettings = Pick<
+	Company,
+	"name" | "subtitle" | "spendAlarmUsd" | "editorCommand"
+>;
 
 export interface CompanySummary {
 	readonly id: string;

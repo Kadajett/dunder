@@ -25,7 +25,12 @@ export interface CompaniesDeps {
 }
 
 const identitySchema = companySchema.pick({ name: true, subtitle: true });
-const settingsSchema = companySchema.pick({ name: true, subtitle: true, spendAlarmUsd: true });
+const settingsSchema = companySchema.pick({
+	name: true,
+	subtitle: true,
+	spendAlarmUsd: true,
+	editorCommand: true,
+});
 const workspaceLabelSchema = z.string().trim().min(1).max(64);
 
 /** Run tasks one at a time, in call order; a failure does not block later tasks. */

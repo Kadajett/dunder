@@ -2,6 +2,7 @@ import { createLogger } from "@shared/log/logger";
 import { type WorkCard, workLanes } from "@shared/work-board";
 import { type DragEvent, useEffect, useMemo, useState } from "react";
 import { useAgentStyle, useRosterStore } from "../hire/roster-store";
+import { OpenInEditor } from "../worktrees/OpenInEditor";
 import { epicTitle, spendLabel, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
@@ -125,6 +126,7 @@ function CardDetail({ card }: { readonly card: WorkCard }) {
 			<button type="button" className="work-card__copy" onClick={copy}>
 				{copied ? "Copied" : `Copy ${card.id}`}
 			</button>
+			{card.assignee ? <OpenInEditor agent={card.assignee} beads={[card.id]} exact /> : null}
 		</div>
 	);
 }

@@ -6,7 +6,8 @@ import type { UpdateCheck } from "./status";
 const GIT_TIMEOUT_MS = 5_000;
 const FIELD = "\x1f";
 
-function runGit(root: string, args: readonly string[]): Promise<string> {
+/** Run `git <args>` in `root`; resolves with stdout, rejects with git's stderr. */
+export function runGit(root: string, args: readonly string[]): Promise<string> {
 	const { promise, resolve, reject } = Promise.withResolvers<string>();
 	const options = { cwd: root, timeout: GIT_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 };
 	execFile("git", [...args], options, (error, stdout, stderr) => {

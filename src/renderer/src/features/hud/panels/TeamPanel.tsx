@@ -12,6 +12,8 @@ import type { OfficeModel } from "../../office/model/office-model";
 import { ModelPicker } from "../../office/models/ModelPicker";
 import { useModels } from "../../office/models/models-store";
 import { poolStatusOf, usePool } from "../../pool/pool-store";
+import { useWorkCards } from "../../work/work-store";
+import { OpenInEditor } from "../../worktrees/OpenInEditor";
 import { StatTiles } from "../StatTiles";
 import { openAgentScreen } from "./open-agent";
 
@@ -54,6 +56,18 @@ function TeamCard(props: {
 	const seat = props.model.seated.find((seated) => seated.agent.paneId === agent.paneId);
 	const latest = useFeed((state) => state.items.find((item) => item.paneId === agent.paneId));
 	const pool = usePool((state) => poolStatusOf(state.view, agent.name));
+	const cards = useWorkCards();
+	// Its current beads first (in progress, then in review): the worktree to look at.
+	const beads = useMemo(
+		() =>
+			(cards ?? [])
+				.filter(
+					(card) =>
+						card.assignee === agent.name && (card.lane === "in_progress" || card.lane === "review"),
+				)
+				.map((card) => card.id),
+		[cards, agent.name],
+	);
 	return (
 		<article className="hud-card">
 			<div className="hud-card-head">
@@ -88,6 +102,7 @@ function TeamCard(props: {
 					Open screen
 				</button>
 			</div>
+			<OpenInEditor agent={agent.name} beads={beads} />
 		</article>
 	);
 }
