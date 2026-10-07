@@ -3,9 +3,11 @@ import type { WhatsNew } from "@shared/whats-new";
 import { type ReactNode, useEffect, useState } from "react";
 import { AwayCard, connectAway, useAway } from "../away/AwayCard";
 import { UpdateCountdownBanner, useUpdateStatus } from "../hud/HudUpdate";
+import { DayEndCard } from "../plan/DayEndCard";
 import { PlanCard } from "../plan/PlanCard";
 import { planCardDue } from "../plan/plan-model";
 import { usePlan } from "../plan/plan-store";
+import { connectWrap, useWrap, wrapDue } from "../plan/wrap-store";
 import { AutopilotNotice } from "../pool/AutopilotNotice";
 import { WhatsNewCard } from "../whats-new/WhatsNewCard";
 import { loadWhatsNew, useWhatsNew } from "../whats-new/whats-new-store";
@@ -21,6 +23,8 @@ function Notice({
 	switch (id) {
 		case "plan":
 			return <PlanCard />;
+		case "day-end":
+			return <DayEndCard />;
 		case "away":
 			return <AwayCard />;
 		case "since-you-left":
@@ -31,21 +35,23 @@ function Notice({
 }
 
 /**
- * The one notice slot under the top bar: the morning plan, what happened
- * while away, what's new. One shows at a time, the rest wait behind a '+N'
- * pager; the room stays clear around it.
+ * The one notice slot under the top bar: the morning plan, Max's evening
+ * wrap-up, what happened while away, what's new. One shows at a time, the
+ * rest wait behind a '+N' pager; the room stays clear around it.
  */
 export function NoticeSlot() {
 	useEffect(loadWhatsNew, []);
 	useEffect(connectAway, []);
+	useEffect(connectWrap, []);
 	const planSettled = usePlan((state) => state.settled);
 	const planDue = usePlan((state) => planCardDue(state.plan));
+	const dayEnd = useWrap((state) => wrapDue(state.wrap));
 	const whatsNew = useWhatsNew((state) => state.card);
 	const awayDue = useAway((state) => state.summary !== null);
 	const [picked, setPicked] = useState<NoticeId | null>(null);
 	// Wait for main's answer on the plan: it comes first, so nothing shows before it.
 	if (!planSettled) return null;
-	const queue = noticeQueue({ plan: planDue, away: awayDue, whatsNew: whatsNew !== null });
+	const queue = noticeQueue({ plan: planDue, dayEnd, away: awayDue, whatsNew: whatsNew !== null });
 	const shown = shownNotice(queue, picked);
 	if (!shown) return null;
 	const waiting = queue.filter((id) => id !== shown);

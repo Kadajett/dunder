@@ -1,10 +1,11 @@
-// office-plan: the chief of staff proposes today's plan, and anyone reads it.
+// office-plan: the chief of staff proposes today's plan and closes the day; anyone reads both.
 //   office-plan propose < plan.json     {"focus": "…", "items": [{"bead", "who", "why"}], "notToday": ["…"]}
+//   office-plan wrap < wrap.json        {"summary": "…", "misses": [{"bead", "why"}], "tomorrow": [{"bead"?, "what"}]}
 //   office-plan show [--json]
 // Runs under plain Node (type stripping), so it uses only Node built-ins. The app
-// validates the plan against `planProposalSchema` (src/shared/plan.ts), honours
-// only the chief of staff's pane, answers in the results file, and keeps today's
-// plan in the digest that `show` prints.
+// validates against `planProposalSchema` (src/shared/plan.ts) and `wrapInputSchema`
+// (src/shared/wrap.ts), honours only the chief of staff's pane, answers in the
+// results file, and keeps today's plan and wrap-up in the digests `show` prints.
 import { randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -18,7 +19,10 @@ const USAGE = `usage:
   office-plan propose < plan.json
       {"focus": "<one sentence, ≤140>", "items": [{"bead": "office-abc", "who": "carl", "why": "<≤120>"}] (≤5),
        "notToday": ["<≤80>"] (≤5)}
-  office-plan show [--json]
+  office-plan wrap < wrap.json
+      {"summary": "<≤200>", "misses": [{"bead": "office-abc", "why": "<≤120>"}] (≤5),
+       "tomorrow": [{"bead": "office-def" (optional), "what": "<≤120>"}] (1-3)}
+  office-plan show [--json]   (--json: the plan only)
 `;
 const DEFAULT_WAIT_MS = 30_000;
 const POLL_MS = 250;
@@ -40,6 +44,11 @@ export function planResultsPath(env: Env, home: string): string {
 /** Today's plan, kept by the app for `office-plan show`. */
 export function planDigestPath(env: Env, home: string): string {
 	return join(stateDir(env, home), "plan.json");
+}
+
+/** Today's wrap-up, kept by the app for `office-plan show`. */
+export function wrapDigestPath(env: Env, home: string): string {
+	return join(stateDir(env, home), "wrap.json");
 }
 
 /** Local `YYYY-MM-DD`, as the app keys its days. */
@@ -90,29 +99,30 @@ async function awaitResult(id: string, waitMs: number): Promise<number> {
 	return fail("proposed, but Dunder has not answered yet (is the app running?)");
 }
 
-async function propose(): Promise<number> {
+/** Send stdin's JSON as a `propose` or `wrap` request and print the app's answer. */
+async function send(op: "propose" | "wrap"): Promise<number> {
 	const fromPane = process.env["HERDR_PANE_ID"];
 	if (!fromPane) {
 		return fail(
-			"HERDR_PANE_ID is not set, so the office cannot tell who is proposing. Run office-plan from your bash tool in your office pane.",
+			"HERDR_PANE_ID is not set, so the office cannot tell who is asking. Run office-plan from your bash tool in your office pane.",
 		);
 	}
-	let plan: unknown;
+	let body: unknown;
 	try {
-		plan = JSON.parse(readFileSync(0, "utf8"));
+		body = JSON.parse(readFileSync(0, "utf8"));
 	} catch (error) {
+		const what = op === "propose" ? "the plan" : "the wrap-up";
 		return fail(
-			`the plan on stdin is not JSON (${error instanceof Error ? error.message : String(error)})\n${USAGE}`,
+			`${what} on stdin is not JSON (${error instanceof Error ? error.message : String(error)})\n${USAGE}`,
 		);
 	}
 	const id = randomUUID();
 	const path = planRequestsPath(process.env, homedir());
 	mkdirSync(dirname(path), { recursive: true });
+	const field = op === "propose" ? "plan" : "wrap";
+	const line = { v: 1, id, fromPane, requestedAt: new Date().toISOString(), op, [field]: body };
 	// One O_APPEND write per request, so concurrent requesters never interleave.
-	appendFileSync(
-		path,
-		`${JSON.stringify({ v: 1, id, fromPane, requestedAt: new Date().toISOString(), op: "propose", plan })}\n`,
-	);
+	appendFileSync(path, `${JSON.stringify(line)}\n`);
 	const wait = Number(process.env["OFFICE_PLAN_WAIT_MS"] ?? DEFAULT_WAIT_MS);
 	return awaitResult(id, Number.isFinite(wait) ? wait : DEFAULT_WAIT_MS);
 }
@@ -136,17 +146,45 @@ function isProposal(value: unknown): value is Proposal {
 	);
 }
 
-/** The digest's plan when it is today's (null: no plan today), or undefined when there's no digest. */
-function readPlan(): Record<string, unknown> | null | undefined {
+/** A digest's `field` when the digest is today's (null: none today), or undefined when there's no digest. */
+function readToday(path: string, field: string): Record<string, unknown> | null | undefined {
 	let digest: unknown;
 	try {
-		digest = JSON.parse(readFileSync(planDigestPath(process.env, homedir()), "utf8"));
+		digest = JSON.parse(readFileSync(path, "utf8"));
 	} catch {
 		return undefined;
 	}
 	if (!isObject(digest) || digest["date"] !== today()) return null;
-	const plan = digest["plan"];
-	return isObject(plan) ? plan : null;
+	const value = digest[field];
+	return isObject(value) ? value : null;
+}
+
+const lines = (value: unknown): Record<string, unknown>[] =>
+	Array.isArray(value) ? value.filter(isObject) : [];
+
+/** The wrap-up as text: summary, the plan's items with their lanes, why-nots, unplanned, spend, tomorrow. */
+function describeWrap(wrap: Record<string, unknown>): string {
+	const input = isObject(wrap["input"]) ? wrap["input"] : {};
+	const spend =
+		typeof wrap["spendUsd"] === "number" ? `~$${wrap["spendUsd"].toFixed(2)}` : "unknown";
+	const unplanned = lines(wrap["unplanned"]).map((bead) => String(bead["id"]));
+	return [
+		`Day's end: ${String(input["summary"] ?? "")}`,
+		...lines(wrap["planned"]).map(
+			(item) =>
+				`- ${String(item["bead"])} · ${String(item["who"])}: ${String(item["lane"] ?? "not on the board")}`,
+		),
+		...lines(input["misses"]).map(
+			(miss) => `  why not ${String(miss["bead"])}: ${String(miss["why"])}`,
+		),
+		`Shipped outside the plan: ${unplanned.length > 0 ? unplanned.join(", ") : "nothing"}`,
+		`AI spend today: ${spend}`,
+		"Tomorrow:",
+		...lines(input["tomorrow"]).map(
+			(item, index) =>
+				`${index + 1}. ${item["bead"] ? `${String(item["bead"])}: ` : ""}${String(item["what"])}`,
+		),
+	].join("\n");
 }
 
 function describe(plan: Record<string, unknown>): string {
@@ -167,17 +205,22 @@ function describe(plan: Record<string, unknown>): string {
 }
 
 function show(json: boolean): number {
-	const plan = readPlan();
+	const plan = readToday(planDigestPath(process.env, homedir()), "plan");
 	if (plan === undefined)
 		return fail("Dunder has not written a plan digest yet (is the app running?)");
-	if (json) process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
-	else process.stdout.write(plan ? `${describe(plan)}\n` : "No plan today.\n");
+	if (json) {
+		process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+		return 0;
+	}
+	process.stdout.write(plan ? `${describe(plan)}\n` : "No plan today.\n");
+	const wrap = readToday(wrapDigestPath(process.env, homedir()), "wrap");
+	if (wrap) process.stdout.write(`\n${describeWrap(wrap)}\n`);
 	return 0;
 }
 
 async function main(argv: readonly string[]): Promise<number> {
 	const [command, ...rest] = argv;
-	if (command === "propose" && rest.length === 0) return propose();
+	if ((command === "propose" || command === "wrap") && rest.length === 0) return send(command);
 	if (command === "show" && (rest.length === 0 || (rest.length === 1 && rest[0] === "--json"))) {
 		return show(rest[0] === "--json");
 	}

@@ -54,6 +54,18 @@ Jeremy approves, edits or talks it over in the app, and you hear it in your chat
 
 `office-plan show` (or `--json`) is the source of truth for the day. NEW dispatches follow the decided plan, in its order and to the people it names. Work already in flight continues. Anything outside the plan waits for tomorrow's plan, or for Jeremy to change today's.
 
+### Evening wrap-up
+
+Every evening (18:00 by default) the office asks you to close the day against the morning plan. The prompt carries the facts: where each planned bead is now, what shipped outside the plan, and the day's AI spend. Answer with one or two sentences on the day, why each unfinished planned item didn't land, and 1-3 proposals for tomorrow, piped to `office-plan wrap` from your bash tool (only your pane is honoured):
+
+```sh
+office-plan wrap <<'EOF'
+{"summary": "The plan card shipped; the cost line is in review.", "misses": [{"bead": "office-uh9", "why": "waiting on theo's review"}], "tomorrow": [{"bead": "office-uh9", "what": "merge the cost line first"}, {"what": "triage the new asks"}]}
+EOF
+```
+
+Limits: summary ≤200 characters, at most 5 misses with a why ≤120, 1-3 tomorrow items of ≤120 (the bead is optional). Jeremy reads it as the "Day's end" card, joined with the facts. If the prompt comes during a call with him, end with a spoken line as usual. Tomorrow's morning prompt repeats your proposals; start the next plan from them. `office-plan show` prints today's wrap-up under the plan.
+
 ### Staffing (only when Jeremy asks)
 
 Run `office-staff` from your bash tool; only your pane is honoured, and it prints the office's answer:

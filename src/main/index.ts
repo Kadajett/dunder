@@ -40,8 +40,7 @@ import { startInBackground } from "./start-in-background";
 import { createSwitchboardService } from "./switchboard/service";
 import { createOfficeScreens } from "./terminal/office-screens";
 import { createCallKeeper, createVoice, registerVoiceIpc } from "./voice/ipc";
-import { fetchForecast } from "./weather/open-meteo";
-import { createWeatherService } from "./weather/weather-service";
+import { createWeather } from "./weather/create";
 import { createWhatsNew, registerWhatsNewIpc } from "./whats-new/ipc";
 import { createWhiteboard } from "./whiteboard/create";
 import { registerWhiteboardIpc } from "./whiteboard/ipc";
@@ -65,12 +64,7 @@ migrateLegacyDirs({
 const officeScreens = createOfficeScreens();
 let bridge: OfficeBridge | undefined;
 let status: BridgeStatus = { state: "starting" };
-/** Upper bound on one forecast request, headers and body. */
-const WEATHER_TIMEOUT_MS = 10_000;
-const weather = createWeatherService({
-	load: () => fetchForecast(fetch, WEATHER_TIMEOUT_MS),
-	onChange: (feed) => broadcast(IPC.weather, feed),
-});
+const weather = createWeather((feed) => broadcast(IPC.weather, feed));
 const calisthenics = createCalisthenics(app.getPath("userData"), (workout) =>
 	broadcast(IPC.calisthenicsWorkout, workout),
 );
@@ -164,12 +158,16 @@ const appErrors = new AppErrorsService({
 });
 /** Done cards' 'Said:' line: agents' final replies, read from their omp session logs on demand. */
 const agentReplies = new AgentRepliesService();
-/** The morning plan: Max proposes the day at 9:00, Jeremy approves or edits it. */
+/** The day's cycle: Max's morning plan at 9:00, his wrap-up against it at 18:00. */
+const calls = createCallKeeper(app.getPath("userData"));
 const plan = createPlan({
 	userData: app.getPath("userData"),
 	chief,
+	workBoard,
+	calls,
+	broadcast,
 	bridge: () => bridge,
-	emit: (today) => broadcast(IPC.planChanged, today),
+	cost: aiCost,
 });
 
 function broadcast(channel: string, payload: unknown): void {
@@ -246,7 +244,7 @@ function registerHandlers(): void {
 	registerWorkBoardIpc(workBoard);
 	registerAppErrorsIpc(appErrors);
 	registerAgentRepliesIpc(agentReplies, chiefName);
-	registerVoiceIpc(createVoice(), createCallKeeper(app.getPath("userData")));
+	registerVoiceIpc(createVoice(), calls);
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerAlertsIpc(alerts);
 	registerWorktreesIpc(createWorktrees(companies));

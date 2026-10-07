@@ -34,6 +34,7 @@ function harness(dir = mkdtempSync(join(tmpdir(), "plan-"))) {
 			told.push(text);
 			return true;
 		},
+		morningContext: async () => " Yesterday's wrap-up proposed for today: 1) office-x: the cat.",
 		chiefPane: () => "wN:p1",
 		emit: (plan) => emitted.push(plan),
 	});
@@ -71,7 +72,10 @@ describe("the morning prompt", () => {
 		h.at(at(7, 9, 0));
 		await h.service.check();
 		await h.service.check();
-		expect(h.told).toEqual([MORNING_PROMPT]);
+		// Yesterday's wrap-up proposals ride along: tomorrow's plan starts from them.
+		expect(h.told).toEqual([
+			`${MORNING_PROMPT} Yesterday's wrap-up proposed for today: 1) office-x: the cat.`,
+		]);
 		// A launch at 10:30 the next day still asks; one at 11:30 the day after doesn't.
 		h.at(at(8, 10, 30));
 		await h.service.check();
@@ -87,7 +91,7 @@ describe("the morning prompt", () => {
 		await vi.waitFor(() => expect(h.answer(id)).toMatchObject({ ok: true }));
 		h.at(at(7, 9, 5));
 		await h.service.check();
-		expect(h.told).not.toContain(MORNING_PROMPT);
+		expect(h.told.some((text) => text.startsWith(MORNING_PROMPT))).toBe(false);
 	});
 });
 

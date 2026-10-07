@@ -52,6 +52,8 @@ export class CallKeeper {
 	readonly #path: string;
 	#resume: Promise<CallResume | null>;
 	#saving: Promise<void> = Promise.resolve();
+	/** The renderer's last word on the call: one is running. */
+	#live = false;
 
 	constructor(deps: CallKeeperDeps) {
 		this.#path = deps.path;
@@ -65,10 +67,16 @@ export class CallKeeper {
 
 	/** Saves land in call order. */
 	save(call: CallSnapshot | null): Promise<void> {
+		this.#live = call !== null;
 		this.#saving = this.#saving
 			.then(() => writeCall(this.#path, call))
 			.catch((error: unknown) => log.warn("cannot save the call", { error }));
 		return this.#saving;
+	}
+
+	/** Jeremy is on a call with the chief right now (as the renderer last saved it). */
+	live(): boolean {
+		return this.#live;
 	}
 
 	/** The call to resume, once per launch (a renderer reload starts with no call). */

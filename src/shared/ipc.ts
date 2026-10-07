@@ -26,6 +26,7 @@ import type { WhatsNewApi } from "./whats-new";
 import type { WhiteboardApi } from "./whiteboard";
 import type { WorkBoardApi } from "./work-board";
 import type { WorktreesApi } from "./worktrees";
+import type { WrapApi } from "./wrap";
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -175,6 +176,10 @@ export const IPC = {
 	planApprove: "plan:approve",
 	planEdit: "plan:edit",
 	planDiscuss: "plan:discuss",
+	/** The evening wrap-up: today's (invoke), changes (main → renderer), dismiss (invoke). */
+	wrapToday: "wrap:today",
+	wrapChanged: "wrap:changed",
+	wrapDismiss: "wrap:dismiss",
 } as const;
 
 export type BridgeStatus =
@@ -230,4 +235,5 @@ export interface OfficeApi {
 	readonly worktrees: WorktreesApi;
 	readonly away: AwayApi;
 	readonly plan: PlanApi;
+	readonly wrap: WrapApi;
 }

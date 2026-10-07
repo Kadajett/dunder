@@ -84,9 +84,30 @@
 	text-transform: uppercase;
 }
 
-.plan__not-today ul {
+.plan__not-today ul,
+.plan__not-today ol {
 	margin: 2px 0 0;
 	padding-left: 16px;
+}
+
+/* Day's end: planned items keep the Today pill's lane tag; done ones read green. */
+.day-end .plan__item[data-lane="done"] .today__lane {
+	color: #2f7d55;
+	font-weight: 700;
+}
+
+.day-end__none {
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: 12px;
+}
+
+.plan__not-today .day-end__beads {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding-left: 0;
+	list-style: none;
 }
 
 .plan__error {
