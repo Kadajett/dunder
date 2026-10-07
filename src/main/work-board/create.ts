@@ -4,6 +4,7 @@ import type { WorkBoard } from "@shared/work-board";
 import { app } from "electron";
 import { runBd } from "../beads/bd";
 import { postToMailbox } from "../switchboard/service";
+import { ActivityClock } from "./activity";
 import { gitIn, MergeChecks } from "./merges";
 import { WorkBoardService } from "./service";
 import { ReviewClock, shippingStats, withReviewSince } from "./shipping";
@@ -30,6 +31,7 @@ export function createWorkBoard(
 	const merges = new MergeChecks(gitIn(cwd), notify);
 	const spendOf: SpendOf = (agent, from, to) => spend.spendBetween(agent, from, to);
 	const reviews = new ReviewClock(join(app.getPath("userData"), "review-clock.json"));
+	const activity = new ActivityClock(join(app.getPath("userData"), "bead-activity.json"));
 	return new WorkBoardService({
 		runBd,
 		cwd,
@@ -41,8 +43,13 @@ export function createWorkBoard(
 		emit,
 		notify,
 		spendOf,
-		annotate: async (cards) =>
-			withReviewSince(await merges.annotate(cards), await reviews.observe(cards, Date.now())),
+		annotate: async (cards, beads) => {
+			const active = await activity.observe(cards, beads, Date.now());
+			return withReviewSince(
+				await merges.annotate(active),
+				await reviews.observe(active, Date.now()),
+			);
+		},
 		shipping: async (closed, cards, now) =>
 			shippingStats({ closed, cards, reviewSince: reviews.current(), spendOf, now }),
 	});
