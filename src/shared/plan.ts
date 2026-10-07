@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Unsubscribe } from "./screens";
+import { workIdSchema } from "./work-board";
 
 /**
  * The morning plan (epic office-4as): Max proposes the day with
@@ -15,7 +16,7 @@ export const PLAN_NOT_TODAY_TEXT_MAX = 80;
 
 /** One thing to build today: which bead, who builds it, and why it matters today. */
 export const planItemSchema = z.strictObject({
-	bead: z.string().trim().min(1).max(64),
+	bead: workIdSchema,
 	who: z.string().trim().min(1).max(32),
 	why: z.string().trim().min(1).max(PLAN_WHY_MAX),
 });

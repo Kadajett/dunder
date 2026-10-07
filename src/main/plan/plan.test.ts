@@ -97,6 +97,7 @@ describe("Jeremy's decisions", () => {
 			tell: "[plan: no reply from Jeremy after 60 min] go ahead as proposed",
 		});
 		const talking = discussPlan(proposed);
+		expect(talking.ok && talking.tell).toContain("talk it over");
 		expect(talking.ok && goAheadIfDue(talking.plan, t0 + 3 * 60 * 60_000, 60)).toBeNull();
 	});
 });

@@ -51,10 +51,14 @@ export function editPlan(plan: DayPlan, edit: PlanProposal, now: number): PlanSt
 	};
 }
 
-/** Jeremy wants to talk it over: Max doesn't go ahead on his own meanwhile. */
+/** Jeremy wants to talk it over: Max hears so, and doesn't go ahead on his own meanwhile. */
 export function discussPlan(plan: DayPlan): PlanStep {
 	if (plan.state !== "proposed") return { ok: false, error: decided(plan) };
-	return { ok: true, plan: { ...plan, goAheadAt: null }, tell: null };
+	return {
+		ok: true,
+		plan: { ...plan, goAheadAt: null },
+		tell: "[plan: Jeremy wants to talk it over] hold the plan until you two agree; don't go ahead on your own",
+	};
 }
 
 /** No decision by `goAheadAt`: Max goes ahead as proposed. Unchanged otherwise. */

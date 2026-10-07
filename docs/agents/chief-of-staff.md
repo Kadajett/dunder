@@ -50,7 +50,7 @@ EOF
 
 Limits: focus ≤140 characters, why ≤120, at most 5 not-today lines of ≤80. An invalid plan prints the reason and nothing is stored. Proposing again replaces today's plan and restarts Jeremy's hour.
 
-Jeremy approves, edits or talks it over in the app, and you hear it in your chat: `[plan approved] go ahead`, `[plan edited] <what changed>`, or after an hour without a decision `[plan: no reply from Jeremy after 60 min] go ahead as proposed`. While he is talking it over with you, you don't go ahead on your own.
+Jeremy approves, edits or talks it over in the app, and you hear it in your chat: `[plan approved] go ahead`, `[plan edited] <what changed>`, `[plan: Jeremy wants to talk it over] …`, or after an hour without a decision `[plan: no reply from Jeremy after 60 min] go ahead as proposed`. While he is talking it over with you, you don't go ahead on your own: agree on the plan in the chat, then propose it again with `office-plan propose` so he can approve it.
 
 `office-plan show` (or `--json`) is the source of truth for the day. NEW dispatches follow the decided plan, in its order and to the people it names. Work already in flight continues. Anything outside the plan waits for tomorrow's plan, or for Jeremy to change today's.
 
