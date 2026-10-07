@@ -171,6 +171,13 @@ const api: OfficeApi = {
 		onSummary: (listener) => listen(IPC.awaySummary, listener),
 		dismiss: () => ipcRenderer.invoke(IPC.awayDismiss),
 	},
+	plan: {
+		today: () => ipcRenderer.invoke(IPC.planToday),
+		onChanged: (listener) => listen(IPC.planChanged, listener),
+		approve: () => ipcRenderer.invoke(IPC.planApprove),
+		edit: (plan) => ipcRenderer.invoke(IPC.planEdit, plan),
+		discuss: () => ipcRenderer.invoke(IPC.planDiscuss),
+	},
 	voice: {
 		available: () => ipcRenderer.invoke(IPC.voiceAvailable),
 		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),
