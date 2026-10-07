@@ -37,6 +37,7 @@ import { createPaneSizeResolver } from "./terminal/pane-size";
 import { createPtySizeResolver } from "./terminal/pty-size";
 import { TerminalRegistry } from "./terminal/registry";
 import { ScreensService } from "./terminal/screens-service";
+import { createVoice, registerVoiceIpc } from "./voice/ipc";
 import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
 import { createWhiteboard } from "./whiteboard/create";
@@ -250,6 +251,7 @@ app.whenReady().then(() => {
 	registerPoolIpc(pool);
 	registerBrainstormIpc(brainstorm.service);
 	registerWorkBoardIpc(workBoard);
+	registerVoiceIpc(createVoice());
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),

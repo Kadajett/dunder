@@ -1,0 +1,181 @@
+/* Call with the chief: phone in the chat header, strip above the composer. */
+.chief-call__start {
+	width: 28px;
+	height: 28px;
+	display: grid;
+	place-items: center;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--ink-soft);
+	cursor: pointer;
+}
+
+.chief-call__start:hover:not(:disabled) {
+	background: #efe6d6;
+	color: var(--ink);
+}
+
+.chief-call__start:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.chief-call__start--live:disabled {
+	opacity: 1;
+	color: var(--status-working, #3f9a5b);
+	cursor: default;
+}
+
+.chief-call {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px 12px;
+	border-top: 1px solid var(--panel-edge);
+	background: #fbf6ec;
+}
+
+.chief-call__state {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.chief-call__light {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--ink-soft);
+}
+
+.chief-call[data-phase="recording"] .chief-call__light {
+	background: #d6453d;
+	animation: chief-call-pulse 1s ease-in-out infinite;
+}
+
+.chief-call[data-phase="transcribing"] .chief-call__light,
+.chief-call[data-phase="sent"] .chief-call__light,
+.chief-call[data-phase="queued"] .chief-call__light {
+	background: #d99a2b;
+}
+
+.chief-call[data-phase="working"] .chief-call__light {
+	background: #d99a2b;
+	animation: chief-call-pulse 1.6s ease-in-out infinite;
+}
+
+.chief-call[data-phase="speaking"] .chief-call__light,
+.chief-call[data-phase="ready"] .chief-call__light {
+	background: #3f9a5b;
+}
+
+.chief-call[data-phase="speaking"] .chief-call__light {
+	animation: chief-call-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes chief-call-pulse {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+.chief-call__error,
+.chief-call__hint {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.35;
+}
+
+.chief-call__error {
+	color: var(--status-blocked);
+}
+
+.chief-call__hint {
+	color: var(--ink-soft);
+}
+
+.chief-call__controls {
+	display: flex;
+	gap: 6px;
+}
+
+.chief-call__controls button {
+	border: 1px solid var(--panel-edge);
+	border-radius: 10px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.chief-call__talk {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	padding: 10px 8px;
+	font-weight: 600;
+	touch-action: none;
+	user-select: none;
+}
+
+.chief-call__controls .chief-call__talk[aria-pressed="true"] {
+	border-color: #d6453d;
+	background: #d6453d;
+	color: #fff;
+}
+
+.chief-call__talk:disabled {
+	opacity: 0.55;
+	cursor: wait;
+}
+
+.chief-call__chord {
+	font-family: var(--font-mono);
+	font-size: 9px;
+	font-weight: 400;
+	letter-spacing: 0.06em;
+	opacity: 0.7;
+}
+
+.chief-call__mute,
+.chief-call__controls .chief-call__hangup {
+	padding: 0 10px;
+}
+
+.chief-call__controls .chief-call__mute[aria-pressed="true"] {
+	background: #efe6d6;
+}
+
+.chief-call__controls .chief-call__hangup {
+	border-color: #d6453d;
+	color: #b4362f;
+}
+
+.chief-call__controls .chief-call__hangup:hover {
+	background: #d6453d;
+	color: #fff;
+}
+
+/* Chat: Jeremy's call turns and the chief's spoken lines. */
+.chief-msg__call {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.chief-msg__spoken {
+	max-width: 290px;
+	margin: 2px 0 0;
+	padding: 6px 10px;
+	border-radius: 10px;
+	background: #f3ecdf;
+	color: var(--ink);
+	font-size: 12px;
+	line-height: 1.4;
+}

@@ -1,4 +1,4 @@
-import { CHIEF_PROMPT_PREFIX } from "@shared/chief";
+import { CALL_PROMPT_PREFIX, CHIEF_PROMPT_PREFIX } from "@shared/chief";
 import { describe, expect, it } from "vitest";
 import { chiefPrompt, planChiefSend } from "./send-plan";
 
@@ -35,10 +35,18 @@ describe("planChiefSend", () => {
 
 describe("chiefPrompt", () => {
 	it("prefixes one message", () => {
-		expect(chiefPrompt(["hello"])).toBe(`${CHIEF_PROMPT_PREFIX} hello`);
+		expect(chiefPrompt([{ text: "hello" }])).toBe(`${CHIEF_PROMPT_PREFIX} hello`);
 	});
 
 	it("joins several queued messages into one prompt", () => {
-		expect(chiefPrompt(["first", "second"])).toBe(`${CHIEF_PROMPT_PREFIX} first\n\nsecond`);
+		expect(chiefPrompt([{ text: "first" }, { text: "second" }])).toBe(
+			`${CHIEF_PROMPT_PREFIX} first\n\nsecond`,
+		);
+	});
+
+	it("makes the whole prompt a call turn when any message was said on a call", () => {
+		expect(chiefPrompt([{ text: "typed" }, { text: "said", call: true }])).toBe(
+			`${CALL_PROMPT_PREFIX} typed\n\nsaid`,
+		);
 	});
 });
