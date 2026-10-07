@@ -24,6 +24,11 @@ export interface WorkBoardDeps {
 	readonly notify: (agent: string, text: string) => void;
 }
 
+/** A board as read from bd, before main stamps its revision. */
+type BoardContent =
+	| Omit<Extract<WorkBoard, { state: "ok" }>, "revision">
+	| Extract<WorkBoard, { state: "unavailable" }>;
+
 const showSchema = z.array(z.object({ status: z.string() })).min(1);
 
 /** The bd commands that put a bead with `status` into `lane`, in order. */
@@ -47,6 +52,8 @@ export class WorkBoardService {
 	readonly #deps: WorkBoardDeps;
 	#board: WorkBoard | undefined;
 	#emitted = "";
+	/** Revision of the last changed board sent; stamps the next one. */
+	#revision = 0;
 	#running: Promise<void> | undefined;
 	#queued: Promise<void> | undefined;
 	#started = false;
@@ -156,28 +163,34 @@ export class WorkBoardService {
 	}
 
 	async #write(steps: readonly (readonly string[])[]): Promise<WorkResult> {
-		let result: WorkResult = { ok: true };
+		let failure: string | undefined;
 		try {
 			for (const args of steps) await this.#bd(args);
 		} catch (error) {
-			result = { ok: false, reason: reasonOf(error) };
+			failure = reasonOf(error);
 			log.warn("bd write failed", { steps, error });
 		}
+		// Sends the board with the write (if it changed anything) before the result goes back.
 		await this.refresh();
-		return result;
+		return failure === undefined
+			? { ok: true, revision: this.#revision }
+			: { ok: false, reason: failure };
 	}
 
 	async #load(): Promise<void> {
-		const board = await this.#read();
-		const serialized = JSON.stringify(board);
-		this.#board = board;
+		const content = await this.#read();
+		const serialized = JSON.stringify(content);
 		if (serialized === this.#emitted) return;
-		if (board.state === "unavailable") log.warn("bd unavailable", { reason: board.reason });
+		if (content.state === "unavailable") log.warn("bd unavailable", { reason: content.reason });
 		this.#emitted = serialized;
+		if (content.state === "ok") this.#revision += 1;
+		const board: WorkBoard =
+			content.state === "ok" ? { ...content, revision: this.#revision } : content;
+		this.#board = board;
 		this.#deps.emit(board);
 	}
 
-	async #read(): Promise<WorkBoard> {
+	async #read(): Promise<BoardContent> {
 		try {
 			const since = new Date(this.#deps.now() - DONE_WINDOW_MS).toISOString();
 			// One at a time: parallel bd runs serialize on the Dolt database anyway (no faster).

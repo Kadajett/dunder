@@ -54,6 +54,8 @@ export type WorkBoard =
 	/** Cards grouped by lane in `workLanes` order; within a lane by priority, then most recently updated. */
 	| {
 			readonly state: "ok";
+			/** Goes up each time main sends a changed board; a write's result names the one that has it. */
+			readonly revision: number;
 			readonly cards: readonly WorkCard[];
 			/** Open asks, most urgent (priority) first, then oldest. */
 			readonly asks: readonly HumanAsk[];
@@ -61,7 +63,14 @@ export type WorkBoard =
 	/** bd is missing or failing; the bar says so instead of showing stale cards. */
 	| { readonly state: "unavailable"; readonly reason: string };
 
-export type WorkResult = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+export type WorkResult =
+	/**
+	 * bd took the write. `revision`: the first board revision that includes it.
+	 * Main sends that board before this result, so by now the renderer has it
+	 * (or an older one, if the write changed nothing visible).
+	 */
+	| { readonly ok: true; readonly revision: number }
+	| { readonly ok: false; readonly reason: string };
 
 export const WORK_TITLE_MAX = 200;
 export const workTitleSchema = z.string().trim().min(1).max(WORK_TITLE_MAX);

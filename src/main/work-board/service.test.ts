@@ -59,19 +59,41 @@ function harness(statuses: Record<string, string> = {}) {
 }
 
 describe("WorkBoardService reads", () => {
-	it("reads bd in the repo and emits the board only when it changed", async () => {
+	it("reads bd in the repo and emits the board, with the next revision, only when it changed", async () => {
 		const { service, calls, emitted, fake } = harness();
 		await service.refresh();
 		expect(calls).toEqual(READS.map((args) => ["/repo", ...args]));
 		expect(emitted).toEqual([
-			{ state: "ok", cards: [expect.objectContaining({ id: "a-1", lane: "ready" })], asks: [] },
+			{
+				state: "ok",
+				revision: 1,
+				cards: [expect.objectContaining({ id: "a-1", lane: "ready" })],
+				asks: [],
+			},
 		]);
 		await service.refresh();
 		expect(emitted).toHaveLength(1);
 		fake.open = [bead("a-1", "in_progress")];
 		await service.refresh();
 		expect(emitted).toHaveLength(2);
+		expect(emitted[1]).toMatchObject({ revision: 2 });
 		expect(await service.get()).toEqual(emitted[1]);
+	});
+
+	it("sends the board a write changed before returning, and names its revision in the result", async () => {
+		const { service, emitted, fake } = harness();
+		await service.refresh();
+		fake.open = [bead("a-1", "open"), bead("a-2", "open")];
+		let boardsSentByResult = 0;
+		const result = await service.create("Ship it").then((outcome) => {
+			boardsSentByResult = emitted.length;
+			return outcome;
+		});
+		expect(result).toEqual({ ok: true, revision: 2 });
+		expect(boardsSentByResult).toBe(2);
+		expect(emitted[1]).toMatchObject({ revision: 2 });
+		// A write that changes nothing visible names the board already sent.
+		expect(await service.setPriority("a-1", 2)).toEqual({ ok: true, revision: 2 });
 	});
 
 	it("reports bd failures as unavailable, and recovers", async () => {
@@ -119,7 +141,7 @@ describe("WorkBoardService reads", () => {
 describe("WorkBoardService writes", () => {
 	it("runs each write as its bd command, then refreshes", async () => {
 		const { service, calls, writes } = harness();
-		expect(await service.create("Ship it")).toEqual({ ok: true });
+		expect(await service.create("Ship it")).toEqual({ ok: true, revision: 1 });
 		expect(calls.slice(1, 1 + READS.length).map(([, ...args]) => args)).toEqual(READS);
 		await service.setPriority("a-1", 0);
 		await service.assign("a-1", "theo");

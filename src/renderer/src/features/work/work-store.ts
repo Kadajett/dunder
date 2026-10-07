@@ -21,9 +21,13 @@ export const ADD_ERROR = "+add";
 export interface Pending<T> {
 	readonly seq: number;
 	readonly value: T;
-	/** bd accepted it; dropped once the next board arrives, which includes it. */
-	readonly settled: boolean;
+	/** null while bd runs it; then the first board revision that includes it (it drops once that board is here). */
+	readonly revision: number | null;
 }
+
+/** Whether `board` already shows the confirmed write `pending` (so the overlay can go). */
+const shownBy = (board: WorkBoard | null, pending: Pending<unknown>): boolean =>
+	pending.revision !== null && board?.state === "ok" && board.revision >= pending.revision;
 
 interface WorkState {
 	/** The board as main last sent it; null until the first one arrives. */
@@ -68,8 +72,8 @@ export const useWork = create<WorkState>((set) => ({
 	receive: (board) =>
 		set((state) => ({
 			board,
-			edits: state.edits.filter((pending) => !pending.settled),
-			creating: state.creating.filter((pending) => !pending.settled),
+			edits: state.edits.filter((pending) => !shownBy(board, pending)),
+			creating: state.creating.filter((pending) => !shownBy(board, pending)),
 			// Answered asks drop out of the board; forget them once they have.
 			answering:
 				board.state === "ok"
@@ -126,11 +130,22 @@ async function outcome(write: Promise<WorkResult>): Promise<WorkResult> {
 
 let seq = 0;
 
-/** Settle the pending write `mine` in `list`: kept (settled) on success, dropped on failure. */
-function resolvePending<T>(list: readonly Pending<T>[], mine: number, ok: boolean) {
-	return ok
-		? list.map((pending) => (pending.seq === mine ? { ...pending, settled: true } : pending))
-		: list.filter((pending) => pending.seq !== mine);
+/**
+ * Settle the pending write `mine` in `list`: gone on failure, and gone on
+ * success once `board` has the write. Main sends that board before the result,
+ * so it is usually here already; otherwise `receive` drops it when it comes.
+ */
+function resolvePending<T>(
+	list: readonly Pending<T>[],
+	mine: number,
+	result: WorkResult,
+	board: WorkBoard | null,
+): readonly Pending<T>[] {
+	if (!result.ok) return list.filter((pending) => pending.seq !== mine);
+	const confirmed = list.map((pending) =>
+		pending.seq === mine ? { ...pending, revision: result.revision } : pending,
+	);
+	return confirmed.filter((pending) => !shownBy(board, pending));
 }
 
 const failure: Readonly<Record<WorkEdit["kind"], string>> = {
@@ -147,14 +162,14 @@ async function runEdit(edit: WorkEdit, write: (api: WorkBoardApi) => Promise<Wor
 	seq += 1;
 	const mine = seq;
 	useWork.setState((state) => ({
-		edits: [...state.edits, { seq: mine, value: edit, settled: false }],
+		edits: [...state.edits, { seq: mine, value: edit, revision: null }],
 		errors: withoutKey(state.errors, edit.id),
 	}));
 	const result = await outcome(write(api));
 	if (!result.ok)
 		log.warn("work board write failed", { kind: edit.kind, id: edit.id, reason: result.reason });
 	useWork.setState((state) => ({
-		edits: resolvePending(state.edits, mine, result.ok),
+		edits: resolvePending(state.edits, mine, result, state.board),
 		errors: result.ok
 			? state.errors
 			: { ...state.errors, [edit.id]: `${failure[edit.kind]}: ${result.reason}` },
@@ -184,13 +199,13 @@ export async function createCard(title: string): Promise<void> {
 	seq += 1;
 	const mine = seq;
 	useWork.setState((state) => ({
-		creating: [...state.creating, { seq: mine, value: title, settled: false }],
+		creating: [...state.creating, { seq: mine, value: title, revision: null }],
 		errors: withoutKey(state.errors, ADD_ERROR),
 	}));
 	const result = await outcome(api.create(title));
 	if (!result.ok) log.warn("work board create failed", { reason: result.reason });
 	useWork.setState((state) => ({
-		creating: resolvePending(state.creating, mine, result.ok),
+		creating: resolvePending(state.creating, mine, result, state.board),
 		errors: result.ok
 			? state.errors
 			: { ...state.errors, [ADD_ERROR]: `Couldn't add “${title}”: ${result.reason}` },
