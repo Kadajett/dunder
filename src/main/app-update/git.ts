@@ -42,3 +42,16 @@ export async function checkCheckout(root: string, built: string): Promise<Update
 	const log = await runGit(root, ["log", "--format=%H%x1f%s", `${built}..${head}`]).catch(() => "");
 	return { head, commits: parseCommitLog(log) };
 }
+
+/** Commits `git log` lists for `args` (a range, or `-n N <rev>`), newest first. */
+export async function commitLog(root: string, args: readonly string[]): Promise<UpdateCommit[]> {
+	return parseCommitLog(await runGit(root, ["log", "--format=%H%x1f%s", ...args]));
+}
+
+/** Whether `from` is in `to`'s history; false also when git doesn't know `from` (history rewritten). */
+export function isAncestor(root: string, from: string, to: string): Promise<boolean> {
+	return runGit(root, ["merge-base", "--is-ancestor", from, to]).then(
+		() => true,
+		() => false,
+	);
+}

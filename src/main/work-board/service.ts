@@ -30,6 +30,10 @@ type BoardContent =
 	| Extract<WorkBoard, { state: "unavailable" }>;
 
 const showSchema = z.array(z.object({ status: z.string() })).min(1);
+const detailsSchema = z.array(
+	z.object({ id: z.string(), title: z.string(), notes: z.string().optional() }),
+);
+export type BeadNotes = z.infer<typeof detailsSchema>[number];
 
 /** The bd commands that put a bead with `status` into `lane`, in order. */
 export function movePlan(id: string, status: string, lane: WorkLane): string[][] {
@@ -146,6 +150,23 @@ export class WorkBoardService {
 				`Jeremy dismissed your ask ${id} ("${ask.question}") without an answer.`,
 			);
 		return result;
+	}
+
+	/** Title and notes of each bead bd knows (unknown ids are left out); throws when bd fails. */
+	async details(ids: readonly string[]): Promise<readonly BeadNotes[]> {
+		if (ids.length === 0) return [];
+		try {
+			return detailsSchema.parse(JSON.parse(await this.#bd(["show", ...ids, "--json"])));
+		} catch (error) {
+			// bd exits 1 when it knows none of the ids; that is an empty answer, not a failure.
+			if (/no issues? found matching/i.test(reasonOf(error))) return [];
+			throw error;
+		}
+	}
+
+	/** A comment on a bead, signed by `author` (bd records the comment, not the git user). */
+	comment(id: string, text: string, author: string): Promise<WorkResult> {
+		return this.#write([["comments", "add", id, "-a", author, "--", text]]);
 	}
 
 	#ask(id: string): HumanAsk | undefined {

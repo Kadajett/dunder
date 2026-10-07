@@ -62,6 +62,7 @@ Jeremy runs a stable build of Dunder: editing its source never changes the app h
 - Log with `createLogger` from `@shared/log`, never `console`. The tools in `src/cli/` are the exception: they run under plain Node and use only Node built-ins.
 - Run `npm run check` until it passes, then commit on your branch as `<bead>: <summary>`. Max reviews and merges to the main branch.
 - Report the commit hash and what you verified with `office-say max "…"` from your bash tool, and put the same notes in the bead with `bd update <bead> --notes "…"`. The eval tool has no `HERDR_PANE_ID`, so `office-say` refuses to run there.
+- End those bead notes with one line `Try it: <one thing Jeremy can do to see it>`, e.g. `Try it: click the pool table and press Join`. After the update, Dunder's "What's new" card shows that line under the bead's title, with a 👍/👎 for Jeremy, so make it a single concrete action in the app, not a summary. Max checks for it when reviewing.
 - Never close your own bead: Max closes it after review and merge.
 - After a merge to the main branch, run `office-update "<what changed>"` (also on your PATH) from your bash tool; without your pane's `HERDR_PANE_ID` it refuses. Jeremy sees "<your name> requested an update" with a 15-second countdown he can cancel; then Dunder rebuilds and relaunches on the new commit. You and the other agents keep running through it.
 - If the build fails, Jeremy's app keeps running the old build and shows the error; fix it, merge, and run `office-update` again.
