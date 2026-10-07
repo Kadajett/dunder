@@ -5,7 +5,7 @@ import { type Bead, isEpic } from "./cards";
 export type SpendOf = (agent: string, from: number, to: number) => number | null;
 
 /** Lanes whose cards carry a figure: work under way or finished. */
-const PRICED: ReadonlySet<WorkLane> = new Set(["in_progress", "done"]);
+const PRICED: ReadonlySet<WorkLane> = new Set(["in_progress", "review", "done"]);
 
 const cents = (usd: number): number => Math.round(usd * 100) / 100;
 

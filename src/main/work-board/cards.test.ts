@@ -51,6 +51,28 @@ describe("parseBeads", () => {
 });
 
 describe("buildCards lanes", () => {
+	it("puts in-progress beads labelled review in Review, oldest first; a labelled open bead stays in Ready", () => {
+		const newer = bead("a-1", {
+			status: "in_progress",
+			labels: ["review"],
+			updated_at: "2026-10-06T12:00:00Z",
+		});
+		const older = bead("a-2", {
+			status: "in_progress",
+			labels: ["review"],
+			updated_at: "2026-10-06T09:00:00Z",
+			priority: 4,
+		});
+		const working = bead("a-3", { status: "in_progress" });
+		const backlog = bead("a-4", { labels: ["review"] });
+		expect(lanesOf(lists({ open: [newer, older, working, backlog], ready: [backlog] }))).toEqual([
+			["a-3", "in_progress"],
+			["a-2", "review"],
+			["a-1", "review"],
+			["a-4", "ready"],
+		]);
+	});
+
 	it("puts a bead in exactly one lane: in progress beats blocked beats ready", () => {
 		const working = bead("a-1", { status: "in_progress" });
 		const waiting = bead("a-2");

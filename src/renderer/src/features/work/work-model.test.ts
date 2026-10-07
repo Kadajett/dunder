@@ -34,13 +34,25 @@ describe("groupByLane", () => {
 			card("o-4", "in_progress"),
 		];
 		const groups = groupByLane(cards);
-		expect(groups.map((group) => group.lane)).toEqual(["in_progress", "blocked", "ready", "done"]);
-		expect(groups.map((group) => ids(group.cards))).toEqual([["o-4"], [], ["o-3", "o-2"], ["o-1"]]);
+		expect(groups.map((group) => group.lane)).toEqual([
+			"in_progress",
+			"review",
+			"blocked",
+			"ready",
+			"done",
+		]);
+		expect(groups.map((group) => ids(group.cards))).toEqual([
+			["o-4"],
+			[],
+			[],
+			["o-3", "o-2"],
+			["o-1"],
+		]);
 	});
 });
 
 describe("pillText", () => {
-	it("counts in progress, and blocked only when something is", () => {
+	it("counts in progress, and review and blocked only when something is", () => {
 		const cards = [
 			card("a-1", "in_progress"),
 			card("a-2", "in_progress"),
@@ -49,6 +61,9 @@ describe("pillText", () => {
 			card("a-5", "ready"),
 		];
 		expect(pillText(cards)).toBe("Work · 3 in progress · 1 blocked");
+		expect(pillText([...cards, card("a-6", "review"), card("a-7", "review")])).toBe(
+			"Work · 3 in progress · 2 in review · 1 blocked",
+		);
 		expect(pillText([card("a-5", "ready")])).toBe("Work · 0 in progress");
 		expect(pillText(undefined)).toBe("Work");
 	});

@@ -66,7 +66,7 @@ export const useWork = create<WorkState>((set) => ({
 	creating: [],
 	errors: {},
 	open: globalThis.localStorage?.getItem(OPEN_KEY) !== "closed",
-	collapsed: { in_progress: false, blocked: false, ready: false, done: true },
+	collapsed: { in_progress: false, review: false, blocked: false, ready: false, done: true },
 	expanded: null,
 	answering: [],
 	receive: (board) =>

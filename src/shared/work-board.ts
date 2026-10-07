@@ -8,8 +8,14 @@ import type { Unsubscribe } from "./screens";
  */
 
 /** Top to bottom in the bar. */
-export const workLanes = ["in_progress", "blocked", "ready", "done"] as const;
+export const workLanes = ["in_progress", "review", "blocked", "ready", "done"] as const;
 export type WorkLane = (typeof workLanes)[number];
+/**
+ * The bd label an engineer adds to an in-progress bead when they report it
+ * done to Max: the card moves to Review until he merges (closes) it or sends
+ * it back (removes the label).
+ */
+export const REVIEW_LABEL = "review";
 
 export const workPrioritySchema = z.number().int().min(0).max(4);
 export type WorkPriority = 0 | 1 | 2 | 3 | 4;

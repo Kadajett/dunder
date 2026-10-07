@@ -2,6 +2,7 @@ import { type WorkCard, type WorkLane, type WorkPriority, workLanes } from "@sha
 
 export const laneLabels: Readonly<Record<WorkLane, string>> = {
 	in_progress: "In progress",
+	review: "Review",
 	blocked: "Blocked",
 	ready: "Ready",
 	done: "Done",
@@ -35,11 +36,24 @@ export function groupByLane(cards: readonly WorkCard[]): readonly LaneGroup[] {
 	return workLanes.map((lane) => ({ lane, cards: cards.filter((card) => card.lane === lane) }));
 }
 
-/** `3 in progress · 1 blocked`: blocked only when something is. */
+/** `3 in progress · 2 in review · 1 blocked`: review and blocked only when something is. */
 export function boardSummary(cards: readonly WorkCard[]): string {
-	const working = cards.filter((card) => card.lane === "in_progress").length;
-	const blocked = cards.filter((card) => card.lane === "blocked").length;
-	return blocked > 0 ? `${working} in progress · ${blocked} blocked` : `${working} in progress`;
+	const count = (lane: WorkLane) => cards.filter((card) => card.lane === lane).length;
+	const review = count("review");
+	const blocked = count("blocked");
+	return [
+		`${count("in_progress")} in progress`,
+		...(review > 0 ? [`${review} in review`] : []),
+		...(blocked > 0 ? [`${blocked} blocked`] : []),
+	].join(" · ");
+}
+
+/** `12 min`, `3 h`, `2 d`: how long a card has waited since `since`. */
+export function waitedFor(since: string, now: number): string {
+	const minutes = Math.max(0, Math.floor((now - (Date.parse(since) || now)) / 60_000));
+	if (minutes < 60) return `${minutes} min`;
+	const hours = Math.floor(minutes / 60);
+	return hours < 48 ? `${hours} h` : `${Math.floor(hours / 24)} d`;
 }
 
 /** The collapsed bar's label; just `Work` while there are no cards to count. */

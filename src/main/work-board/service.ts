@@ -1,5 +1,12 @@
 import { createLogger } from "@shared/log/logger";
-import type { HumanAsk, WorkBoard, WorkLane, WorkPriority, WorkResult } from "@shared/work-board";
+import {
+	type HumanAsk,
+	REVIEW_LABEL,
+	type WorkBoard,
+	type WorkLane,
+	type WorkPriority,
+	type WorkResult,
+} from "@shared/work-board";
 import { z } from "zod";
 import type { BdRunner } from "../beads/bd";
 import { buildAsks } from "./asks";
@@ -34,19 +41,37 @@ type BoardContent =
 	| Omit<Extract<WorkBoard, { state: "ok" }>, "revision">
 	| Extract<WorkBoard, { state: "unavailable" }>;
 
-const showSchema = z.array(z.object({ status: z.string() })).min(1);
+const showSchema = z
+	.array(z.object({ status: z.string(), labels: z.array(z.string()).nullish() }))
+	.min(1);
 const detailsSchema = z.array(
 	z.object({ id: z.string(), title: z.string(), notes: z.string().optional() }),
 );
 export type BeadNotes = z.infer<typeof detailsSchema>[number];
 
-/** The bd commands that put a bead with `status` into `lane`, in order. */
-export function movePlan(id: string, status: string, lane: WorkLane): string[][] {
-	const closed = status === "closed";
+/** Where a bead is now, for planning a move. */
+export interface BeadPlace {
+	readonly status: string;
+	/** Carries the `review` label (waiting for Max). */
+	readonly inReview: boolean;
+}
+
+/**
+ * The bd commands that put a bead into `lane`, in order. Review is
+ * in_progress plus the `review` label; leaving it drops the label (except
+ * to Done: closed beads leave every lane, label or not).
+ */
+export function movePlan(id: string, from: BeadPlace, lane: WorkLane): string[][] {
+	const closed = from.status === "closed";
 	if (lane === "done") return closed ? [] : [["close", id]];
 	const reopen = closed ? [["reopen", id]] : [];
-	if (lane === "ready") return closed ? reopen : [["update", id, "--status=open"]];
-	return [...reopen, ["update", id, `--status=${lane}`]];
+	if (lane === "review")
+		return [...reopen, ["update", id, "--status=in_progress", `--add-label=${REVIEW_LABEL}`]];
+	const unlabel = from.inReview ? [`--remove-label=${REVIEW_LABEL}`] : [];
+	if (lane === "ready" && closed)
+		return unlabel.length > 0 ? [...reopen, ["update", id, ...unlabel]] : reopen;
+	const status = lane === "ready" ? "open" : lane;
+	return [...reopen, ["update", id, `--status=${status}`, ...unlabel]];
 }
 
 const reasonOf = (error: unknown): string =>
@@ -117,7 +142,11 @@ export class WorkBoardService {
 	async move(id: string, lane: WorkLane): Promise<WorkResult> {
 		try {
 			const [bead] = showSchema.parse(JSON.parse(await this.#bd(["show", id, "--json"])));
-			return await this.#write(movePlan(id, bead?.status ?? "", lane));
+			const from = {
+				status: bead?.status ?? "",
+				inReview: (bead?.labels ?? []).includes(REVIEW_LABEL),
+			};
+			return await this.#write(movePlan(id, from, lane));
 		} catch (error) {
 			return { ok: false, reason: reasonOf(error) };
 		}

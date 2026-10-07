@@ -181,6 +181,11 @@
 .work-card--blocked {
 	--lane-color: var(--status-blocked);
 }
+/* Waiting on Max: amber, between work under way (green) and blocked (orange). */
+.work-lane--review,
+.work-card--review {
+	--lane-color: #c99a2e;
+}
 .work-lane--ready,
 .work-card--ready {
 	--lane-color: var(--status-idle);
