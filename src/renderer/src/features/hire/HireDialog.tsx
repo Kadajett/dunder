@@ -2,10 +2,12 @@ import "../office/interaction/cards.css";
 import "./hire-dialog.css";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { useEffect, useMemo } from "react";
+import { draftStyle, rerolledLook } from "./draft-look";
 import { HireFields } from "./HireFields";
 import { useHire } from "./hire-store";
+import { LookPicker } from "./LookPicker";
 import { MiiPreview } from "./MiiPreview";
-import { draftStyle, type HireFormState, useHireForm } from "./use-hire-form";
+import { type HireFormState, useHireForm } from "./use-hire-form";
 
 function statusLine(
 	form: HireFormState,
@@ -48,10 +50,11 @@ function HireForm({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 				<div className="hire-body">
 					<div className="hire-look">
 						<MiiPreview style={style} />
+						<LookPicker style={style} onPick={(look) => update({ look })} />
 						<button
 							type="button"
 							className="hire-reroll"
-							onClick={() => update({ seed: crypto.randomUUID() })}
+							onClick={() => update(rerolledLook(crypto.randomUUID()))}
 						>
 							↻ New look
 						</button>

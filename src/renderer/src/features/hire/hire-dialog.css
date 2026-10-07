@@ -43,7 +43,7 @@
 
 .hire-body {
 	display: grid;
-	grid-template-columns: 200px 1fr;
+	grid-template-columns: 260px 1fr;
 	gap: 18px;
 	margin-top: 12px;
 }
@@ -56,8 +56,8 @@
 }
 
 .hire-preview {
-	width: 200px;
-	height: 260px;
+	width: 220px;
+	height: 230px;
 	overflow: hidden;
 	border-radius: 12px;
 	background: #efe6d6;
@@ -76,6 +76,108 @@
 }
 
 .hire-look small {
+	color: var(--ink-soft);
+	font-size: 10.5px;
+	text-align: center;
+}
+
+/* The look picker: one row per part under the preview. */
+.look-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	width: 100%;
+}
+
+.look-row {
+	display: grid;
+	grid-template-columns: 88px 22px 1fr auto 22px;
+	align-items: center;
+	gap: 4px;
+	min-height: 22px;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.look-row-wrap[data-face="true"] .look-row {
+	padding-left: 10px;
+	grid-template-columns: 78px 22px 1fr auto 22px;
+}
+
+.look-group,
+.look-label {
+	font: 700 9px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.look-group {
+	display: block;
+	margin-top: 2px;
+}
+
+.look-value {
+	overflow: hidden;
+	font: 600 11.5px var(--font-ui);
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.look-count {
+	font: 400 10px var(--font-mono);
+	color: var(--ink-soft);
+}
+
+.look-step {
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: #efe6d6;
+	color: var(--ink);
+	font: 700 14px / 1 var(--font-ui);
+	cursor: pointer;
+}
+
+.look-step:hover {
+	background: #e4d8c2;
+}
+
+.look-step:focus-visible,
+.look-hat-color:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 1px;
+}
+
+.look-hat-color {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 2px 0 0 auto;
+	padding: 3px 8px;
+	border: 0;
+	border-radius: 6px;
+	background: #efe6d6;
+	color: var(--ink);
+	font: 600 10.5px var(--font-ui);
+	cursor: pointer;
+}
+
+.look-hat-color i {
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+	box-shadow: inset 0 0 0 1px #00000026;
+}
+
+.look-note {
+	min-height: 14px;
+	margin: 2px 0 0;
 	color: var(--ink-soft);
 	font-size: 10.5px;
 	text-align: center;
