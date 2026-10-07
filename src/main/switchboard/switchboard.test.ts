@@ -188,6 +188,36 @@ describe("Switchboard", () => {
 		);
 		board.stop();
 	});
+
+	it.each([
+		["a missing state file", null, ["from ten minutes ago"]],
+		["a corrupt state file", "{ corrupt", ["from ten minutes ago"]],
+		["a saved place at the top", "saved", ["from yesterday", "from ten minutes ago"]],
+	])("with %s delivers only mail it can trust is new", async (_case, state, expected) => {
+		const call = vi.fn(async () => ({}));
+		const { board, emitted, dir } = setup(call);
+		const mailbox = join(dir, "mailbox.ndjson");
+		// To different recipients: each gets one message per round.
+		for (const [text, to, minutesAgo] of [
+			["from yesterday", "ava", 26 * 60],
+			["from ten minutes ago", "ben", 10],
+		] as const) {
+			const sentAt = new Date(Date.now() - minutesAgo * 60_000).toISOString();
+			const line = { v: 1, id: crypto.randomUUID(), fromPane: "w1:p1", to, text, sentAt };
+			appendFileSync(mailbox, `${JSON.stringify(line)}\n`);
+		}
+		// Lost place: only the last hour is replayed. A saved place delivers the whole backlog.
+		const saved = state === "saved" ? JSON.stringify({ mailboxPath: mailbox, offset: 0 }) : state;
+		if (saved !== null) writeFileSync(join(dir, "state.json"), saved);
+		board.updateSnapshot(office({ nora: "idle", ava: "idle", ben: "idle" }));
+		await board.start();
+		await vi.waitFor(() =>
+			expect(emitted.filter((m) => m.state === "delivered")).toHaveLength(expected.length),
+		);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(emitted.filter((m) => m.state === "delivered").map((m) => m.text)).toEqual(expected);
+		board.stop();
+	});
 });
 
 describe("office-say mailbox path", () => {

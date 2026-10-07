@@ -1,10 +1,10 @@
-import { appendFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createLogger } from "@shared/log/logger";
 import { type DayPlan, type PlanProposal, type PlanResult, planProposalSchema } from "@shared/plan";
 import { z } from "zod";
 import { isDailyDue, localDateKey } from "../calisthenics/schedule";
-import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { appendResultLine } from "../switchboard/results-file";
 import {
 	approvePlan,
 	discussPlan,
@@ -28,7 +28,6 @@ export interface PlanDeps {
 	readonly plansDir: string;
 	/** Where `office-plan show` reads today's plan. */
 	readonly digestPath: string;
-	readonly requestsPath: string;
 	readonly resultsPath: string;
 	readonly now: () => number;
 	/** Say it to Max in the chief chat (sent now, or queued until he's free); false when there's no chief. */
@@ -62,7 +61,6 @@ export class PlanService {
 	#settings: PlanSettings | undefined;
 	#plan: DayPlan | null = null;
 	#timer: NodeJS.Timeout | undefined;
-	#tail: MailboxTail | undefined;
 	#checking = false;
 
 	constructor(deps: PlanDeps) {
@@ -75,24 +73,12 @@ export class PlanService {
 		await savePlanSettings(this.#deps.settingsPath, this.#settings);
 		this.#plan = await this.#load(this.#today());
 		await this.#writeDigest();
-		// Requests made while the app was closed are stale: start at the file's end.
-		const offset = await stat(this.#deps.requestsPath).then(
-			(info) => info.size,
-			() => 0,
-		);
-		this.#tail = await tailMailbox({
-			path: this.#deps.requestsPath,
-			offset,
-			onLines: (lines) => void this.#receive(lines),
-			onError: (error) => log.warn("cannot read plan requests", { error }),
-		});
 		this.#timer = setInterval(() => void this.check(), CHECK_MS);
 		await this.check();
 	}
 
 	stop(): void {
 		clearInterval(this.#timer);
-		this.#tail?.stop();
 	}
 
 	today(): DayPlan | null {
@@ -154,7 +140,8 @@ export class PlanService {
 		}
 	}
 
-	async #receive(lines: readonly string[]): Promise<void> {
+	/** New `office-plan` request lines (the day cycle tails the requests file for both services). */
+	async receive(lines: readonly string[]): Promise<void> {
 		const { valid, invalid } = parsePlanRequests(lines, this.#deps.now());
 		for (const { id, error } of invalid)
 			await this.#answer(id, false, `not a valid plan:\n${error}`);
@@ -185,8 +172,7 @@ export class PlanService {
 	}
 
 	async #answer(id: string, ok: boolean, message: string): Promise<void> {
-		await mkdir(dirname(this.#deps.resultsPath), { recursive: true });
-		await appendFile(this.#deps.resultsPath, `${JSON.stringify({ id, ok, message })}\n`).catch(
+		await appendResultLine(this.#deps.resultsPath, JSON.stringify({ id, ok, message })).catch(
 			(error: unknown) => log.warn("cannot answer a plan request", { error }),
 		);
 	}
