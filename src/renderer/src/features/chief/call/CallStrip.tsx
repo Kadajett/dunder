@@ -1,5 +1,6 @@
 import type { ChiefPresence } from "@shared/chief";
 import { useEffect, useState } from "react";
+import { keepCall, resumeAfterUpdate } from "./call-keep";
 import {
 	hangUp,
 	loadVoiceAvailability,
@@ -39,7 +40,9 @@ function PhoneIcon() {
  */
 export function useCallWiring(presence: ChiefPresence): void {
 	const active = useCall((state) => state.active);
-	useEffect(() => void loadVoiceAvailability(), []);
+	useEffect(keepCall, []);
+	// After an update relaunch during a call, the call picks up again by itself.
+	useEffect(() => void loadVoiceAvailability().then(resumeAfterUpdate), []);
 	useEffect(() => notePresence(presence), [presence]);
 	useEffect(() => {
 		if (!active) return;

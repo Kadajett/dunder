@@ -39,7 +39,7 @@ import { createStaffDesk } from "./staff-desk/create";
 import { startInBackground } from "./start-in-background";
 import { createSwitchboardService } from "./switchboard/service";
 import { createOfficeScreens } from "./terminal/office-screens";
-import { createVoice, registerVoiceIpc } from "./voice/ipc";
+import { createCallKeeper, createVoice, registerVoiceIpc } from "./voice/ipc";
 import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
 import { createWhatsNew, registerWhatsNewIpc } from "./whats-new/ipc";
@@ -246,7 +246,7 @@ function registerHandlers(): void {
 	registerWorkBoardIpc(workBoard);
 	registerAppErrorsIpc(appErrors);
 	registerAgentRepliesIpc(agentReplies, chiefName);
-	registerVoiceIpc(createVoice());
+	registerVoiceIpc(createVoice(), createCallKeeper(app.getPath("userData")));
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerAlertsIpc(alerts);
 	registerWorktreesIpc(createWorktrees(companies));

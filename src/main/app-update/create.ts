@@ -6,6 +6,7 @@ import { buildApp } from "./build";
 import { restoreKept } from "./builds";
 import { checkCheckout, dependenciesChanged } from "./git";
 import { builtCommit, relaunchApp } from "./relaunch";
+import { markUpdateRelaunch } from "./relaunch-mark";
 import { officeUpdateRequestsPath } from "./requests";
 import { noteRollback, previousBuild } from "./rollback";
 import { AppUpdater } from "./service";
@@ -35,7 +36,11 @@ export function createAppUpdater(options: AppUpdateOptions): AppUpdater {
 			const install = await dependenciesChanged(root, built, "HEAD");
 			return buildApp(root, onLog, { install, outgoing: built });
 		},
-		relaunch: () => void relaunchApp(options.shutdown),
+		// Marked first, so the next launch knows it was an update (a call on picks up again).
+		relaunch: () =>
+			void markUpdateRelaunch(options.userData, Date.now()).then(() =>
+				relaunchApp(options.shutdown),
+			),
 		previous: () => (built ? previousBuild(root, built) : Promise.resolve(null)),
 		restore: async (previous) => {
 			await restoreKept(root);

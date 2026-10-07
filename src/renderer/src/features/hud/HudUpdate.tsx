@@ -6,6 +6,7 @@ import type {
 	UpdateStatus,
 } from "@shared/app-update";
 import { useEffect, useId, useState } from "react";
+import { useCall } from "../chief/call/call-store";
 import { RollbackSection } from "./HudRollback";
 
 /** The stable-mode update status, live from main ("dev" while the preload predates the API). */
@@ -56,12 +57,16 @@ const skip = () => void window.office.update.cancel().catch(() => undefined);
 
 function CountdownBanner({ countdown }: { readonly countdown: UpdateCountdown }) {
 	const seconds = useSecondsLeft(countdown.applyAt);
+	const onCall = useCall((state) => state.active);
 	return (
 		<div className="update-banner" role="alert">
 			<span>
 				<strong>{requesters(countdown)} requested an update</strong>
 				{countdown.reason ? `: ${countdown.reason}` : ""} — applying in {seconds} s
 			</span>
+			{onCall ? (
+				<span className="update-banner-call">📞 Call will resume after the update</span>
+			) : null}
 			<button type="button" className="update-banner-cancel" onClick={skip}>
 				Cancel
 			</button>

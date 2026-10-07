@@ -41,4 +41,24 @@ export interface VoiceApi {
 	transcribe(audio: Uint8Array, mimeType: string): Promise<VoiceResult<string>>;
 	/** Text to speech: MP3 bytes in the chief's voice. */
 	speak(text: string): Promise<VoiceResult<Uint8Array>>;
+	/** Remember the live call (null: none), so it can pick up again after an update relaunch. */
+	saveCall(call: CallSnapshot | null): Promise<void>;
+	/** Once per launch: the call to pick up again, when this launch is an update's relaunch during one. */
+	resumeCall(): Promise<CallResume | null>;
+}
+
+/** A live call as main keeps it (`<userData>/call.json`). */
+export const callSnapshotSchema = z.strictObject({
+	muted: z.boolean(),
+	/** The input in use; null for the default. */
+	deviceId: z.string().max(512).nullable(),
+	/** Epoch ms. */
+	startedAt: z.number().int().nonnegative(),
+});
+export type CallSnapshot = z.infer<typeof callSnapshotSchema>;
+
+/** A call that was live when an update relaunched the app. */
+export interface CallResume extends CallSnapshot {
+	/** When the old app went down for the relaunch (epoch ms): speech after it was lost. */
+	readonly downAt: number;
 }

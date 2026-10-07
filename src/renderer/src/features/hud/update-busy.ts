@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useCall } from "../chief/call/call-store";
 import { useHire } from "../hire/hire-store";
 import { useFocus } from "../office/focus/focus-store";
 import { useWhiteboard } from "../whiteboard/whiteboard-store";
@@ -44,13 +43,12 @@ function useTyping(): boolean {
 
 /** Tell main what Jeremy is busy with, so agents' updates wait until he is free (mount once). */
 export function useReportBusy(): void {
-	const onCall = useCall((state) => state.active);
 	const focus = useFocus((state) => state.target?.kind ?? null);
 	const whiteboard = useWhiteboard((state) => state.open);
 	const hiring = useHire((state) => state.open);
 	const focused = useWindowFocused();
 	const typing = useTyping();
-	const reason = busyReason({ onCall, focused, focus, whiteboard, hiring, typing });
+	const reason = busyReason({ focused, focus, whiteboard, hiring, typing });
 	useEffect(() => {
 		// A main process from before quiet updates has no handler: updates just count down as before.
 		if (!("update" in window.office)) return;
