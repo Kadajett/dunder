@@ -16,6 +16,7 @@ import {
 	displayTitle,
 	isInternalOnly,
 	pathsByBead,
+	stripBeadIds,
 } from "../shared/change-notes.mts";
 
 const USAGE = `usage:
@@ -47,13 +48,12 @@ export interface Bead {
 	readonly internal?: boolean;
 }
 
-/** Who and what the internal text may name: agents (fired ones too), the chief, the owner, bead id prefixes. */
+/** Who and what the internal text may name: agents (fired ones too), the chief, the owner, and known bead ids. */
 export interface Names {
 	readonly agents: readonly string[];
 	readonly chief: string | null;
 	readonly owner: string | null;
-	/** e.g. `office` for `office-pab`. */
-	readonly idPrefixes: readonly string[];
+	readonly beadIds: readonly string[];
 }
 
 const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
@@ -62,12 +62,7 @@ const word = (name: string, suffix = ""): RegExp =>
 
 /** Rewrite one internal line for outsiders; `replaced` collects what was swapped, for the review list. */
 export function publicText(text: string, names: Names, replaced: Set<string>): string {
-	const ids = names.idPrefixes.map(escapeRegExp).join("|");
-	let out = displayTitle(text)
-		.replace(
-			ids ? new RegExp(String.raw`\(?\b(?:${ids})-[a-z0-9]+(?:\.[0-9]+)*\b\)?`, "gi") : /$^/,
-			"",
-		)
+	let out = stripBeadIds(displayTitle(text), names.beadIds)
 		.replace(/`[^`]*\/[^`]*`/g, "")
 		.replace(/(?:~|\b[\w.-]+)\/[\w./-]*\.\w+\b/g, "");
 	const swaps: [string | null, string, string][] = [
@@ -227,7 +222,7 @@ function draft(args: readonly string[]): number {
 		names: {
 			...rosterNames(process.env),
 			owner,
-			idPrefixes: [...new Set(ids.map((id) => id.split("-")[0] ?? id))],
+			beadIds: ids,
 		},
 		today: new Date().toISOString().slice(0, 10),
 	});
