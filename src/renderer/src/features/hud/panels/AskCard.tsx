@@ -59,7 +59,7 @@ function OptionButtons({
 	readonly options: readonly string[];
 }) {
 	return (
-		<div className="hud-ask-options" role="group" aria-label="Answers">
+		<div className="hud-ask-options">
 			{options.map((option, index) => (
 				<button
 					key={option}

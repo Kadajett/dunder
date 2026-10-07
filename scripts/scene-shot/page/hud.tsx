@@ -14,8 +14,6 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/700.css";
 import "@renderer/styles.css";
 import { App } from "@renderer/app/App";
-import { useCall } from "@renderer/features/chief/call/call-store";
-import { useChief } from "@renderer/features/chief/chief-store";
 import { installErrorHooks } from "@renderer/features/errors/errors-store";
 import { useHire } from "@renderer/features/hire/hire-store";
 import { useHud } from "@renderer/features/hud/view-store";
@@ -26,6 +24,7 @@ import { useWhatsNew } from "@renderer/features/whats-new/whats-new-store";
 import { useWork } from "@renderer/features/work/work-store";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { startCall } from "./hud-call";
 
 /**
  * HUD screenshot harness page: the real <App/> over the stubbed
@@ -63,22 +62,6 @@ function click(selector: string): boolean {
 	const element = document.querySelector<HTMLElement>(selector);
 	element?.click();
 	return element !== null;
-}
-
-function startCall(): void {
-	useChief.getState().open();
-	useCall.setState({
-		availability: { available: true },
-		active: true,
-		since: NOW - 4 * 60_000,
-		phase: "speaking",
-		muted: false,
-		mic: { deviceId: "default", label: "Default - Jabra Evolve2 65" },
-		level: 0.22,
-		heard: "Yes to the photos. Give me a minute on Node.",
-		error: null,
-		hint: null,
-	});
 }
 
 function expandWork(): void {
