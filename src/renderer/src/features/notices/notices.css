@@ -18,6 +18,12 @@
 	pointer-events: none;
 }
 
+/* office-rgs: at the pool table, only the update strip shows, above the table view's bar. */
+.top-centre[data-at="table"] {
+	top: auto;
+	bottom: 72px;
+}
+
 .top-centre > * {
 	pointer-events: auto;
 }

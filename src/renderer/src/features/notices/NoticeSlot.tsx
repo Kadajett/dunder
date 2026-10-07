@@ -3,6 +3,7 @@ import type { WhatsNew } from "@shared/whats-new";
 import { type ReactNode, useEffect, useState } from "react";
 import { AwayCard, connectAway, useAway } from "../away/AwayCard";
 import { UpdateCountdownBanner, useUpdateStatus } from "../hud/HudUpdate";
+import { useFocus } from "../office/focus/focus-store";
 import { DayEndCard } from "../plan/DayEndCard";
 import { PlanCard } from "../plan/PlanCard";
 import { planCardDue } from "../plan/plan-model";
@@ -75,15 +76,18 @@ export function NoticeSlot() {
 /**
  * Everything top-centre, in one column so nothing overlaps: the update
  * countdown or held chip, the pool autopilot countdown (office view), then
- * the notice slot.
+ * the notice slot (not while Jeremy is at the pool table).
  */
 export function TopCentre({ officeView }: { readonly officeView: boolean }) {
 	const update = useUpdateStatus();
+	// At the pool table the notices wait, and the update strip drops to the foot (above the
+	// table view's bar), so neither covers the table or the pool's own strip up top.
+	const atTable = useFocus((state) => state.target?.kind === "table");
 	return (
-		<div className="top-centre">
+		<div className="top-centre" data-at={atTable ? "table" : "office"}>
 			<UpdateCountdownBanner status={update} />
-			{officeView ? <AutopilotNotice /> : null}
-			<NoticeSlot />
+			{officeView && !atTable ? <AutopilotNotice /> : null}
+			{atTable ? null : <NoticeSlot />}
 		</div>
 	);
 }
