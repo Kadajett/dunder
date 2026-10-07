@@ -1,0 +1,3 @@
+#!/bin/sh
+# Draft public release notes from the beads merged since the last release: office-notes draft [--since <ref>] [--out <file>|-]
+exec node "$(dirname "$(readlink -f "$0")")/../src/cli/office-notes.mts" "$@"

@@ -37,6 +37,23 @@ Pull requests and pushes to other branches run `.github/workflows/ci.yml`; pushe
 the same checks inside the release workflow. Contract tests need a live herdr server and only run
 locally (`npm run test:contract`).
 
+## Release notes
+
+The workflow creates the release with GitHub's generated notes, which list commit subjects
+(`office-xxx: …`) written for the office, not for users. Draft user-facing notes before a bump:
+
+```sh
+bin/office-notes draft            # since the last v* tag; --since <ref>, --out <file> or --out -
+```
+
+It reads `git log` and `bd show` and writes `docs/release-notes/next.md`: one bullet per merged
+bead (its title and `Try it:` line), grouped New (features), Fixed (bugs) and Improved (the
+rest), with bead ids, file paths and the office's names stripped. Agent names come from Dunder's
+roster, become "an agent", the chief's becomes "your chief of staff", and yours (from
+`git config user.name`) becomes "you". A checklist at the top of the draft lists every swap and
+the lines to reread (grammar after a swap, leftover paths). It never commits, pushes or
+publishes: edit the draft, then paste it into the GitHub release by hand.
+
 ## Re-running a release
 
 Actions → Release → **Run workflow** on `main` rebuilds the current version even if it is
