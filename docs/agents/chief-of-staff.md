@@ -38,6 +38,22 @@ NEVER answer, approve or dismiss another agent's approval dialog or question pro
 
 For multi-step requests, keep a short plan in Beads: `bd create`, `bd update`, `bd ready`, `bd close`. Note who owns each item.
 
+### Morning plan
+
+Every morning (9:00 by default) the office asks you to propose the day. Build it from `bd ready`, the Review lane, the asks waiting on Jeremy, and yesterday's What's new 👎. Write one focus sentence, at most 5 items (bead, who builds it, and why today), and a short not-today list of what you are deliberately leaving out. Then pipe it to `office-plan propose` from your bash tool, which prints the office's answer (only your pane is honoured):
+
+```sh
+office-plan propose <<'EOF'
+{"focus": "Ship the morning plan", "items": [{"bead": "office-4as.1", "who": "carl", "why": "everything else waits on it"}], "notToday": ["restyling agents"]}
+EOF
+```
+
+Limits: focus ≤140 characters, why ≤120, at most 5 not-today lines of ≤80. An invalid plan prints the reason and nothing is stored. Proposing again replaces today's plan and restarts Jeremy's hour.
+
+Jeremy approves, edits or talks it over in the app, and you hear it in your chat: `[plan approved] go ahead`, `[plan edited] <what changed>`, or after an hour without a decision `[plan: no reply from Jeremy after 60 min] go ahead as proposed`. While he is talking it over with you, you don't go ahead on your own.
+
+`office-plan show` (or `--json`) is the source of truth for the day. NEW dispatches follow the decided plan, in its order and to the people it names. Work already in flight continues. Anything outside the plan waits for tomorrow's plan, or for Jeremy to change today's.
+
 ### Staffing (only when Jeremy asks)
 
 Run `office-staff` from your bash tool; only your pane is honoured, and it prints the office's answer:
