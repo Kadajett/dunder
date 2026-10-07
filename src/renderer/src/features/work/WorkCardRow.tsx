@@ -4,7 +4,7 @@ import { type DragEvent, useEffect, useMemo, useState } from "react";
 import { useRosterStore } from "../hire/roster-store";
 import { OpenInEditor } from "../worktrees/OpenInEditor";
 import { AgentDot } from "./AgentDot";
-import { epicTitle, spendLabel, spendTitle } from "./card-spend";
+import { epicTitle, rowShowsSpend, spendLabel, spendLine, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
 import {
@@ -162,8 +162,14 @@ function CardDetail({ card }: { readonly card: WorkCard }) {
 			(error: unknown) => log.warn("copy bead id failed", error instanceof Error ? error : {}),
 		);
 	};
+	const spend = spendLine(card);
 	return (
 		<div className="work-card__detail">
+			{spend ? (
+				<p className="work-card__spend-line" title={spendTitle(card)}>
+					{spend}
+				</p>
+			) : null}
 			<p className="work-card__label">Description</p>
 			<p className="work-card__text">{card.description.trim() || "No description."}</p>
 			<p className="work-card__label">Acceptance</p>
@@ -218,9 +224,9 @@ export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowPro
 				</span>
 				<AssigneeChip card={card} />
 				{card.lane === "in_progress" ? <InProgressAge card={card} /> : null}
-				{card.spend !== null ? (
+				{rowShowsSpend(card) ? (
 					<span className="work-card__spend" title={spendTitle(card)}>
-						{spendLabel(card.spend)}
+						{spendLabel(card.spend ?? 0)}
 					</span>
 				) : null}
 				{card.epic ? (
