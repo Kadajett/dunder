@@ -1,7 +1,7 @@
 /* Chief of Staff chat card: expanded above the dock pill (docs/reference/orpex-office.png). */
 .chief-chat {
 	width: 360px;
-	height: min(480px, calc(100vh - 160px));
+	height: var(--chief-chat-h, min(480px, calc(100vh - 160px)));
 	display: flex;
 	flex-direction: column;
 	border: 1px solid var(--panel-edge);
@@ -257,4 +257,23 @@
 		opacity: 1;
 		transform: none;
 	}
+}
+
+/*
+ * office-qbd: the open dock and a side panel share the right-hand column.
+ * With a panel open, the chat takes about half the column's height (at
+ * least 320px) and the panel stops above it; the message list shrinks first, so the call
+ * strip (Mute, Hang up) and the composer always stay on screen.
+ */
+.office-app {
+	--chief-chat-h: min(480px, calc(100vh - 160px));
+}
+
+.office-app:has(.hud-panel) {
+	/* Never below 320px: the header, call strip and composer need that much. */
+	--chief-chat-h: min(480px, max(320px, calc((100vh - 120px) / 2)));
+}
+
+.office-app:has(.chief-chat) .hud-panel {
+	bottom: calc(20px + var(--chief-chat-h) + 12px);
 }
