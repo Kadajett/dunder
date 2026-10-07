@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changesScene, mergeElements } from "./scene-merge";
+import { changesScene, mergeElements } from "./whiteboard-merge";
 
 const el = (id: string, version: number, versionNonce = 0, text = "") => ({
 	id,

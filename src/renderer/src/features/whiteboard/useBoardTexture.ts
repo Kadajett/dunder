@@ -21,24 +21,47 @@ async function render(scene: WhiteboardScene | null): Promise<HTMLCanvasElement 
 	return renderScene(scene, BOARD_WHITE);
 }
 
-/** Fill the face with `drawing`, framed, or with the empty-board hint. */
-function draw(ctx: CanvasRenderingContext2D, drawing: HTMLCanvasElement | null): void {
-	ctx.fillStyle = BOARD_WHITE;
-	ctx.fillRect(0, 0, SIZE.width, SIZE.height);
-	if (drawing) {
-		const view = fitView(
-			{ x: 0, y: 0, w: drawing.width, h: drawing.height },
-			SIZE.width,
-			SIZE.height,
-		);
-		ctx.drawImage(drawing, view.x, view.y, drawing.width * view.scale, drawing.height * view.scale);
-		return;
-	}
-	ctx.font = `600 ${Math.round(SIZE.height * 0.07)}px Inter, system-ui, sans-serif`;
-	ctx.fillStyle = "#c9c4b8";
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText("Brainstorm board · click to draw", SIZE.width / 2, SIZE.height / 2);
+interface Face {
+	readonly texture: CanvasTexture;
+	/** Fill the face with `drawing`, framed, or with the empty-board hint; false without a 2D context. */
+	paint(drawing: HTMLCanvasElement | null): boolean;
+}
+
+/** The board face's canvas texture and the one thing that draws on it. */
+function createFace(): Face {
+	const canvas = document.createElement("canvas");
+	Object.assign(canvas, SIZE);
+	const texture = new CanvasTexture(canvas);
+	texture.colorSpace = SRGBColorSpace;
+	const ctx = canvas.getContext("2d");
+	const paint = (drawing: HTMLCanvasElement | null): boolean => {
+		if (!ctx) return false;
+		ctx.fillStyle = BOARD_WHITE;
+		ctx.fillRect(0, 0, SIZE.width, SIZE.height);
+		if (drawing) {
+			const view = fitView(
+				{ x: 0, y: 0, w: drawing.width, h: drawing.height },
+				SIZE.width,
+				SIZE.height,
+			);
+			ctx.drawImage(
+				drawing,
+				view.x,
+				view.y,
+				drawing.width * view.scale,
+				drawing.height * view.scale,
+			);
+		} else {
+			ctx.font = `600 ${Math.round(SIZE.height * 0.07)}px Inter, system-ui, sans-serif`;
+			ctx.fillStyle = "#c9c4b8";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillText("Brainstorm board · click to draw", SIZE.width / 2, SIZE.height / 2);
+		}
+		texture.needsUpdate = true;
+		return true;
+	};
+	return { texture, paint };
 }
 
 /**
@@ -49,22 +72,15 @@ function draw(ctx: CanvasRenderingContext2D, drawing: HTMLCanvasElement | null):
 export function useBoardTexture(): CanvasTexture {
 	const gl = useThree((state) => state.gl);
 	const invalidate = useThree((state) => state.invalidate);
-	const face = useMemo(() => {
-		const canvas = document.createElement("canvas");
-		Object.assign(canvas, SIZE);
-		const texture = new CanvasTexture(canvas);
-		texture.colorSpace = SRGBColorSpace;
-		return { ctx: canvas.getContext("2d"), texture };
-	}, []);
+	const face = useMemo(createFace, []);
 
 	useEffect(() => {
-		face.texture.anisotropy = gl.capabilities.getMaxAnisotropy();
-		return () => face.texture.dispose();
+		const { texture } = face;
+		texture.anisotropy = gl.capabilities.getMaxAnisotropy();
+		return () => texture.dispose();
 	}, [gl, face]);
 
 	useEffect(() => {
-		const { ctx, texture } = face;
-		if (!ctx) return;
 		let latest = 0;
 		let timer: number | undefined;
 		const repaint = (scene: WhiteboardScene | null): void => {
@@ -73,10 +89,7 @@ export function useBoardTexture(): CanvasTexture {
 			render(scene)
 				.then((drawing) => {
 					// An older, slower export must not overwrite a newer one.
-					if (mine !== latest) return;
-					draw(ctx, drawing);
-					texture.needsUpdate = true;
-					invalidate();
+					if (mine === latest && face.paint(drawing)) invalidate();
 				})
 				.catch((error: unknown) => log.warn("board not painted", { error }));
 		};

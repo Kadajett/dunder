@@ -3,9 +3,9 @@ import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { BinaryFiles, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { createLogger } from "@shared/log/logger";
 import type { WhiteboardBoard, WhiteboardScene } from "@shared/whiteboard";
+import { changesScene, mergeElements } from "@shared/whiteboard-merge";
 import { useEffect } from "react";
 import { remoteStep } from "./board-sync";
-import { changesScene, mergeElements } from "./scene-merge";
 
 const log = createLogger("whiteboard");
 
@@ -24,6 +24,24 @@ function newFiles(api: ExcalidrawImperativeAPI, files: BinaryFiles | undefined) 
 	return Object.values(files ?? {}).filter((file) => !Object.hasOwn(known, file.id));
 }
 
+/**
+ * Merge main's `scene` into the open editor, outside Jeremy's undo history
+ * (agents' notes are theirs). Returns the merged elements, or undefined when
+ * nothing changed.
+ */
+function mergeIntoEditor(
+	api: ExcalidrawImperativeAPI,
+	scene: WhiteboardScene,
+): readonly ExcalidrawElement[] | undefined {
+	const local = api.getSceneElementsIncludingDeleted();
+	const files = newFiles(api, scene.files);
+	if (files.length > 0) api.addFiles(files);
+	if (!changesScene(local, scene.elements)) return undefined;
+	const elements: ExcalidrawElement[] = mergeElements(local, scene.elements);
+	api.updateScene({ elements, captureUpdate: CaptureUpdateAction.NEVER });
+	return elements;
+}
+
 /** Wire one mounted editor to main; returns the teardown, which saves any edit still waiting. */
 function startBoardSync(api: ExcalidrawImperativeAPI, { board, onReload }: SyncTarget): () => void {
 	const whiteboard = window.office.whiteboard;
@@ -38,14 +56,8 @@ function startBoardSync(api: ExcalidrawImperativeAPI, { board, onReload }: SyncT
 
 	const applyRemote = (scene: WhiteboardScene | null): void => {
 		if (!scene || stopped) return;
-		const local = api.getSceneElementsIncludingDeleted();
-		const files = newFiles(api, scene.files);
-		if (files.length > 0) api.addFiles(files);
-		if (!changesScene(local, scene.elements)) return;
-		const elements: ExcalidrawElement[] = mergeElements(local, scene.elements);
-		synced = getSceneVersion(elements);
-		// Not in Jeremy's undo history: agents' notes are theirs.
-		api.updateScene({ elements, captureUpdate: CaptureUpdateAction.NEVER });
+		const merged = mergeIntoEditor(api, scene);
+		if (merged) synced = getSceneVersion(merged);
 	};
 	const save = async (scene: WhiteboardScene): Promise<void> => {
 		const result = await whiteboard.put({

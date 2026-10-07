@@ -77,14 +77,20 @@ export interface WhiteboardApi {
 	onChanged(listener: (change: WhiteboardChange) => void): Unsubscribe;
 }
 
-/** Note colours agents can pick, and the tldraw colour each one is drawn in. */
+/** Note colours agents can pick, and the Excalidraw background (its palette's light shades) each one is filled with. */
 export const NOTE_COLORS = {
-	yellow: "yellow",
-	green: "light-green",
-	blue: "light-blue",
-	pink: "light-red",
+	yellow: "#ffec99",
+	green: "#b2f2bb",
+	blue: "#a5d8ff",
+	pink: "#ffc9c9",
 } as const;
 export type NoteColor = keyof typeof NOTE_COLORS;
+
+/** `customData` on the elements of an agent's post (a note's rectangle and its text, or a text). */
+export interface PostData {
+	readonly author: string;
+	readonly kind: "note" | "text";
+}
 
 export const WHITEBOARD_TEXT_MAX = 2_000;
 
@@ -128,8 +134,9 @@ export interface BoardDigest {
 }
 
 export interface BoardDigestItem {
+	/** `note`: text in a shape (an agent's sticky note, or a label Jeremy wrote in one); `text`: free text. */
 	readonly kind: "note" | "text";
-	/** The agent who posted it; shapes drawn in the editor are Jeremy's. */
+	/** The agent who posted it; elements drawn in the editor are Jeremy's. */
 	readonly author: string;
 	readonly text: string;
 }
