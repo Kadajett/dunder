@@ -181,14 +181,16 @@ function Available({
 	readonly onDone: () => void;
 }) {
 	if (status.rolledBack) {
+		const { from, newer } = status.rolledBack;
 		return (
 			<>
 				<p className="hud-menu-heading update-heading">
-					You rolled back from {status.head.slice(0, 7)}
+					You rolled back from {from.slice(0, 7)}
+					{newer > 0 ? ` · ${newer} newer commit${newer === 1 ? "" : "s"}` : ""}
 				</p>
 				<CommitList status={status} />
 				<p className="update-note">
-					Agents' updates won't put it back; a newer commit brings updates back as usual.
+					Agents' updates stay off, even for newer commits, until you update.
 				</p>
 				<ApplyButton label="Update anyway" reason="anyway, by Jeremy" onDone={onDone} />
 			</>

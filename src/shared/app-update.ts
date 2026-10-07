@@ -65,10 +65,12 @@ interface Behind {
 	readonly held?: UpdateHeld;
 	readonly batched?: UpdateBatched;
 	/**
-	 * Jeremy rolled back from this very HEAD: it shows as 'you rolled back
-	 * from', and agents' update requests don't count down until HEAD moves on.
+	 * Jeremy rolled back from `from` (a build he chose to leave): it shows as
+	 * 'you rolled back from', and agents' update requests never count down,
+	 * even after `newer` commits land on top of it (one may still carry the
+	 * break). Only his own Update clears it.
 	 */
-	readonly rolledBack?: true;
+	readonly rolledBack?: { readonly from: string; readonly newer: number };
 }
 
 export type UpdateStatus =

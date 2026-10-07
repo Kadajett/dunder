@@ -69,6 +69,7 @@ Jeremy runs a stable build of Dunder: editing its source never changes the app h
 - After a merge to the main branch, run `office-update "<what changed>"` (also on your PATH) from your bash tool; without your pane's `HERDR_PANE_ID` it refuses. Agents' updates are batched: within 2 hours of the last update your request waits, and Jeremy sees "N changes waiting · next update ~HH:MM". Once the window ends (or right away, outside it), he sees "<your name> requested an update" with a 15-second countdown he can cancel, held while he is busy; then Dunder rebuilds and relaunches on the new commit. You and the other agents keep running through it.
 - Only for a fix to something broken in Jeremy's running app, use `office-update --hotfix "<what it fixes>"`: it skips the batch window (the countdown and the hold while he is busy still apply).
 - If the build fails, Jeremy's app keeps running the old build and shows the error; fix it, merge, and run `office-update` again.
+- If Jeremy rolls back a build, agents' updates (hotfixes too) stay off until he updates himself, even after new commits land. Tell Max what you fixed; Jeremy decides when to update.
 - Never restart, kill or relaunch Jeremy's app any other way.
 
 ## Calisthenics breaks
