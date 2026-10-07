@@ -13,6 +13,7 @@ import { registerAppErrorsIpc, watchAppPage } from "./app-errors/ipc";
 import { AppErrorsService } from "./app-errors/service";
 import { createAppUpdater } from "./app-update/create";
 import { registerAppUpdateIpc } from "./app-update/ipc";
+import { createAway, registerAwayIpc } from "./away/ipc";
 import { createBrainstorm } from "./brainstorm/create";
 import { registerBrainstormIpc } from "./brainstorm/ipc";
 import { createCalisthenics } from "./calisthenics/service";
@@ -20,7 +21,7 @@ import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
 import { registerCompaniesIpc } from "./companies/ipc";
 import { createCompanies } from "./companies/service";
-import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
+import { createHerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
 import { registerIpc } from "./ipc";
@@ -36,12 +37,7 @@ import { clearPoolViewingWithPage, registerPoolIpc } from "./pool/ipc";
 import { createStaffDesk } from "./staff-desk/create";
 import { startInBackground } from "./start-in-background";
 import { createSwitchboardService } from "./switchboard/service";
-import { ObservePool } from "./terminal/observe-pool";
-import { startObserveSession } from "./terminal/observe-session";
-import { createPaneSizeResolver } from "./terminal/pane-size";
-import { createPtySizeResolver } from "./terminal/pty-size";
-import { TerminalRegistry } from "./terminal/registry";
-import { ScreensService } from "./terminal/screens-service";
+import { createOfficeScreens } from "./terminal/office-screens";
 import { createVoice, registerVoiceIpc } from "./voice/ipc";
 import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
@@ -64,22 +60,8 @@ migrateLegacyDirs({
 	home: homedir(),
 });
 
-/** Resolves once the office server is up; screens size themselves from its layout. */
-const officeApi = Promise.withResolvers<HerdrApi>();
-/** Layout size: where a released screen puts the pane back. */
-const homeSize = createPaneSizeResolver(officeApi.promise);
-const observers = new ObservePool({
-	start: startObserveSession,
-	resolveSize: createPtySizeResolver(homeSize),
-});
-/** Interactive screens; the pool table asks it whether Jeremy has an agent open. */
-const terminals = new TerminalRegistry({
-	homeSize,
-	onPaneResized: (paneId) => observers.refresh(paneId),
-});
-const screens = new ScreensService(observers, terminals);
-/** Upper bound on waiting for screen processes to exit when quitting. */
-const SHUTDOWN_TIMEOUT_MS = 2_000;
+/** The agents' screens; quitting waits until they have released their panes. */
+const officeScreens = createOfficeScreens();
 let bridge: OfficeBridge | undefined;
 let status: BridgeStatus = { state: "starting" };
 /** Upper bound on one forecast request, headers and body. */
@@ -158,12 +140,12 @@ const appUpdate = createAppUpdater({
 	emit: (update) => broadcast(IPC.updateChanged, update),
 	shutdown: () => {
 		stopServices();
-		return stopScreens();
+		return officeScreens.stop();
 	},
 });
 /** The pool table: idle agents play 8-ball with the built-in AI; Jeremy can join from the app. */
 const pool = createPool({
-	isOpen: (paneId) => terminals.isOpen(paneId),
+	isOpen: (paneId) => officeScreens.terminals.isOpen(paneId),
 	inBrainstorm: (name) => brainstorm.service.current()?.agents.includes(name) ?? false,
 	emit: (view) => broadcast(IPC.poolChanged, view),
 	emitFrame: (frame) => broadcast(IPC.poolFrame, frame),
@@ -198,7 +180,7 @@ async function startBridge(): Promise<void> {
 		const logPath = join(app.getPath("logs"), "office-server.log");
 		const socketPath = await ensureOfficeServer(defaultSessionDeps(logPath));
 		const api = createHerdrApi(socketPath);
-		officeApi.resolve(api);
+		officeScreens.connect(api);
 		void switchboard.start(api);
 		bridge = new OfficeBridge(api, {
 			snapshot: (snapshot) => {
@@ -238,7 +220,7 @@ function registerHandlers(): void {
 	registerIpc({
 		bridge: () => bridge,
 		status: () => status,
-		screens,
+		screens: officeScreens.screens,
 		weather: weather.latest,
 		calisthenics,
 		switchboard,
@@ -260,6 +242,7 @@ function registerHandlers(): void {
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerAlertsIpc(alerts);
 	registerWorktreesIpc(createWorktrees(companies));
+	registerAwayIpc(createAway({ workBoard, aiCost }));
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -314,21 +297,4 @@ function stopServices(): void {
 app.on("window-all-closed", () => {
 	stopServices();
 	app.quit();
-});
-
-let screensStopped = false;
-/** Wait (bounded) until every herdr child has released its pane and exited. */
-function stopScreens(): Promise<void> {
-	const timeout = Promise.withResolvers<void>();
-	setTimeout(timeout.resolve, SHUTDOWN_TIMEOUT_MS);
-	return Promise.race([screens.shutdown(), timeout.promise]).finally(() => {
-		screensStopped = true;
-	});
-}
-
-app.on("will-quit", (event) => {
-	if (screensStopped) return;
-	// Hold the quit until the screens are released.
-	event.preventDefault();
-	void stopScreens().finally(() => app.quit());
 });

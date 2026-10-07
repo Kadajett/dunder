@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AwayCard } from "../features/away/AwayCard";
 import { BrainstormDialog } from "../features/brainstorm/BrainstormDialog";
 import { connectBoardPosts } from "../features/brainstorm/board-posts";
 import { connectBrainstorm } from "../features/brainstorm/brainstorm-store";
@@ -93,6 +94,7 @@ export function App() {
 			</ErrorBoundary>
 			<ErrorBoundary region="what's new card">
 				<WhatsNewCard />
+				<AwayCard />
 			</ErrorBoundary>
 			<ErrorBoundary region="side panel">
 				<HudPanels model={model} snapshot={snapshot} />

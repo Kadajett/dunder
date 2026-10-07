@@ -10,7 +10,7 @@ import {
 import { z } from "zod";
 import type { BdRunner } from "../beads/bd";
 import { buildAsks } from "./asks";
-import { buildCards, parseBeads } from "./cards";
+import { type Bead, buildCards, isEpic, isHumanAsk, parseBeads } from "./cards";
 import { type SpendOf, withSpend } from "./spend";
 
 const log = createLogger("work-board");
@@ -86,6 +86,8 @@ export class WorkBoardService {
 	readonly #deps: WorkBoardDeps;
 	#board: WorkBoard | undefined;
 	#emitted = "";
+	/** Beads closed in the last 30 days, as last read (newest close first is not guaranteed). */
+	#closed: readonly Bead[] = [];
 	/** Revision of the last changed board sent; stamps the next one. */
 	#revision = 0;
 	#running: Promise<void> | undefined;
@@ -112,6 +114,18 @@ export class WorkBoardService {
 	async get(): Promise<WorkBoard> {
 		if (!this.#board) await this.refresh();
 		return this.#board ?? { state: "unavailable", reason: "not loaded" };
+	}
+
+	/** Beads (not epics or asks) closed after `since` (epoch ms), newest first, from the last read. */
+	async closedSince(
+		since: number,
+	): Promise<readonly { readonly id: string; readonly title: string }[]> {
+		await this.get();
+		const closedAt = (bead: Bead) => Date.parse(bead.closed_at ?? "") || 0;
+		return this.#closed
+			.filter((bead) => !isEpic(bead) && !isHumanAsk(bead) && closedAt(bead) > since)
+			.sort((a, b) => closedAt(b) - closedAt(a))
+			.map(({ id, title }) => ({ id, title }));
 	}
 
 	/** Re-read bd now; a call while a read runs waits for one more read after it. */
@@ -269,6 +283,7 @@ export class WorkBoardService {
 			]);
 			const openBeads = parseBeads(open);
 			const closedBeads = parseBeads(closed);
+			this.#closed = closedBeads;
 			const lists = {
 				open: openBeads,
 				blocked: parseBeads(blocked),

@@ -1,0 +1,42 @@
+/* "While you were away": the What's new card frame (whats-new.css) with a short list. */
+.away__sections {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.away__beads {
+	margin: 4px 0 0;
+	padding-left: 14px;
+}
+
+.away__beads button,
+.away__link {
+	padding: 0;
+	border: none;
+	background: none;
+	color: var(--ink);
+	font: inherit;
+	text-align: left;
+	text-decoration: underline;
+	text-decoration-color: var(--panel-edge);
+	cursor: pointer;
+}
+
+.away__link {
+	font-weight: 700;
+}
+
+.away__beads button:hover,
+.away__link:hover {
+	text-decoration-color: var(--ink);
+}
+
+.away__note {
+	color: var(--ink-soft);
+}

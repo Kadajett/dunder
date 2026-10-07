@@ -96,16 +96,16 @@ export function agentSpends(
 }
 
 /**
- * What `agent` spent between `from` and `to` (inclusive, epoch ms) over the
- * sessions credited to it; null when it has no session at all.
+ * What `agent` (null: everyone) spent between `from` and `to` (inclusive,
+ * epoch ms) over the sessions credited to it; null when it has no session at all.
  */
 export function spendInSpan(
 	sessions: readonly { readonly agent: string | undefined; readonly all: readonly CostEntry[] }[],
-	agent: string,
+	agent: string | null,
 	from: number,
 	to: number,
 ): number | null {
-	const mine = sessions.filter((session) => session.agent === agent);
+	const mine = agent === null ? sessions : sessions.filter((session) => session.agent === agent);
 	if (mine.length === 0) return null;
 	let usd = 0;
 	for (const session of mine)
