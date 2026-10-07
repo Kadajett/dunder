@@ -4,6 +4,7 @@ import {
 	COMPANY_VERSION,
 	type Company,
 	type CompanySummary,
+	DEFAULT_EDITOR_COMMAND,
 	DEFAULT_SPEND_ALARM_USD,
 } from "./company";
 
@@ -47,6 +48,7 @@ export function seedCompany(id: string, name: string, subtitle: string, now: Dat
 		name,
 		subtitle,
 		spendAlarmUsd: DEFAULT_SPEND_ALARM_USD,
+		editorCommand: DEFAULT_EDITOR_COMMAND,
 		layout: withCompanySign(DEFAULT_LAYOUT, name, subtitle),
 		createdAt: stamp,
 		updatedAt: stamp,

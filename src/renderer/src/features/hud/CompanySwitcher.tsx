@@ -19,7 +19,7 @@ type MenuMode = "list" | "create" | "settings";
 /**
  * The company chip: logo and name of the company on screen, with the herdr
  * connection as a dot. Its menu switches between companies, creates one and
- * edits the current one's settings (name, subtitle, spend alarm).
+ * edits the current one's settings (name, subtitle, spend alarm, editor command).
  */
 export function CompanySwitcher({ snapshot }: { readonly snapshot: SessionSnapshot | null }) {
 	const [mode, setMode] = useState<MenuMode | undefined>();
@@ -70,12 +70,16 @@ export function CompanySwitcher({ snapshot }: { readonly snapshot: SessionSnapsh
 								submitLabel="Save"
 								initialName={company.name}
 								initialSubtitle={company.subtitle}
-								initialSpendAlarmUsd={company.spendAlarmUsd}
-								onSubmit={({ name, subtitle, spendAlarmUsd }) =>
+								initialSettings={{
+									spendAlarmUsd: company.spendAlarmUsd,
+									editorCommand: company.editorCommand,
+								}}
+								onSubmit={({ name, subtitle, settings }) =>
 									updateCompanySettings(company.id, {
 										name,
 										subtitle,
-										spendAlarmUsd: spendAlarmUsd ?? company.spendAlarmUsd,
+										spendAlarmUsd: settings?.spendAlarmUsd ?? company.spendAlarmUsd,
+										editorCommand: settings?.editorCommand || company.editorCommand,
 									}).then(close)
 								}
 								onCancel={() => setMode("list")}
