@@ -1,9 +1,11 @@
+import { parseAskOptions } from "@shared/ask-options";
 import { askSnoozeKey } from "@shared/inbox-snooze";
 import { type HumanAsk, WORK_RESPONSE_MAX } from "@shared/work-board";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { dismissAsk, respondToAsk, useAskError } from "../../work/asks-store";
 import { useWork } from "../../work/work-store";
 import { SnoozeMenu } from "./Snooze";
+import "./ask-card.css";
 
 function AnswerForm({ ask, onCancel }: { readonly ask: HumanAsk; readonly onCancel: () => void }) {
 	const [text, setText] = useState("");
@@ -48,9 +50,36 @@ function AnswerForm({ ask, onCancel }: { readonly ask: HumanAsk; readonly onCanc
 	);
 }
 
-/** An agent's ask for Jeremy (a bd `human` bead): what, who, what it blocks; answer or dismiss. */
+/** The answers the agent offered, one click each; the first is its recommendation. */
+function OptionButtons({
+	ask,
+	options,
+}: {
+	readonly ask: HumanAsk;
+	readonly options: readonly string[];
+}) {
+	return (
+		<div className="hud-ask-options">
+			{options.map((option, index) => (
+				<button
+					key={option}
+					type="button"
+					className={index === 0 ? "hud-ask-option recommended" : "hud-ask-option"}
+					title={`Answer ${ask.asker ?? "the agent"}: ${option}`}
+					onClick={() => void respondToAsk(ask.id, option)}
+				>
+					{option}
+					{index === 0 ? <span className="hud-ask-recommended">recommended</span> : null}
+				</button>
+			))}
+		</div>
+	);
+}
+
+/** An agent's ask for Jeremy (a bd `human` bead): what, who, what it blocks; answer (one click when it offers options) or dismiss. */
 export function AskCard({ ask }: { readonly ask: HumanAsk }) {
 	const [answering, setAnswering] = useState(false);
+	const { body, options } = useMemo(() => parseAskOptions(ask.detail), [ask.detail]);
 	const error = useAskError(ask.id);
 	const reveal = useWork((state) => state.reveal);
 	const [blocked] = ask.blocks;
@@ -68,13 +97,18 @@ export function AskCard({ ask }: { readonly ask: HumanAsk }) {
 					{ask.blocks.length > 1 ? ` and ${ask.blocks.length - 1} more` : ""}
 				</p>
 			) : null}
-			{ask.detail ? <p className="hud-ask-detail">{ask.detail}</p> : null}
+			{body ? <p className="hud-ask-detail">{body}</p> : null}
+			{options.length > 0 && !answering ? <OptionButtons ask={ask} options={options} /> : null}
 			{answering ? (
 				<AnswerForm ask={ask} onCancel={() => setAnswering(false)} />
 			) : (
 				<div className="hud-card-actions">
-					<button type="button" onClick={() => setAnswering(true)}>
-						Respond
+					<button
+						type="button"
+						className={options.length > 0 ? "secondary" : undefined}
+						onClick={() => setAnswering(true)}
+					>
+						{options.length > 0 ? "Other answer…" : "Respond"}
 					</button>
 					<button type="button" className="secondary" onClick={() => void dismissAsk(ask.id)}>
 						Dismiss

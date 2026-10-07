@@ -1,0 +1,41 @@
+/* office-0ik: an ask's offered answers, one click each; the first is the agent's recommendation. */
+.hud-ask-options {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin-top: 8px;
+}
+
+.hud-ask-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 10px;
+	border: 1px solid #ead9ad;
+	border-radius: 8px;
+	background: #fff;
+	color: var(--ink);
+	font: 600 12px var(--font-ui);
+	text-align: left;
+	cursor: pointer;
+}
+
+.hud-ask-option:hover {
+	border-color: #e5a823;
+}
+
+.hud-ask-option.recommended {
+	border-color: var(--ink);
+	background: var(--ink);
+	color: #f6efe2;
+}
+
+.hud-ask-recommended {
+	margin-left: auto;
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: #f6efe233;
+	font: 600 9.5px var(--font-mono);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}

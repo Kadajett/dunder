@@ -97,6 +97,19 @@ describe("AlertService", () => {
 		expect(h.opened).toEqual([{ kind: "blocked", paneId: "p-theo" }]);
 	});
 
+	it("lists an ask's offered answers in its notification", () => {
+		const h = harness();
+		h.service.updateBoard(board());
+		const offered = {
+			...ask("o-3", "Drop Node 20?"),
+			detail: "Why.\n\nOptions:\n- Yes, drop it\n- No, keep it",
+		};
+		h.service.updateBoard(board(offered));
+		expect(h.shown).toEqual([
+			"nora needs you | Drop Node 20?\nOptions: Yes, drop it / No, keep it",
+		]);
+	});
+
 	it("fires for a new ask with its text, not for asks open at startup", () => {
 		const h = harness();
 		h.service.updateBoard(board(ask("o-1", "Old ask")));
