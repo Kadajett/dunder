@@ -1,13 +1,29 @@
 import { createLogger } from "@shared/log/logger";
 import { type WorkCard, workLanes } from "@shared/work-board";
-import { type DragEvent, useMemo, useState } from "react";
+import { type DragEvent, useEffect, useMemo, useState } from "react";
 import { useAgentStyle, useRosterStore } from "../hire/roster-store";
 import { epicTitle, spendLabel, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
-import { laneLabels, priorities, shortId } from "./work-model";
+import { laneLabels, priorities, shortId, waitedFor } from "./work-model";
 import { assignCard, moveCard, setCardPriority } from "./work-store";
 import "./work-card.css";
+
+/** How long a bead has waited for Max's review, re-read every minute. */
+function ReviewWait({ since }: { readonly since: string }) {
+	const [now, setNow] = useState(Date.now);
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), 60_000);
+		return () => clearInterval(timer);
+	}, []);
+	const at = new Date(since);
+	const title = `Waiting for Max's review since ${at.toLocaleString()}. That is the bead's last update: bd doesn't record when the review label was added.`;
+	return (
+		<p className="work-card__waiting work-card__waiting--review" title={title}>
+			waiting {waitedFor(since, now)}
+		</p>
+	);
+}
 
 const log = createLogger("work");
 
@@ -170,6 +186,7 @@ export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowPro
 					waiting on {card.waitingOn.map(shortId).join(", ")}
 				</p>
 			) : null}
+			{card.lane === "review" ? <ReviewWait since={card.updatedAt} /> : null}
 			{expanded ? <CardDetail card={card} /> : null}
 			<WorkError errorKey={card.id} />
 		</li>

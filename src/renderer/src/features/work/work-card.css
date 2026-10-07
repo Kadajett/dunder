@@ -94,6 +94,11 @@
 	white-space: nowrap;
 }
 
+.work-card__waiting--review {
+	color: #a07a1f;
+	cursor: help;
+}
+
 .work-card__detail {
 	margin-top: 6px;
 	padding-top: 6px;

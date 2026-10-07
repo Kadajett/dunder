@@ -1,4 +1,5 @@
 import {
+	REVIEW_LABEL,
 	type WorkCard,
 	type WorkLane,
 	type WorkPriority,
@@ -68,6 +69,8 @@ export function epicTag(title: string): string {
 export const isEpic = (bead: Bead): boolean => bead.issue_type === "epic";
 /** Asks for Jeremy (bd's `human` label) live in the Trust Inbox, not on the board (see asks.ts). */
 export const isHumanAsk = (bead: Bead): boolean => (bead.labels ?? []).includes("human");
+/** Reported done and waiting for Max: shown in Review while it is in progress. */
+const inReview = (bead: Bead): boolean => (bead.labels ?? []).includes(REVIEW_LABEL);
 
 function epicTitles(lists: BdLists): Map<string, string> {
 	const titles = new Map<string, string>();
@@ -100,7 +103,7 @@ function placeOpen(lists: BdLists): Placed[] {
 	const placed: Placed[] = [];
 	for (const bead of open.values()) {
 		if (bead.status === "in_progress") {
-			placed.push({ bead, lane: "in_progress", waitingOn: [] });
+			placed.push({ bead, lane: inReview(bead) ? "review" : "in_progress", waitingOn: [] });
 		} else if (bead.status === "blocked" || blockedBy.has(bead.id)) {
 			const waitingOn = blockedBy.get(bead.id) ?? openBlockers(bead, openIds);
 			placed.push({ bead, lane: "blocked", waitingOn });
@@ -145,8 +148,14 @@ function toCard({ bead, lane, waitingOn }: Placed, epics: ReadonlyMap<string, st
 }
 
 function compareCards(a: WorkCard, b: WorkCard): number {
+	const lanes = workLanes.indexOf(a.lane) - workLanes.indexOf(b.lane);
+	if (lanes !== 0) return lanes;
+	// Review is Max's queue: oldest first (last update, since bd keeps no label time).
+	if (a.lane === "review")
+		return (
+			(Date.parse(a.updatedAt) || 0) - (Date.parse(b.updatedAt) || 0) || a.id.localeCompare(b.id)
+		);
 	return (
-		workLanes.indexOf(a.lane) - workLanes.indexOf(b.lane) ||
 		a.priority - b.priority ||
 		(Date.parse(b.updatedAt) || 0) - (Date.parse(a.updatedAt) || 0) ||
 		a.id.localeCompare(b.id)

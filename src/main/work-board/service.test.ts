@@ -234,6 +234,44 @@ describe("movePlan", () => {
 			],
 		],
 	] as const)("%s → %s", (status, lane, plan) => {
-		expect(movePlan("a-1", status, lane)).toEqual(plan);
+		expect(movePlan("a-1", { status, inReview: false }, lane)).toEqual(plan);
+	});
+
+	it.each([
+		[
+			"into review from ready",
+			{ status: "open", inReview: false },
+			"review",
+			[["update", "a-1", "--status=in_progress", "--add-label=review"]],
+		],
+		[
+			"into review from done",
+			{ status: "closed", inReview: false },
+			"review",
+			[
+				["reopen", "a-1"],
+				["update", "a-1", "--status=in_progress", "--add-label=review"],
+			],
+		],
+		[
+			"sent back to in progress",
+			{ status: "in_progress", inReview: true },
+			"in_progress",
+			[["update", "a-1", "--status=in_progress", "--remove-label=review"]],
+		],
+		[
+			"out of review to ready",
+			{ status: "in_progress", inReview: true },
+			"ready",
+			[["update", "a-1", "--status=open", "--remove-label=review"]],
+		],
+		[
+			"out of review to done (merged)",
+			{ status: "in_progress", inReview: true },
+			"done",
+			[["close", "a-1"]],
+		],
+	] as const)("%s", (_name, from, lane, plan) => {
+		expect(movePlan("a-1", from, lane)).toEqual(plan);
 	});
 });
