@@ -3,10 +3,10 @@ import { Html } from "@react-three/drei";
 import { type ReactNode, useEffect, useState } from "react";
 import { freshPost, useBoardPosts } from "../../brainstorm/board-posts";
 import { speechFor, useConversations } from "./conversation-store";
-import { speechView } from "./speech-view";
+import { type SpeechView, speechView } from "./speech-view";
 
 const MAX_CHARS = 140;
-/** The waiting mark sits this much lower than a bubble's anchor: just over the head, not floating. */
+/** Marks (blocked "!", waiting "…") sit this much lower than a bubble's anchor: just over the head. */
 const MARK_DROP = 0.4;
 const OVERLAY_STYLE = { pointerEvents: "none" } as const;
 
@@ -46,21 +46,49 @@ function Bubble(props: {
 	);
 }
 
+/** The words of a bubble for `view`; the bare waiting mark is drawn with the status marks instead. */
+function bubbleFor(view: SpeechView): ReactNode {
+	switch (view.kind) {
+		case "board":
+			return (
+				<Bubble kind="saying" to="board">
+					<p>{clip(view.text)}</p>
+				</Bubble>
+			);
+		case "saying":
+			return (
+				<Bubble kind="saying" to={view.to}>
+					<p>{clip(view.text)}</p>
+				</Bubble>
+			);
+		case "waiting":
+			return view.caption === null ? null : (
+				<Bubble kind="waiting" to={view.to}>
+					<p className="speech-thought">{view.caption}</p>
+				</Bubble>
+			);
+	}
+}
+
 /**
  * Over an agent: a comic speech bubble while it talks to a colleague, or
- * reads out the note it just put on the whiteboard. While its message waits
- * for the colleague to be free, only a faint "…" mark, with the words on
- * hover. Rendered in the agent's body space, so it follows them as they walk.
+ * reads out the note it just put on the whiteboard. Just over the head, small
+ * marks: a red "!" while it is blocked on the human, and a faint "…" while its
+ * message waits for a colleague (the words on hover). Rendered in the agent's
+ * body space, so everything follows them as they walk.
  */
 export function SpeechBubble({
 	agentName,
 	height,
 	hovered,
+	blocked,
 }: {
 	readonly agentName: string;
 	readonly height: number;
 	/** The pointer is over this agent: reveal the waiting caption. */
 	readonly hovered: boolean;
+	/** The agent waits on the human (an approval, a question). */
+	readonly blocked: boolean;
 }) {
 	const heard = useConversations((state) => state.heard);
 	const posts = useBoardPosts((state) => state.posts);
@@ -68,42 +96,33 @@ export function SpeechBubble({
 	const speech = speechFor(heard, agentName, now);
 	const post = speech ? undefined : freshPost(posts, agentName, now);
 	const view = speechView(speech, post?.text, hovered);
-	if (!view) return null;
-	switch (view.kind) {
-		case "board":
-			return (
-				<Overlay height={height}>
-					<Bubble kind="saying" to="board">
-						<p>{clip(view.text)}</p>
-					</Bubble>
+	const waitingFor = view?.kind === "waiting" && view.caption === null ? view.to : null;
+	const bubble = view ? bubbleFor(view) : null;
+	return (
+		<>
+			{bubble ? <Overlay height={height}>{bubble}</Overlay> : null}
+			{blocked || waitingFor ? (
+				<Overlay height={height - MARK_DROP}>
+					<span className="agent-marks">
+						{blocked ? (
+							<span className="agent-blocked-mark" role="img" aria-label="blocked, needs you">
+								!
+							</span>
+						) : null}
+						{waitingFor ? (
+							<span
+								className="speech-waiting-mark"
+								role="img"
+								aria-label={`waiting for ${waitingFor}`}
+							>
+								<i />
+								<i />
+								<i />
+							</span>
+						) : null}
+					</span>
 				</Overlay>
-			);
-		case "saying":
-			return (
-				<Overlay height={height}>
-					<Bubble kind="saying" to={view.to}>
-						<p>{clip(view.text)}</p>
-					</Bubble>
-				</Overlay>
-			);
-		case "waiting":
-			if (view.caption === null) {
-				return (
-					<Overlay height={height - MARK_DROP}>
-						<span className="speech-waiting-mark" role="img" aria-label={`waiting for ${view.to}`}>
-							<i />
-							<i />
-							<i />
-						</span>
-					</Overlay>
-				);
-			}
-			return (
-				<Overlay height={height}>
-					<Bubble kind="waiting" to={view.to}>
-						<p className="speech-thought">{view.caption}</p>
-					</Bubble>
-				</Overlay>
-			);
-	}
+			) : null}
+		</>
+	);
 }

@@ -87,3 +87,28 @@
 	border-radius: 50%;
 	background: #26231f;
 }
+
+/* Marks over the head sit side by side: the blocked "!" first, then the waiting "…". */
+.agent-marks {
+	display: flex;
+	gap: 3px;
+	align-items: center;
+}
+
+/*
+ * Blocked on the human: a solid red "!" disc, the one mark meant to be seen
+ * from across the room (unlike the faint waiting pill).
+ */
+.agent-blocked-mark {
+	display: grid;
+	place-items: center;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	background: #d64541;
+	box-shadow:
+		0 0 0 1.5px #fbf6ec,
+		0 2px 6px #00000040;
+	color: #fff;
+	font: 800 11px / 1 var(--font-ui);
+}

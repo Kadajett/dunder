@@ -118,7 +118,14 @@ function Colleague({
 				world={world}
 				phase={phase}
 				poolTable={poolTable}
-				overlay={<SpeechBubble agentName={agent.name} height={2.35} hovered={hovered} />}
+				overlay={
+					<SpeechBubble
+						agentName={agent.name}
+						height={2.35}
+						hovered={hovered}
+						blocked={agent.status === "blocked"}
+					/>
+				}
 			/>
 		</Clickable>
 	);
