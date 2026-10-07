@@ -1,7 +1,10 @@
+import { soundsOn } from "./sound-store";
+
 let context: AudioContext | null = null;
 
-/** The app's one soft two-note chime: "look over here" (a call reply in chat, an agent needing Jeremy). */
+/** The app's one soft two-note chime: "look over here" (a call reply in chat, an agent needing Jeremy). Silent while Sounds are off. */
 export function chime(): void {
+	if (!soundsOn()) return;
 	context ??= new AudioContext();
 	const ctx = context;
 	// A context created without a gesture starts suspended; resuming is allowed in Electron.

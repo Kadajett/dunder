@@ -101,6 +101,15 @@ export function CallStrip({ name }: { readonly name: string }) {
 			</div>
 			<LevelMeter />
 			{call.heard && <p className="chief-call__heard">Heard: “{call.heard}”</p>}
+			{call.caption && (
+				<p
+					className="chief-call__caption"
+					aria-live="polite"
+					title="Sounds are off: Max's line, unspoken"
+				>
+					{name}: “{call.caption}”
+				</p>
+			)}
 			{(call.error ?? call.hint) && (
 				<p className={call.error ? "chief-call__error" : "chief-call__hint"} role="status">
 					{call.error ?? call.hint}

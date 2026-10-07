@@ -62,3 +62,13 @@ export function MenuGlyph() {
 		</svg>
 	);
 }
+
+/** Sounds off: a speaker with a cross. */
+export function SoundsOffGlyph() {
+	return (
+		<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
+			<path d="M2.5 6h2.5l3.5-3v10l-3.5-3h-2.5z" {...STROKE} />
+			<path d="m10.5 6 3.5 4m0-4-3.5 4" {...STROKE} />
+		</svg>
+	);
+}
