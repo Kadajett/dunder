@@ -184,8 +184,10 @@ export function PlanCard() {
 				<div>
 					<h2 className="whats-new__heading">Today's plan</h2>
 					<span className="whats-new__build">
-						from Max at {formatClock(plan.proposedAt)} · he goes ahead at{" "}
-						{formatClock(plan.proceedAt)} unless you edit
+						from Max at {formatClock(plan.proposedAt)} ·{" "}
+						{plan.goAheadAt === null
+							? "he waits while you talk it over"
+							: `he goes ahead at ${formatClock(plan.goAheadAt)} unless you edit`}
 					</span>
 				</div>
 			</header>

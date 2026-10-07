@@ -63,10 +63,10 @@ describe("which surface shows", () => {
 		date: "2026-10-08",
 		state,
 		proposal,
-		plan: proposal,
 		proposedAt: 0,
-		proceedAt: 0,
 		decidedAt: state === "proposed" ? null : 1,
+		edited: null,
+		goAheadAt: state === "proposed" ? 60 : null,
 	});
 	it("shows the card while proposed, the Today pill once decided (auto included), nothing without a plan", () => {
 		expect([planCardDue(day("proposed")), todayPillDue(day("proposed"))]).toEqual([true, false]);

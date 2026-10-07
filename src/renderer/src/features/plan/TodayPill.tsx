@@ -1,3 +1,4 @@
+import { planInEffect } from "@shared/plan";
 import { useState } from "react";
 import { BeadChip } from "../chief/BeadChip";
 import { AgentDot } from "../work/AgentDot";
@@ -28,7 +29,8 @@ export function TodayPill() {
 	);
 	const [open, setOpen] = useState(false);
 	if (!plan || !todayPillDue(plan) || !cards) return null;
-	const items = plan.plan.items.map((item) => ({
+	const today = planInEffect(plan);
+	const items = today.items.map((item) => ({
 		item,
 		lane: itemLane(item.bead, cards, closedToday),
 	}));
@@ -42,7 +44,7 @@ export function TodayPill() {
 				onClick={() => setOpen((value) => !value)}
 			>
 				<span className="today__label">Today</span>
-				<span className="today__focus">{plan.plan.focus}</span>
+				<span className="today__focus">{today.focus}</span>
 				<span className="today__count">
 					{done}/{items.length}
 				</span>

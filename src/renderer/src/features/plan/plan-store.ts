@@ -47,9 +47,9 @@ async function decide(send: (plan: PlanApi) => Promise<PlanResult>): Promise<boo
 	usePlan.setState({ busy: true, error: null });
 	const result = await send(plan).catch((error: unknown) => ({
 		ok: false as const,
-		reason: reasonOf(error),
+		error: reasonOf(error),
 	}));
-	usePlan.setState({ busy: false, error: result.ok ? null : result.reason });
+	usePlan.setState({ busy: false, error: result.ok ? null : result.error });
 	return result.ok;
 }
 
