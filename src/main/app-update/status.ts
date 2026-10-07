@@ -20,20 +20,29 @@ export function canApply(status: UpdateStatus): status is ApplicableStatus {
 	return status.state === "available" || status.state === "failed";
 }
 
-/** Fold a fresh check into the status. Checks never interrupt a build or the dev server. */
-export function afterCheck(current: UpdateStatus, built: string, check: UpdateCheck): UpdateStatus {
+/**
+ * Fold a fresh check into the status. Checks never interrupt a build or the
+ * dev server. A HEAD Jeremy rolled back from (`rolledBackFrom`) is offered
+ * without any agent's countdown, marked as the one he left.
+ */
+export function afterCheck(
+	current: UpdateStatus,
+	built: string,
+	check: UpdateCheck,
+	rolledBackFrom?: string,
+): UpdateStatus {
 	if (current.state === "dev" || current.state === "building") return current;
 	if (check.head === built) return { state: "idle", head: check.head };
 	// The same HEAD that just failed to build: keep the failure (and its log) on screen.
 	if (current.state === "failed" && current.head === check.head) return current;
-	const plan = canApply(current) ? planOf(current) : {};
-	return {
-		state: "available",
+	const behind = {
 		head: check.head,
 		commits: check.commits.slice(0, MAX_LISTED_COMMITS),
 		behind: check.commits.length,
-		...plan,
 	};
+	if (check.head === rolledBackFrom) return { state: "available", ...behind, rolledBack: true };
+	const plan = canApply(current) ? planOf(current) : {};
+	return { state: "available", ...behind, ...plan };
 }
 
 /** An agent's request to roll forward, as the HUD names it. */
@@ -78,7 +87,8 @@ export function requestUpdate(
 	busy: string | null,
 	now: number,
 ): UpdateStatus {
-	if (!canApply(current)) return current;
+	// The build Jeremy rolled back from: only he can choose to go back to it.
+	if (!canApply(current) || current.rolledBack) return current;
 	const earlier = current.held ?? current.countdown;
 	const extra = earlier ? earlier.extra + 1 : 0;
 	if (busy !== null)

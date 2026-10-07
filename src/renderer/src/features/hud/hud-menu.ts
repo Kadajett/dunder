@@ -107,12 +107,14 @@ export function menuSections(state: MenuState): readonly MenuSection[] {
 	];
 }
 
-/** The dot on the menu icon: an update to apply, building, or failed; none otherwise. */
+/** The dot on the menu icon: an update to apply, building, or failed; none otherwise (nor for the build Jeremy rolled back from). */
 export function updateBadge(status: UpdateStatus): "available" | "building" | "failed" | null {
 	switch (status.state) {
 		case "dev":
 		case "idle":
 			return null;
+		case "available":
+			return status.rolledBack ? null : "available";
 		default:
 			return status.state;
 	}

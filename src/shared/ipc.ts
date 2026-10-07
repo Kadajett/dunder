@@ -96,6 +96,9 @@ export const IPC = {
 	updateApply: "update:apply",
 	updateCancel: "update:cancel",
 	updateSetBusy: "update:set-busy",
+	/** The kept previous build (invoke), and rolling back to it (invoke). */
+	updatePrevious: "update:previous",
+	updateRollback: "update:rollback",
 	/** Whiteboard: the current company's board (invoke), the editor's save (invoke), every change (main → renderer). */
 	whiteboardGet: "whiteboard:get",
 	whiteboardPut: "whiteboard:put",

@@ -1,4 +1,7 @@
-import type { UpdateStatus } from "@shared/app-update";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { PreviousBuild, UpdateStatus } from "@shared/app-update";
 import { type SessionSnapshot, sessionSnapshotSchema } from "@shared/herdr/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BuildResult } from "./build";
@@ -46,6 +49,8 @@ function setup(check: UpdateCheck = NEW, { snapshot = true } = {}) {
 		check: vi.fn(async () => check),
 		build: vi.fn((_onLog: (tail: string) => void) => build.promise),
 		relaunch: vi.fn(),
+		previous: vi.fn(async (): Promise<PreviousBuild | null> => null),
+		restore: vi.fn(async (_previous: PreviousBuild) => undefined),
 		now: () => Date.now(),
 	};
 	const updater = new AppUpdater(deps);
@@ -172,5 +177,82 @@ describe("AppUpdater", () => {
 		expect(dev.status()).toEqual({ state: "dev" });
 		expect(deps.build).not.toHaveBeenCalled();
 		expect(updater.status().state).toBe("idle");
+	});
+});
+
+describe("rolling back", () => {
+	const GOOD = "c".repeat(40);
+	const kept: PreviousBuild = { commit: GOOD, subject: "pool turn", dependenciesChanged: false };
+	const dirs: string[] = [];
+	afterEach(() => {
+		for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+	});
+	function files() {
+		const dir = mkdtempSync(join(tmpdir(), "rollback-"));
+		dirs.push(dir);
+		return { requestsPath: join(dir, "requests.ndjson"), statePath: join(dir, "app-update.json") };
+	}
+
+	it("swaps the kept build back in, relaunches, and keeps agents off the bad build until HEAD moves", async () => {
+		const paths = files();
+		const bad = setup({ head: BUILT, commits: [] });
+		Object.assign(bad.deps, paths);
+		bad.deps.previous.mockResolvedValue(kept);
+		const updater = new AppUpdater(bad.deps);
+		await updater.start();
+		expect(await updater.rollback()).toEqual({ ok: true });
+		expect(bad.deps.restore).toHaveBeenCalledWith(kept);
+		expect(bad.deps.relaunch).toHaveBeenCalledOnce();
+		expect(JSON.parse(readFileSync(paths.statePath, "utf8"))).toMatchObject({
+			rolledBackFrom: BUILT,
+		});
+		updater.stop();
+
+		// Relaunched on the good build: HEAD is still the bad one.
+		const good = setup({ head: BUILT, commits: [{ sha: BUILT, subject: "broke the panel" }] });
+		Object.assign(good.deps, paths, { built: GOOD });
+		const after = new AppUpdater(good.deps);
+		after.updateSnapshot(office());
+		await after.start();
+		await vi.waitFor(() =>
+			expect(after.status()).toMatchObject({ state: "available", rolledBack: true }),
+		);
+		await after.receive([good.request()]);
+		expect(after.status()).not.toHaveProperty("countdown");
+
+		// A fix lands: agents' requests count down again.
+		good.deps.check.mockResolvedValue(NEW);
+		await after.check();
+		await after.receive([good.request()]);
+		expect(after.status()).toMatchObject({ state: "available", countdown: { by: "max" } });
+		expect(after.status()).not.toHaveProperty("rolledBack");
+		await vi.waitFor(() =>
+			expect(JSON.parse(readFileSync(paths.statePath, "utf8"))).not.toHaveProperty(
+				"rolledBackFrom",
+			),
+		);
+		after.stop();
+	});
+
+	it("refuses when nothing is kept or the dependencies changed since, and touches nothing", async () => {
+		const { updater, deps } = setup();
+		expect(await updater.rollback()).toMatchObject({ ok: false });
+		deps.previous.mockResolvedValue({ ...kept, dependenciesChanged: true });
+		expect(await updater.rollback()).toEqual({
+			ok: false,
+			error: "the dependencies changed since that build, so it can't run here",
+		});
+		expect(deps.restore).not.toHaveBeenCalled();
+		expect(deps.relaunch).not.toHaveBeenCalled();
+	});
+
+	it("keeps the current build running when the swap fails", async () => {
+		const { updater, deps } = setup();
+		deps.previous.mockResolvedValue(kept);
+		deps.restore.mockRejectedValue(new Error("EBUSY: out"));
+		const before = updater.status();
+		expect(await updater.rollback()).toEqual({ ok: false, error: "EBUSY: out" });
+		expect(updater.status()).toBe(before);
+		expect(deps.relaunch).not.toHaveBeenCalled();
 	});
 });

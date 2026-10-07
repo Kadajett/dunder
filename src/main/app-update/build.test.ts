@@ -35,7 +35,8 @@ describe("buildApp", () => {
 		const root = checkout();
 		const npm = fakeNpm();
 		const onLog = vi.fn();
-		expect(await buildApp(root, onLog, { install: true, run: npm.run })).toEqual({ ok: true });
+		const options = { install: true, outgoing: undefined, run: npm.run };
+		expect(await buildApp(root, onLog, options)).toEqual({ ok: true });
 		expect(npm.calls).toEqual(["install", "build"]);
 		expect(npm.run.mock.calls[0]?.[1]).toEqual(["install", "--no-audit", "--no-fund"]);
 		expect(onLog).toHaveBeenLastCalledWith(
@@ -46,7 +47,8 @@ describe("buildApp", () => {
 
 	it("only builds when the dependencies are unchanged", async () => {
 		const npm = fakeNpm();
-		expect(await buildApp(checkout(), vi.fn(), { install: false, run: npm.run })).toEqual({
+		const options = { install: false, outgoing: undefined, run: npm.run };
+		expect(await buildApp(checkout(), vi.fn(), options)).toEqual({
 			ok: true,
 		});
 		expect(npm.calls).toEqual(["build"]);
@@ -58,7 +60,11 @@ describe("buildApp", () => {
 	])("fails without building when npm install ends with %s", async (code, error) => {
 		const root = checkout();
 		const npm = fakeNpm({ install: code });
-		const result = await buildApp(root, vi.fn(), { install: true, run: npm.run });
+		const result = await buildApp(root, vi.fn(), {
+			install: true,
+			outgoing: undefined,
+			run: npm.run,
+		});
 		expect(result).toEqual({
 			ok: false,
 			error,

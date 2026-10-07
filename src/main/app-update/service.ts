@@ -1,5 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { UpdateCountdown, UpdateStatus } from "@shared/app-update";
+import type {
+	PreviousBuild,
+	RollbackResult,
+	UpdateCountdown,
+	UpdateStatus,
+} from "@shared/app-update";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { createLogger } from "@shared/log/logger";
 import { z } from "zod";
@@ -28,7 +33,12 @@ function applyReason({ by, reason, extra }: UpdateCountdown): string {
 export const CHECK_INTERVAL_MS = 30_000;
 /** Build output reaches the HUD at most this often. */
 const LOG_EMIT_MS = 500;
-const stateSchema = z.object({ offset: z.number().int().nonnegative() });
+const stateSchema = z.object({
+	offset: z.number().int().nonnegative(),
+	/** The build Jeremy rolled back from: not offered by agents until HEAD moves past it. */
+	rolledBackFrom: z.string().optional(),
+});
+type UpdaterState = z.infer<typeof stateSchema>;
 const log = createLogger("app-update");
 
 export interface AppUpdaterDeps {
@@ -42,6 +52,10 @@ export interface AppUpdaterDeps {
 	build(onLog: (tail: string) => void): Promise<BuildResult>;
 	/** Quit and start again on the freshly built code. */
 	relaunch(): void;
+	/** The kept previous build, if there is one to roll back to. */
+	previous(): Promise<PreviousBuild | null>;
+	/** Swap the kept build back into `out/` (and tell the beads in between). */
+	restore(previous: PreviousBuild): Promise<void>;
 	now?(): number;
 }
 
@@ -63,6 +77,9 @@ export class AppUpdater {
 	/** What Jeremy is doing (from the renderer); agents' updates wait while it is set. */
 	#busy: string | null = null;
 	#tail: MailboxTail | undefined;
+	#state: UpdaterState = { offset: 0 };
+	/** State writes in order: an offset write must never interleave with the rollback's. */
+	#saving: Promise<void> = Promise.resolve();
 
 	constructor(deps: AppUpdaterDeps) {
 		this.#deps = deps;
@@ -84,19 +101,20 @@ export class AppUpdater {
 
 	async start(): Promise<void> {
 		if (this.#status.state === "dev") return;
+		const { requestsPath, statePath } = this.#deps;
+		// Before the first check: it needs to know a build Jeremy rolled back from.
+		this.#state = await readFile(statePath, "utf8").then(
+			(text) => stateSchema.safeParse(JSON.parse(text)).data ?? { offset: 0 },
+			() => ({ offset: 0 }),
+		);
 		this.#poll = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
 		void this.check();
-		const { requestsPath, statePath } = this.#deps;
-		const offset = await readFile(statePath, "utf8").then(
-			(text) => stateSchema.safeParse(JSON.parse(text)).data?.offset ?? 0,
-			() => 0,
-		);
 		this.#tail = await tailMailbox({
 			path: requestsPath,
-			offset,
+			offset: this.#state.offset,
 			onLines: (lines, next) => {
 				// Persist first: the request that triggers a relaunch must not replay after it.
-				void writeFile(statePath, JSON.stringify({ offset: next }));
+				void this.#saveState({ ...this.#state, offset: next });
 				void this.receive(lines);
 			},
 			// A broken requests file only costs agent-triggered updates; the HUD button still works.
@@ -115,7 +133,12 @@ export class AppUpdater {
 		this.#checking ??= this.#deps
 			.check()
 			.then(
-				(check) => this.#set(afterCheck(this.#status, this.#deps.built ?? "", check)),
+				(check) => {
+					const pinned = this.#state.rolledBackFrom;
+					this.#set(afterCheck(this.#status, this.#deps.built ?? "", check, pinned));
+					// A newer commit landed (or he updated anyway): agents may update again.
+					if (pinned && check.head !== pinned) void this.#saveState({ offset: this.#state.offset });
+				},
 				// git briefly unavailable (e.g. mid-rebase lock): keep the last status, try next tick.
 				(error: unknown) => log.warn("update check failed", { error }),
 			)
@@ -172,6 +195,53 @@ export class AppUpdater {
 		}
 		this.#set({ state: "building", logTail: "Built. Relaunching on the new build…" });
 		this.#deps.relaunch();
+	}
+
+	/** The build Jeremy can roll back to (none while building or under the dev server). */
+	previous(): Promise<PreviousBuild | null> {
+		if (this.#status.state === "dev" || this.#status.state === "building")
+			return Promise.resolve(null);
+		return this.#deps.previous();
+	}
+
+	/**
+	 * Swap the kept previous build back in and relaunch on it. The build left
+	 * behind is remembered, so agents can't update straight back onto it.
+	 */
+	async rollback(): Promise<RollbackResult> {
+		const bad = this.#deps.built;
+		const before = this.#status;
+		const previous = await this.previous();
+		if (!bad || !previous) return { ok: false, error: "there is no previous build to go back to" };
+		if (previous.dependenciesChanged) {
+			return {
+				ok: false,
+				error: "the dependencies changed since that build, so it can't run here",
+			};
+		}
+		log.info("rolling back", { from: bad, to: previous.commit });
+		this.#set({ state: "building", logTail: `Rolling back to ${previous.commit.slice(0, 7)}…` });
+		try {
+			await this.#deps.restore(previous);
+		} catch (error) {
+			log.warn("rollback failed; the current build keeps running", { error });
+			this.#set(before);
+			return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		}
+		await this.#saveState({ ...this.#state, rolledBackFrom: bad });
+		this.#deps.relaunch();
+		return { ok: true };
+	}
+
+	/** Remember the request offset and the rolled-back build; a failed write only costs that memory. */
+	#saveState(state: UpdaterState): Promise<void> {
+		this.#state = state;
+		this.#saving = this.#saving.then(() =>
+			writeFile(this.#deps.statePath, JSON.stringify(state)).catch((error: unknown) =>
+				log.warn("cannot save the updater's state", { error }),
+			),
+		);
+		return this.#saving;
 	}
 
 	#now(): number {
