@@ -240,7 +240,7 @@ function registerHandlers(): void {
 	registerCompaniesIpc(companies);
 	registerWorkforceIpc(staffing, app.getAppPath());
 	registerAppUpdateIpc(appUpdate);
-	registerWhiteboardIpc(whiteboard.service);
+	registerWhiteboardIpc(whiteboard.service, app.getAppPath());
 	registerPoolIpc(pool);
 	registerBrainstormIpc(brainstorm.service);
 	registerWorkBoardIpc(workBoard);

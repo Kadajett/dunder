@@ -7,7 +7,8 @@ import type {
 	ExcalidrawInitialDataState,
 } from "@excalidraw/excalidraw/types";
 import type { WhiteboardBoard } from "@shared/whiteboard";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useWork } from "../work/work-store";
 import { useBoardSync } from "./useBoardSync";
 import { useWhiteboard } from "./whiteboard-store";
 
@@ -27,12 +28,27 @@ const UI_OPTIONS = {
 	canvasActions: { loadScene: false, saveToActiveFile: false, export: false, toggleTheme: false },
 } as const;
 
+interface StickyAction {
+	readonly text: string;
+	readonly author: string;
+	readonly elementIds: ReadonlySet<string>;
+	readonly beadId?: string;
+	readonly x: number;
+	readonly y: number;
+}
+
+function dataOf(value: unknown): Record<string, unknown> {
+	return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
 function BoardEditor(props: {
 	readonly board: WhiteboardBoard;
 	readonly onReload: (board: WhiteboardBoard) => void;
 }) {
 	const { board } = props;
 	const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+	const [action, setAction] = useState<StickyAction | null>(null);
+	const [error, setError] = useState<string | null>(null);
 	useBoardSync(api, board, props.onReload);
 	const initialData = useMemo(
 		(): ExcalidrawInitialDataState => ({
@@ -42,13 +58,102 @@ function BoardEditor(props: {
 		}),
 		[board],
 	);
+	const onContextMenu = useCallback(
+		(event: MouseEvent<HTMLDivElement>) => {
+			setError(null);
+			if (!api) return;
+			const selected = api.getAppState().selectedElementIds;
+			const elements = api.getSceneElements();
+			const note = elements.find((element) => {
+				const data = dataOf(element.customData);
+				return element.type === "text" && selected[element.id] && data["kind"] === "note";
+			});
+			if (note?.type !== "text") {
+				setAction(null);
+				return;
+			}
+			event.preventDefault();
+			const data = dataOf(note.customData);
+			const elementIds = new Set([note.id, ...(note.containerId ? [note.containerId] : [])]);
+			setAction({
+				text: note.originalText,
+				author: typeof data["author"] === "string" ? data["author"] : "jeremy",
+				elementIds,
+				...(typeof data["beadId"] === "string" ? { beadId: data["beadId"] } : {}),
+				x: event.clientX,
+				y: event.clientY,
+			});
+		},
+		[api],
+	);
+	const makeIdea = useCallback(async () => {
+		if (!api || !action) return;
+		setError(null);
+		try {
+			if (action.beadId) {
+				useWhiteboard.getState().setOpen(false);
+				useWork.getState().reveal(action.beadId);
+				setAction(null);
+				return;
+			}
+			const id = await window.office.whiteboard.makeIdea({
+				text: action.text,
+				author: action.author,
+			});
+			api.updateScene({
+				elements: api.getSceneElements().map((element) => {
+					if (!action.elementIds.has(element.id)) return element;
+					const data = dataOf(element.customData);
+					return {
+						...element,
+						...(element.type === "text"
+							? {
+									text: `${element.text}\n↗ ${id}`,
+									originalText: `${element.originalText}\n↗ ${id}`,
+								}
+							: {}),
+						customData: { ...data, beadId: id },
+					};
+				}),
+			});
+			setAction(null);
+		} catch (reason) {
+			setError(reason instanceof Error ? reason.message : String(reason));
+		}
+	}, [action, api]);
 	return (
-		<Excalidraw
-			excalidrawAPI={setApi}
-			initialData={initialData}
-			UIOptions={UI_OPTIONS}
-			name="Office whiteboard"
-		/>
+		<div
+			className="whiteboard-editor"
+			role="application"
+			aria-label="Whiteboard drawing"
+			onContextMenu={onContextMenu}
+		>
+			<Excalidraw
+				excalidrawAPI={setApi}
+				initialData={initialData}
+				UIOptions={UI_OPTIONS}
+				name="Office whiteboard"
+			/>
+			{action && (
+				<button
+					type="button"
+					className="whiteboard-idea-action"
+					style={{ left: action.x, top: action.y }}
+					onClick={() => void makeIdea()}
+				>
+					{action.beadId ? `Open ${action.beadId}` : "Make idea bead"}
+				</button>
+			)}
+			{error && (
+				<div
+					className="whiteboard-idea-error"
+					role="alert"
+					style={{ left: action?.x, top: action ? action.y + 38 : 0 }}
+				>
+					{error}
+				</div>
+			)}
+		</div>
 	);
 }
 

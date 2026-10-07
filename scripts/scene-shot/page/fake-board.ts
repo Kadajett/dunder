@@ -48,5 +48,8 @@ export const SAMPLE_BOARD: WhiteboardBoard = {
 export const fakeWhiteboard: WhiteboardApi = {
 	get: async () => SAMPLE_BOARD,
 	put: async () => ({ state: "rejected", reason: "scene-shot", board: SAMPLE_BOARD }),
+	makeIdea: async () => {
+		throw new Error("scene-shot cannot create Beads");
+	},
 	onChanged: () => () => undefined,
 };
