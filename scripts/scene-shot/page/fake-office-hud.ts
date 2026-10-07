@@ -11,11 +11,13 @@ import type { Snooze } from "@shared/inbox-snooze";
 import { type MailQueue, previewOf } from "@shared/mail-queue";
 import type { AgentModel, ModelOption } from "@shared/models";
 import type { CostToday } from "@shared/office-stats";
+import type { PlanProposal } from "@shared/plan";
 import type { PoolBall, PoolView } from "@shared/pool";
 import type { OfficeMessage } from "@shared/switchboard";
-import type { WhatsNew } from "@shared/whats-new";
-import type { HumanAsk, WorkBoard, WorkCard } from "@shared/work-board";
+import type { WhatsNew, WhatsNewRating } from "@shared/whats-new";
+import type { HumanAsk, WorkBoard, WorkCard, WorkLane } from "@shared/work-board";
 import { fakeWhiteboard } from "./fake-board";
+import { makeQaFixtures } from "./qa-hud-fixtures";
 
 /**
  * HUD screenshot harness: a full stand-in for the preload's `window.office`, with every API
@@ -23,7 +25,6 @@ import { fakeWhiteboard } from "./fake-board";
  * `window.__fake` lets the harness page push state through the same listeners
  * main would use.
  */
-
 // One Chrome profile serves every state: renderer stores read localStorage at import, after this module.
 localStorage.clear();
 
@@ -47,6 +48,14 @@ const dayEnd = STATE === "14-day-end";
 export const NOW = Date.now();
 const MIN = 60_000;
 const ago = (minutes: number) => new Date(NOW - minutes * MIN).toISOString();
+const state = new URLSearchParams(location.search).get("state");
+const qaCalls: string[] = [];
+const qaFixtures = makeQaFixtures(NOW, state);
+export const qa = { calls: qaCalls, copied: [] as string[], failures: [] as string[] };
+const sendChief = async (text: string) => {
+	qaCalls.push(`chief.send:${text}`);
+	return { state: "sent" as const };
+};
 
 // ---- push channels -------------------------------------------------------------------------
 
@@ -205,6 +214,9 @@ function card(
 }
 
 const cards: WorkCard[] = [
+	...(state === "21-work-undo"
+		? [card("office-67k", "Work undo: restore a moved review bead", ["review", "sam"])]
+		: []),
 	card("office-k2p.3", "Trust Inbox: group repeat app errors by region", ["in_progress", "theo"], {
 		priority: 1,
 		epic: "Trust Inbox v2",
@@ -320,7 +332,7 @@ const shipping = {
 	inReview: 2,
 };
 
-const board: WorkBoard = { state: "ok", revision: 7, cards, asks, shipping };
+let board: WorkBoard = { state: "ok", revision: 7, cards, asks, shipping };
 
 // ---- notices -------------------------------------------------------------------------------
 
@@ -709,25 +721,6 @@ const todaysTries = [
 	},
 ];
 
-const dayWrap = {
-	date: new Date(NOW).toISOString().slice(0, 10),
-	postedAt: NOW - 5 * MIN,
-	input: {
-		summary:
-			"The inbox grouping and the call barge-in shipped; drag between lanes is still in review.",
-		misses: [{ bead: "office-t3c", why: "waiting on theo's review" }],
-		tomorrow: [{ bead: "office-t3c", what: "merge drag between lanes first" }],
-	},
-	planned: [
-		{ bead: "office-k2p.3", who: "theo", title: "Trust Inbox grouping", lane: "done" },
-		{ bead: "office-t3c", who: "theo", title: "Drag cards between lanes", lane: "review" },
-	],
-	unplanned: [{ id: "office-e3r", title: "Snooze asks until the morning" }],
-	spendUsd: 61.42,
-	tries: { offered: 3, rated: 0, untried: 0 },
-	dismissed: false,
-};
-
 const api = {
 	getSnapshot: async () => snapshot,
 	getStatus: async () => ({ state: "connected" }),
@@ -767,8 +760,8 @@ const api = {
 			style: avatarStyleFor("max"),
 		}),
 		history: async () => chiefHistory,
-		onMessage: () => unsubscribe,
-		send: async () => ({ state: "sent" }),
+		onMessage: on("chief"),
+		send: sendChief,
 	},
 	stats: {
 		costToday: async () => cost,
@@ -876,27 +869,80 @@ const api = {
 		onChanged: on("work"),
 		create: async () => ({ ok: true, revision: board.state === "ok" ? board.revision : 0 }),
 		setPriority: async () => ({ ok: true, revision: 7 }),
-		move: async () => ({ ok: true, revision: 7 }),
+		move: async (id: string, lane: WorkLane) => {
+			qaCalls.push(`work.move:${id}:${lane}`);
+			if (board.state !== "ok") return { ok: false, reason: "board unavailable" };
+			const revision = board.revision + 1;
+			board = {
+				...board,
+				revision,
+				cards: board.cards.map((candidate) =>
+					candidate.id === id ? { ...candidate, lane } : candidate,
+				),
+			};
+			emit("work", board);
+			return { ok: true, revision };
+		},
 		assign: async () => ({ ok: true, revision: 7 }),
 		respond: async () => ({ ok: true, revision: 7 }),
 		dismiss: async () => ({ ok: true, revision: 7 }),
 	},
+	plan: {
+		today: async () => qaFixtures.plan(),
+		onChanged: qaFixtures.onPlanChanged,
+		approve: async () => {
+			qaCalls.push("plan.approve");
+			const plan = qaFixtures.plan();
+			if (!plan) return { ok: false as const, error: "no plan" };
+			qaFixtures.setPlan({ ...plan, state: "approved", decidedAt: NOW, goAheadAt: null });
+			return { ok: true as const };
+		},
+		edit: async (proposal: PlanProposal) => {
+			qaCalls.push(`plan.edit:${proposal.focus}`);
+			const plan = qaFixtures.plan();
+			if (!plan) return { ok: false as const, error: "no plan" };
+			qaFixtures.setPlan({
+				...plan,
+				state: "edited",
+				edited: proposal,
+				decidedAt: NOW,
+				goAheadAt: null,
+			});
+			return { ok: true as const };
+		},
+		discuss: async () => ({ ok: true as const }),
+	},
+	wrap: {
+		today: async () => qaFixtures.wrap,
+		onChanged: () => unsubscribe,
+		dismiss: async () => {
+			qaCalls.push("wrap.dismiss");
+		},
+	},
 	voice: {
 		available: async () => ({ available: true }),
 		transcribe: async () => ({ ok: true, value: "" }),
-		speak: async () => ({ ok: false, reason: "hud-shot" }),
+		speak: async () => {
+			qaCalls.push("voice.speak");
+			return { ok: false, reason: "hud-shot" };
+		},
 	},
 	whatsNew: {
-		get: async () => (freshLaunch ? whatsNew : null),
-		rate: async () => ({ ok: true }),
-		dismiss: async () => undefined,
+		get: async () => (freshLaunch || state === "16-whats-new-feedback" ? whatsNew : null),
+		rate: async ({ id, rating, text }: { id: string; rating: WhatsNewRating; text: string }) => {
+			qaCalls.push(`whatsNew.rate:${id}:${rating}:${text}`);
+			if (rating === "down") {
+				const bead = whatsNew.beads.find((candidate) => candidate.id === id);
+				const title = bead?.title ?? bead?.subject ?? id;
+				await sendChief(`👎 ${id} (${title}): ${text || "no details given"}`);
+			}
+			return { ok: true };
+		},
+		dismiss: async () => {
+			qaCalls.push("whatsNew.dismiss");
+		},
 		tries: async () => (dayEnd ? todaysTries : []),
 		rateTry: async () => ({ ok: true }),
-	},
-	wrap: {
-		today: async () => (dayEnd ? dayWrap : null),
-		onChanged: () => unsubscribe,
-		dismiss: async () => undefined,
 	},
 	alerts: {
 		muted: async () => false,
@@ -963,4 +1009,8 @@ Object.defineProperty(navigator.mediaDevices ?? {}, "enumerateDevices", {
 		{ kind: "audioinput", deviceId: "jabra", label: "Jabra Evolve2 65 Mono", groupId: "a" },
 		{ kind: "audioinput", deviceId: "builtin", label: "Built-in Microphone", groupId: "b" },
 	],
+});
+Object.defineProperty(navigator, "clipboard", {
+	configurable: true,
+	value: { writeText: async (text: string) => void qa.copied.push(text) },
 });
