@@ -73,6 +73,8 @@ export type WorkBoard =
 			readonly cards: readonly WorkCard[];
 			/** Open asks, most urgent (priority) first, then oldest. */
 			readonly asks: readonly HumanAsk[];
+			/** Every bead closed in the last 24 h (the Done lane shows only the newest few), for the Today pill. */
+			readonly closedToday?: readonly string[];
 	  }
 	/** bd is missing or failing; the bar says so instead of showing stale cards. */
 	| { readonly state: "unavailable"; readonly reason: string };

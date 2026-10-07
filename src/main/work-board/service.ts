@@ -292,7 +292,11 @@ export class WorkBoardService {
 			};
 			const cards = buildCards(lists, now - DONE_WINDOW_MS);
 			const priced = withSpend(cards, [...openBeads, ...closedBeads], this.#deps.spendOf, now);
-			return { state: "ok", cards: priced, asks: buildAsks(openBeads) };
+			const doneSince = now - DONE_WINDOW_MS;
+			const closedToday = closedBeads
+				.filter((bead) => (Date.parse(bead.closed_at ?? "") || 0) >= doneSince)
+				.map((bead) => bead.id);
+			return { state: "ok", cards: priced, asks: buildAsks(openBeads), closedToday };
 		} catch (error) {
 			return { state: "unavailable", reason: reasonOf(error) };
 		}

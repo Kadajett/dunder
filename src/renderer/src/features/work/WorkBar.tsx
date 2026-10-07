@@ -1,5 +1,6 @@
 import type { WorkCard } from "@shared/work-board";
 import { useMemo, useState } from "react";
+import { TodayPill } from "../plan/TodayPill";
 import { WorkLaneSection } from "./WorkLaneSection";
 import { boardSummary, forAgent, groupByLane, pillText } from "./work-model";
 import { useWork, useWorkCards } from "./work-store";
@@ -110,6 +111,7 @@ export function WorkBar() {
 				</button>
 			</header>
 			<div className="work-bar__body">
+				<TodayPill />
 				<WorkBody cards={cards} />
 			</div>
 		</aside>

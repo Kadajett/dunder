@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { formatClock } from "../feed/feed-model";
 import { useHud } from "../hud/view-store";
+import { usePlanCardPending } from "../plan/plan-store";
 import { useWhatsNew } from "../whats-new/whats-new-store";
 import { useWork } from "../work/work-store";
 import "../whats-new/whats-new.css";
@@ -110,7 +111,8 @@ export function AwayCard() {
 	useEffect(connectAway, []);
 	const summary = useAway((state) => state.summary);
 	const whatsNewDue = useWhatsNew((state) => !state.settled || state.card !== null);
-	if (!summary || whatsNewDue) return null;
+	const planFirst = usePlanCardPending();
+	if (!summary || whatsNewDue || planFirst) return null;
 	return (
 		<section className="whats-new away" aria-label="While you were away">
 			<header className="whats-new__header">

@@ -1,5 +1,6 @@
 import { WHATS_NEW_FEEDBACK_MAX, WHATS_NEW_ROWS, type WhatsNewBead } from "@shared/whats-new";
 import { useEffect, useState } from "react";
+import { usePlanCardPending } from "../plan/plan-store";
 import { dismissWhatsNew, loadWhatsNew, rateBead, useWhatsNew } from "./whats-new-store";
 import "./whats-new.css";
 
@@ -80,7 +81,9 @@ export function WhatsNewCard() {
 	const card = useWhatsNew((state) => state.card);
 	const [more, setMore] = useState(false);
 	const [othersOpen, setOthersOpen] = useState(false);
-	if (!card) return null;
+	// The morning plan card comes first; this one waits until it is decided.
+	const planFirst = usePlanCardPending();
+	if (!card || planFirst) return null;
 	const rows = more ? card.beads : card.beads.slice(0, WHATS_NEW_ROWS);
 	const hidden = card.beads.length - rows.length;
 	return (
