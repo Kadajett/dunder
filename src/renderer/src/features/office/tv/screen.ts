@@ -1,10 +1,12 @@
 import type { WeatherFeed } from "@shared/tv";
+import type { ShippingStats } from "@shared/work-board";
 import type { ActivityItem } from "./activity";
 import { type ChannelId, channelBadge } from "./channels";
 import { ACTIVITY_ROWS, paintActivity } from "./paint/activity";
 import { paintClock } from "./paint/clock";
 import { type Pen, paintBadge, paintChrome } from "./paint/kit";
 import { paintPulse } from "./paint/pulse";
+import { paintShipping } from "./paint/shipping";
 import { paintStandby, STANDBY_FRAME_MS } from "./paint/standby";
 import { paintWeather } from "./paint/weather";
 import type { OfficePulse } from "./pulse";
@@ -15,6 +17,8 @@ export interface TvInputs {
 	readonly pulse: OfficePulse | null;
 	readonly weather: WeatherFeed | null;
 	readonly activity: readonly ActivityItem[];
+	/** The work board's throughput figures; null until a board arrives. */
+	readonly shipping: ShippingStats | null;
 }
 
 export interface TvFrame {
@@ -46,6 +50,8 @@ export function frameKey({ channel, inputs, now, showBadge }: TvFrame): string {
 				.join(",")}`;
 		case "clock":
 			return `${head}|${Math.floor(now / 1_000)}`;
+		case "shipping":
+			return `${head}|${JSON.stringify(inputs.shipping)}`;
 		case "standby":
 			return `${head}|${Math.floor(now / STANDBY_FRAME_MS)}`;
 	}
@@ -56,6 +62,7 @@ const TITLES: Record<Exclude<ChannelId, "standby">, { title: string; accent: str
 	weather: { title: "SAN FRANCISCO", accent: "#7fb3e5" },
 	activity: { title: "ACTIVITY", accent: "#f0b45a" },
 	clock: { title: "WORLD CLOCK", accent: "#c58bd8" },
+	shipping: { title: "SHIPPING", accent: "#6fc3c8" },
 };
 
 /** Paint one full frame of `channel` onto the TV canvas. */
@@ -67,6 +74,7 @@ export function paintFrame(pen: Pen, { channel, inputs, now, showBadge }: TvFram
 		if (channel === "pulse") paintPulse(pen, inputs.pulse);
 		else if (channel === "weather") paintWeather(pen, inputs.weather, now);
 		else if (channel === "activity") paintActivity(pen, inputs.activity);
+		else if (channel === "shipping") paintShipping(pen, inputs.shipping);
 		else paintClock(pen, now);
 	}
 	if (showBadge) paintBadge(pen, channelBadge(channel));

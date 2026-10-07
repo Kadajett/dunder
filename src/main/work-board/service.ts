@@ -2,6 +2,7 @@ import { createLogger } from "@shared/log/logger";
 import {
 	type HumanAsk,
 	REVIEW_LABEL,
+	type ShippingStats,
 	type WorkBoard,
 	type WorkCard,
 	type WorkLane,
@@ -37,6 +38,12 @@ export interface WorkBoardDeps {
 	readonly spendOf: SpendOf;
 	/** Marks Review cards with whether their branch merges cleanly (left out in tests: no git). */
 	readonly checkMerges?: (cards: readonly WorkCard[]) => Promise<readonly WorkCard[]>;
+	/** The SHIPPING figures from the beads closed lately and the cards (left out in tests). */
+	readonly shipping?: (
+		closed: readonly Bead[],
+		cards: readonly WorkCard[],
+		now: number,
+	) => Promise<ShippingStats>;
 }
 
 /** A board as read from bd, before main stamps its revision. */
@@ -297,7 +304,9 @@ export class WorkBoardService {
 			const priced = withSpend(cards, [...openBeads, ...closedBeads], this.#deps.spendOf, now);
 			const checked = (await this.#deps.checkMerges?.(priced)) ?? priced;
 			const closedToday = closedIds(closedBeads, now - DONE_WINDOW_MS);
-			return { state: "ok", cards: checked, asks: buildAsks(openBeads), closedToday };
+			const shipping = await this.#deps.shipping?.(closedBeads, checked, now);
+			const asks = buildAsks(openBeads);
+			return { state: "ok", cards: checked, asks, closedToday, ...(shipping && { shipping }) };
 		} catch (error) {
 			return { state: "unavailable", reason: reasonOf(error) };
 		}

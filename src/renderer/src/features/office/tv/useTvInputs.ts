@@ -2,6 +2,7 @@ import type { WeatherFeed } from "@shared/tv";
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 import { useOfficeSession } from "../../herdr/useOfficeSession";
+import { useWork } from "../../work/work-store";
 import { type ActivityItem, type ActivityNames, describeEvent, learnNames } from "./activity";
 import { officePulse } from "./pulse";
 import type { TvInputs } from "./screen";
@@ -55,11 +56,14 @@ function retainFeeds(): () => void {
 	};
 }
 
-/** Live data for every channel: herdr snapshot + events and the main-process forecast. */
+/** Live data for every channel: herdr snapshot + events, the main-process forecast and the work board. */
 export function useTvInputs(): TvInputs {
 	const { snapshot } = useOfficeSession();
 	const weather = useFeeds((state) => state.weather);
 	const activity = useFeeds((state) => state.activity);
+	const shipping = useWork((state) =>
+		state.board?.state === "ok" ? (state.board.shipping ?? null) : null,
+	);
 
 	useEffect(retainFeeds, []);
 	useEffect(() => {
@@ -67,5 +71,8 @@ export function useTvInputs(): TvInputs {
 	}, [snapshot]);
 
 	const pulse = useMemo(() => (snapshot ? officePulse(snapshot) : null), [snapshot]);
-	return useMemo(() => ({ pulse, weather, activity }), [pulse, weather, activity]);
+	return useMemo(
+		() => ({ pulse, weather, activity, shipping }),
+		[pulse, weather, activity, shipping],
+	);
 }

@@ -19,21 +19,22 @@ describe("channel line-up", () => {
 			seen.push(channel);
 			channel = stepChannel(channel, 1);
 		}
-		expect(new Set(seen).size).toBe(5);
+		expect(new Set(seen).size).toBe(6);
 		expect(channel).toBe(TV_CHANNELS[0].id);
 	});
 
 	it("steps backwards from the first channel to the last, and by more than a lap", () => {
 		expect(stepChannel("pulse", -1)).toBe("standby");
 		expect(stepChannel("standby", 1)).toBe("pulse");
-		expect(stepChannel("pulse", 7)).toBe("activity");
-		expect(stepChannel("weather", -6)).toBe("pulse");
+		expect(stepChannel("pulse", 7)).toBe("weather");
+		expect(stepChannel("weather", -7)).toBe("pulse");
 	});
 
-	it("maps remote number keys 1–5 to channels and ignores the rest", () => {
+	it("maps remote number keys 1–6 to channels and ignores the rest", () => {
 		expect(channelForKey("1")).toBe("pulse");
-		expect(channelForKey("5")).toBe("standby");
-		expect(channelForKey("6")).toBeNull();
+		expect(channelForKey("5")).toBe("shipping");
+		expect(channelForKey("6")).toBe("standby");
+		expect(channelForKey("7")).toBeNull();
 		expect(channelForKey("0")).toBeNull();
 		expect(channelForKey("ArrowLeft")).toBeNull();
 	});
@@ -58,7 +59,7 @@ describe("channel line-up", () => {
 });
 
 describe("frameKey", () => {
-	const inputs: TvInputs = { pulse: null, weather: null, activity: [] };
+	const inputs: TvInputs = { pulse: null, weather: null, activity: [], shipping: null };
 	const at = (channel: "pulse" | "clock" | "standby", now: number, showBadge = false) =>
 		frameKey({ channel, inputs, now, showBadge });
 	const minute = 60_000 * 1_000;
