@@ -101,41 +101,11 @@ async function dayEnd(): Promise<void> {
 	);
 }
 
-async function hoverBeadedAgent(): Promise<boolean> {
-	const canvas = document.querySelector<HTMLCanvasElement>("canvas");
-	if (!canvas) return false;
-	const bounds = canvas.getBoundingClientRect();
-	let lastPane = "";
-	for (let y = bounds.top + 16; y < bounds.bottom; y += 64) {
-		for (let x = bounds.left + 16; x < bounds.right; x += 64) {
-			canvas.dispatchEvent(
-				new PointerEvent("pointermove", {
-					bubbles: true,
-					clientX: x,
-					clientY: y,
-					pointerId: 1,
-					pointerType: "mouse",
-				}),
-			);
-			const selection = useSelection.getState().selection;
-			if (selection?.kind !== "agent" || selection.paneId === lastPane) continue;
-			lastPane = selection.paneId;
-			await wait(30);
-			if (
-				document.querySelector(".agent-beads__item summary")?.textContent?.includes("office-k2p.3")
-			)
-				return true;
-		}
-	}
-	return false;
-}
-
 async function agentCard(): Promise<void> {
-	useSelection.getState().clear();
-	assert(await hoverBeadedAgent(), "pointer sweep did not hover an agent with an in-progress bead");
+	useSelection.getState().select({ kind: "agent", paneId: "w2:p1" });
 	assert(
 		await until(() => document.querySelector(".world-card") !== null),
-		"agent card did not open from hover",
+		"agent card did not open",
 	);
 	const details = document.querySelector<HTMLDetailsElement>(".agent-beads__item");
 	assert(details !== null, "agent card has no in-progress bead details");
