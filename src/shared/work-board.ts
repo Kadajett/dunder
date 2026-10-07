@@ -50,7 +50,16 @@ export interface WorkCard {
 	readonly spend: number | null;
 	/** The same summed over the parent epic's beads (open, or closed in the last 30 days); null without one. */
 	readonly epicSpend: { readonly usd: number; readonly beads: number } | null;
+	/** Review cards only: whether `bead/<id>` merges cleanly into the main checkout's branch. */
+	readonly merge?: MergeCheck;
 }
+
+/** `git merge-tree` of a bead's branch into the main checkout's branch. */
+export type MergeCheck =
+	| { readonly state: "clean" }
+	| { readonly state: "conflicts"; readonly files: readonly string[] }
+	/** No `bead/<id>` branch in the repo. */
+	| { readonly state: "no-branch" };
 
 /**
  * Something only Jeremy can do or decide, flagged by an agent as a bead with

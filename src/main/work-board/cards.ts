@@ -173,3 +173,10 @@ export function buildCards(lists: BdLists, doneSince: number): WorkCard[] {
 		.map((placed) => toCard(placed, epics))
 		.sort(compareCards);
 }
+
+/** Ids of the beads closed at or after `since` (epoch ms). */
+export function closedIds(beads: readonly Bead[], since: number): string[] {
+	return beads
+		.filter((bead) => (Date.parse(bead.closed_at ?? "") || 0) >= since)
+		.map((bead) => bead.id);
+}
