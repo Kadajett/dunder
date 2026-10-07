@@ -29,6 +29,8 @@ import { useOfficeModel } from "../features/office/model/office-model";
 import { connectModels } from "../features/office/models/models-store";
 import { OfficeView } from "../features/office/OfficeView";
 import { TvFullscreen } from "../features/office/tv/TvFullscreen";
+import { PlanCard } from "../features/plan/PlanCard";
+import { connectPlan } from "../features/plan/plan-store";
 import { AutopilotNotice } from "../features/pool/AutopilotNotice";
 import { connectPool } from "../features/pool/pool-store";
 import { TableView } from "../features/pool/TableView";
@@ -61,6 +63,7 @@ export function App() {
 	useEffect(connectAppErrors, []);
 	useEffect(connectSnoozes, []);
 	useEffect(connectAlerts, []);
+	useEffect(connectPlan, []);
 	useReportBusy();
 	return (
 		<div className="office-app" data-view={view}>
@@ -95,6 +98,7 @@ export function App() {
 				<TopBar snapshot={snapshot} />
 			</ErrorBoundary>
 			<ErrorBoundary region="what's new card">
+				<PlanCard />
 				<WhatsNewCard />
 				<AwayCard />
 			</ErrorBoundary>

@@ -1,0 +1,183 @@
+/* Morning plan card: the What's new frame (whats-new.css) with the plan inside. */
+.plan__focus {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.plan__focus-input {
+	padding: 6px 8px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	background: #fff;
+	color: var(--ink);
+	font: 700 15px var(--font-ui);
+}
+
+.plan__items {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.plan__item {
+	padding: 8px 10px;
+	border: 1px solid #ece3d3;
+	border-radius: 12px;
+	background: #fffdf8;
+}
+
+.plan__item-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.plan__who {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font: 600 11px var(--font-mono);
+}
+
+.plan__tools {
+	margin-left: auto;
+	display: flex;
+	gap: 2px;
+}
+
+.plan__tools button {
+	width: 24px;
+	height: 24px;
+	border: 1px solid #ece3d3;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.plan__tools button:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.plan__why {
+	margin: 4px 0 0;
+	font-size: 12.5px;
+	line-height: 1.35;
+	color: #6b5a3e;
+}
+
+.plan__not-today {
+	color: var(--ink-soft);
+	font-size: 12px;
+}
+
+.plan__not-today p {
+	margin: 0;
+	font: 700 10px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.plan__not-today ul {
+	margin: 2px 0 0;
+	padding-left: 16px;
+}
+
+.plan__error {
+	margin: 0;
+	color: var(--status-blocked);
+	font-size: 12px;
+}
+
+.plan__actions {
+	display: flex;
+	gap: 6px;
+}
+
+.plan__secondary {
+	padding: 6px 12px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 10px;
+	background: transparent;
+	color: var(--ink);
+	font: 600 12px var(--font-ui);
+	cursor: pointer;
+}
+
+/* Today pill at the top of the work bar. */
+.today {
+	margin: 0 0 8px;
+	border: 1px solid #ecd9a8;
+	border-radius: 12px;
+	background: #fdf6e3;
+}
+
+.today__pill {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 10px;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	text-align: left;
+	cursor: pointer;
+}
+
+.today__label {
+	font: 700 10px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #8a6a1f;
+}
+
+.today__focus {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	font: 600 12px var(--font-ui);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.today[data-open="true"] .today__focus {
+	white-space: normal;
+}
+
+.today__count {
+	font: 600 10.5px var(--font-mono);
+	color: var(--ink-soft);
+}
+
+.today__items {
+	margin: 0;
+	padding: 0 10px 8px;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.today__items li {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.today__lane {
+	margin-left: auto;
+	font: 500 10.5px var(--font-mono);
+	color: var(--ink-soft);
+}
+
+.today__items li[data-lane="done"] .today__lane {
+	color: #2f7d55;
+	font-weight: 700;
+}

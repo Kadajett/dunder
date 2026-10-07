@@ -1,8 +1,9 @@
 import { createLogger } from "@shared/log/logger";
 import { type WorkCard, workLanes } from "@shared/work-board";
 import { type DragEvent, useEffect, useMemo, useState } from "react";
-import { useAgentStyle, useRosterStore } from "../hire/roster-store";
+import { useRosterStore } from "../hire/roster-store";
 import { OpenInEditor } from "../worktrees/OpenInEditor";
+import { AgentDot } from "./AgentDot";
 import { epicTitle, spendLabel, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
@@ -30,11 +31,6 @@ const log = createLogger("work");
 
 /** The drag payload type: a bead id, so drops from elsewhere are ignored. */
 export const CARD_MIME = "application/x-herdr-office-bead";
-
-function AgentDot({ name }: { readonly name: string }) {
-	const color = useAgentStyle(name).outfit.color;
-	return <span className="work-dot" style={{ background: color }} />;
-}
 
 function PriorityChip({ card }: { readonly card: WorkCard }) {
 	const items: WorkMenuItem[] = priorities.map((priority) => ({

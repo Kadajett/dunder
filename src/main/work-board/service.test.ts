@@ -71,6 +71,7 @@ describe("WorkBoardService reads", () => {
 				revision: 1,
 				cards: [expect.objectContaining({ id: "a-1", lane: "ready" })],
 				asks: [],
+				closedToday: [],
 			},
 		]);
 		await service.refresh();
