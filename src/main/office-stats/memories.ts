@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import type { Roster } from "@shared/company/roster";
 import type {
@@ -8,9 +7,7 @@ import type {
 	StatsActionResult,
 } from "@shared/office-stats";
 import { z } from "zod";
-
-/** Upper bound on one `bd` run. */
-const BD_TIMEOUT_MS = 10_000;
+import { runBd } from "../beads/bd";
 
 /**
  * `bd memories --json` prints one object: memory key → text, alongside
@@ -51,20 +48,6 @@ export function rememberPlan(text: string, key: string | undefined): RememberPla
 		return { ok: false, reason: "write a sentence, or give a one-word memory a key" };
 	}
 	return { ok: true, args: ["remember", ...(key ? ["--key", key] : []), "--", text] };
-}
-
-function runBd(args: readonly string[], cwd: string): Promise<string> {
-	const { promise, resolve, reject } = Promise.withResolvers<string>();
-	execFile(
-		"bd",
-		[...args],
-		{ cwd, timeout: BD_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 },
-		(error, stdout, stderr) => {
-			if (error) reject(new Error(stderr.trim() || error.message, { cause: error }));
-			else resolve(stdout);
-		},
-	);
-	return promise;
 }
 
 async function loadProject(cwd: string): Promise<MemoryProject> {

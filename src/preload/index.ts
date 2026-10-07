@@ -136,6 +136,14 @@ const api: OfficeApi = {
 		start: (topic) => ipcRenderer.invoke(IPC.brainstormStart, topic),
 		end: () => ipcRenderer.invoke(IPC.brainstormEnd),
 	},
+	work: {
+		get: () => ipcRenderer.invoke(IPC.workGet),
+		onChanged: (listener) => listen(IPC.workChanged, listener),
+		create: (title) => ipcRenderer.invoke(IPC.workCreate, title),
+		setPriority: (id, priority) => ipcRenderer.invoke(IPC.workPriority, { id, priority }),
+		move: (id, lane) => ipcRenderer.invoke(IPC.workMove, { id, lane }),
+		assign: (id, assignee) => ipcRenderer.invoke(IPC.workAssign, { id, assignee }),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

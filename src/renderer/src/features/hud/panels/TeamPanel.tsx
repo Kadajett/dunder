@@ -3,6 +3,8 @@ import { avatarStyleFor } from "@shared/avatar/style";
 import type { RosterAgent } from "@shared/company/roster";
 import { type AgentModel, shortModelName } from "@shared/models";
 import { useMemo } from "react";
+import { formatClock } from "../../feed/feed-model";
+import { useFeed } from "../../feed/feed-store";
 import { useHire } from "../../hire/hire-store";
 import { useRosterStore } from "../../hire/roster-store";
 import type { LiveAgent } from "../../office/model/live-agents";
@@ -49,6 +51,7 @@ function TeamCard(props: {
 	);
 	const live = useModels((state) => state.live[agent.name]);
 	const seat = props.model.seated.find((seated) => seated.agent.paneId === agent.paneId);
+	const latest = useFeed((state) => state.items.find((item) => item.paneId === agent.paneId));
 	return (
 		<article className="hud-card">
 			<div className="hud-card-head">
@@ -60,6 +63,7 @@ function TeamCard(props: {
 			</div>
 			{hired?.role ? <p className="hud-card-line">{hired.role}</p> : null}
 			<div className="hud-team-rows">
+				<Row label="now" value={latest && `${formatClock(latest.at)} ${latest.action}`} />
 				<Row label="room" value={agent.workspaceLabel ? `#${agent.workspaceLabel}` : undefined} />
 				<Row label="harness" value={hired?.harness ?? agent.kind} />
 				<Row label="model" value={modelLabel(agent.kind, live)} />

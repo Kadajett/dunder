@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export type FeedTone = "working" | "blocked" | "done" | "idle" | "message" | "office" | "neutral";
 
-/** One card in the Activity Feed: `13:20  Agent: action`. */
+/** One line of agent activity (`13:20  Agent: action`); the Team panel shows each agent's latest. */
 export interface FeedItem {
 	readonly id: string;
 	/** Epoch ms. */

@@ -1,0 +1,171 @@
+import { createLogger } from "@shared/log/logger";
+import { type WorkCard, workLanes } from "@shared/work-board";
+import { type DragEvent, useMemo, useState } from "react";
+import { useAgentStyle, useRosterStore } from "../hire/roster-store";
+import { WorkError } from "./WorkError";
+import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
+import { laneLabels, priorities, shortId } from "./work-model";
+import { assignCard, moveCard, setCardPriority } from "./work-store";
+import "./work-card.css";
+
+const log = createLogger("work");
+
+/** The drag payload type: a bead id, so drops from elsewhere are ignored. */
+export const CARD_MIME = "application/x-herdr-office-bead";
+
+function AgentDot({ name }: { readonly name: string }) {
+	const color = useAgentStyle(name).outfit.color;
+	return <span className="work-dot" style={{ background: color }} />;
+}
+
+function PriorityChip({ card }: { readonly card: WorkCard }) {
+	const items: WorkMenuItem[] = priorities.map((priority) => ({
+		key: String(priority),
+		label: `P${priority}`,
+		checked: priority === card.priority,
+		onSelect: () => void setCardPriority(card.id, priority),
+	}));
+	return (
+		<WorkMenuButton
+			className={`work-chip work-chip--priority work-chip--p${card.priority}`}
+			label={`Priority P${card.priority}: change`}
+			menuLabel="Priority"
+			items={items}
+		>
+			P{card.priority}
+		</WorkMenuButton>
+	);
+}
+
+function AssigneeChip({ card }: { readonly card: WorkCard }) {
+	const roster = useRosterStore((state) => state.roster);
+	const names = useMemo(() => {
+		const hired = (roster?.agents ?? [])
+			.filter((agent) => agent.firedAt === undefined)
+			.map((agent) => agent.name);
+		return card.assignee && !hired.includes(card.assignee) ? [card.assignee, ...hired] : hired;
+	}, [roster, card.assignee]);
+	const items: WorkMenuItem[] = [
+		...names.map((name) => ({
+			key: name,
+			label: (
+				<>
+					<AgentDot name={name} />
+					{name}
+				</>
+			),
+			checked: name === card.assignee,
+			onSelect: () => void assignCard(card.id, name),
+		})),
+		{
+			key: "",
+			label: "unassigned",
+			checked: card.assignee === null,
+			onSelect: () => void assignCard(card.id, null),
+		},
+	];
+	return (
+		<WorkMenuButton
+			className="work-chip work-chip--assignee"
+			label={card.assignee ? `Assigned to ${card.assignee}: change` : "Unassigned: assign"}
+			menuLabel="Assignee"
+			items={items}
+		>
+			{card.assignee ? <AgentDot name={card.assignee} /> : null}
+			<span className="work-chip__text">{card.assignee ?? "unassigned"}</span>
+		</WorkMenuButton>
+	);
+}
+
+function MoreMenu({ card }: { readonly card: WorkCard }) {
+	const items: WorkMenuItem[] = workLanes.map((lane) => ({
+		key: lane,
+		label: `Move to ${laneLabels[lane]}`,
+		disabled: lane === card.lane,
+		onSelect: () => void moveCard(card.id, lane),
+	}));
+	return (
+		<WorkMenuButton className="work-card__more" label="Move to…" menuLabel="Move to" items={items}>
+			⋯
+		</WorkMenuButton>
+	);
+}
+
+function CardDetail({ card }: { readonly card: WorkCard }) {
+	const [copied, setCopied] = useState(false);
+	const copy = (): void => {
+		navigator.clipboard.writeText(card.id).then(
+			() => setCopied(true),
+			(error: unknown) => log.warn("copy bead id failed", error instanceof Error ? error : {}),
+		);
+	};
+	return (
+		<div className="work-card__detail">
+			<p className="work-card__label">Description</p>
+			<p className="work-card__text">{card.description.trim() || "No description."}</p>
+			<p className="work-card__label">Acceptance</p>
+			<p className="work-card__text">{card.acceptance.trim() || "No acceptance criteria."}</p>
+			<button type="button" className="work-card__copy" onClick={copy}>
+				{copied ? "Copied" : `Copy ${card.id}`}
+			</button>
+		</div>
+	);
+}
+
+interface WorkCardRowProps {
+	readonly card: WorkCard;
+	readonly expanded: boolean;
+	readonly onToggle: (id: string) => void;
+	readonly onDrag: (card: WorkCard | null) => void;
+}
+
+/** One bead: a dense title + meta row that expands in place to its read-only details. */
+export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowProps) {
+	const onDragStart = (event: DragEvent<HTMLLIElement>): void => {
+		const { dataTransfer } = event;
+		dataTransfer.setData(CARD_MIME, card.id);
+		dataTransfer.effectAllowed = "move";
+		onDrag(card);
+	};
+	return (
+		<li
+			className={`work-card work-card--${card.lane}${expanded ? " work-card--open" : ""}`}
+			// Not while open, so the description's text can be selected.
+			draggable={!expanded}
+			onDragStart={onDragStart}
+			onDragEnd={() => onDrag(null)}
+		>
+			<div className="work-card__head">
+				<button
+					type="button"
+					className="work-card__title"
+					title={card.title}
+					aria-expanded={expanded}
+					onClick={() => onToggle(card.id)}
+				>
+					{card.title}
+				</button>
+				<MoreMenu card={card} />
+			</div>
+			<div className="work-card__meta">
+				<PriorityChip card={card} />
+				<span className="work-card__id" title={card.id}>
+					{shortId(card.id)}
+				</span>
+				<AssigneeChip card={card} />
+				{card.epic ? (
+					<span className="work-card__epic" title={`Epic: ${card.epic}`}>
+						{card.epic}
+					</span>
+				) : null}
+			</div>
+			{card.lane === "blocked" && card.waitingOn.length > 0 ? (
+				<p className="work-card__waiting" title={card.waitingOn.join(", ")}>
+					waiting on {card.waitingOn.map(shortId).join(", ")}
+				</p>
+			) : null}
+			{expanded ? <CardDetail card={card} /> : null}
+			<WorkError errorKey={card.id} />
+		</li>
+	);
+}

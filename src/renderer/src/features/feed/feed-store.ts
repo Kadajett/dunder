@@ -13,28 +13,22 @@ import {
 } from "./feed-model";
 
 interface FeedState {
+	/** Newest first. */
 	readonly items: readonly FeedItem[];
-	/** Items added since the feed was last expanded. */
-	readonly unseen: number;
-	readonly expanded: boolean;
 	add(draft: FeedDraft): void;
-	toggle(): void;
 }
 
 let nextId = 0;
 
+/** What the agents did lately; the Team panel shows each agent's latest line ("now"). */
 export const useFeed = create<FeedState>((set) => ({
 	items: [],
-	unseen: 0,
-	expanded: false,
 	add: (draft) =>
 		set((state) => {
 			nextId += 1;
 			const items = pushItem(state.items, draft, Date.now(), `feed-${nextId}`);
-			if (items === state.items) return state;
-			return { items, unseen: state.expanded ? 0 : state.unseen + 1 };
+			return items === state.items ? state : { items };
 		}),
-	toggle: () => set((state) => ({ expanded: !state.expanded, unseen: 0 })),
 }));
 
 /** Subscribe every live source to the feed; returns the cleanup. */
