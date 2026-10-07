@@ -5,7 +5,7 @@ import { CallChip } from "./CallChip";
 import { CompanySwitcher } from "./CompanySwitcher";
 import { HudClock } from "./HudClock";
 import { HudMenu } from "./HudMenu";
-import { UpdateCountdownBanner, useUpdateStatus } from "./HudUpdate";
+import { useUpdateStatus } from "./HudUpdate";
 import { InboxGlyph } from "./icons";
 import { useTrustInbox } from "./inbox-store";
 import { useHud } from "./view-store";
@@ -46,7 +46,6 @@ export function TopBar({ snapshot }: TopBarProps) {
 			<TrustInboxButton snapshot={snapshot} />
 			<HudClock />
 			<HudMenu update={update} />
-			<UpdateCountdownBanner status={update} />
 		</header>
 	);
 }

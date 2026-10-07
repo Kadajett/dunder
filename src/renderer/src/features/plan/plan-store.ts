@@ -1,13 +1,12 @@
 import { createLogger } from "@shared/log/logger";
 import type { DayPlan, PlanApi, PlanProposal, PlanResult } from "@shared/plan";
 import { create } from "zustand";
-import { planCardDue } from "./plan-model";
 
 const log = createLogger("plan");
 
 interface PlanStoreState {
 	readonly plan: DayPlan | null;
-	/** Main has answered, so cards that queue behind the plan card can show. */
+	/** Main has answered, so the notice slot can show what queues behind the plan. */
 	readonly settled: boolean;
 	/** Why the last decision didn't go through, until the next one. */
 	readonly error: string | null;
@@ -56,8 +55,3 @@ async function decide(send: (plan: PlanApi) => Promise<PlanResult>): Promise<boo
 export const approvePlan = () => decide((plan) => plan.approve());
 export const editPlan = (edited: PlanProposal) => decide((plan) => plan.edit(edited));
 export const discussPlan = () => decide((plan) => plan.discuss());
-
-/** The plan card is (or may be) showing: What's new and the Away card wait behind it. */
-export function usePlanCardPending(): boolean {
-	return usePlan((state) => !state.settled || planCardDue(state.plan));
-}
