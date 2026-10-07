@@ -106,6 +106,8 @@ export const IPC = {
 	updateRollback: "update:rollback",
 	/** Whiteboard: the current company's board (invoke), the editor's save (invoke), every change (main → renderer). */
 	whiteboardGet: "whiteboard:get",
+	/** Create an idea bead from a selected whiteboard sticky. */
+	whiteboardMakeIdea: "whiteboard:make-idea",
 	whiteboardPut: "whiteboard:put",
 	whiteboardChanged: "whiteboard:changed",
 	/** Pool table: state (invoke), every change and ~30 Hz ball frames (main → renderer), Jeremy's actions (invoke). */

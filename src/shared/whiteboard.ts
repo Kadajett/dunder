@@ -70,10 +70,17 @@ export type WhiteboardPutResult =
 	 */
 	| { readonly state: "rejected"; readonly reason: string; readonly board: WhiteboardBoard };
 
+/** Create a P3 idea task from a sticky note's text and author. */
+export interface MakeIdeaRequest {
+	readonly text: string;
+	readonly author: string;
+}
+
 /** `window.office.whiteboard`. */
 export interface WhiteboardApi {
 	get(): Promise<WhiteboardBoard>;
 	put(request: WhiteboardPutRequest): Promise<WhiteboardPutResult>;
+	makeIdea(request: MakeIdeaRequest): Promise<string>;
 	onChanged(listener: (change: WhiteboardChange) => void): Unsubscribe;
 }
 
