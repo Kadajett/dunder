@@ -1,7 +1,10 @@
-import type { ComponentProps } from "react";
-import Markdown, { type Components } from "react-markdown";
+import { type ComponentProps, useMemo } from "react";
+import Markdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "./chief-markdown.css";
+import { useWork } from "../work/work-store";
+import { BeadChip } from "./BeadChip";
+import { beadPrefixes, remarkBeadRefs } from "./bead-refs";
 
 interface MdastNode {
 	readonly type: string;
@@ -36,17 +39,52 @@ function ImageAsText({ alt }: ComponentProps<"img">) {
 	return alt ? <span className="chief-md__img">[{alt}]</span> : null;
 }
 
-const COMPONENTS: Components = { a: ExternalLink, img: ImageAsText };
+/** Spans come only from bead-id chip nodes (Markdown itself makes none). */
+function SpanOrChip({ node, children }: ComponentProps<"span"> & ExtraProps) {
+	const id = node?.properties["dataBead"];
+	if (typeof id !== "string") return <span>{children}</span>;
+	return <BeadChip id={id} code={node?.properties["dataCode"] === "true"} />;
+}
 
-const REMARK_PLUGINS = [remarkGfm, remarkHtmlAsText];
+const COMPONENTS: Components = { a: ExternalLink, img: ImageAsText, span: SpanOrChip };
 
-/** A Chief of Staff reply rendered as GitHub-flavoured Markdown, without raw HTML. */
-export function ChiefMarkdown({ text }: { readonly text: string }) {
+/** The bead id prefixes on the work board, as one stable key ('' while it hasn't loaded). */
+function usePrefixKey(): string {
+	return useWork((state) => {
+		const board = state.board;
+		if (board?.state !== "ok") return "";
+		const ids = [...board.cards.map((card) => card.id), ...board.asks.map((ask) => ask.id)];
+		return beadPrefixes(ids).sort().join(" ");
+	});
+}
+
+/** GitHub-flavoured Markdown without raw HTML, bead ids with these prefixes as chips. */
+export function ReplyMarkdown({
+	text,
+	prefixes,
+}: {
+	readonly text: string;
+	readonly prefixes: readonly string[];
+}) {
+	const plugins = useMemo(
+		() => [remarkGfm, remarkHtmlAsText, remarkBeadRefs(prefixes)],
+		[prefixes],
+	);
 	return (
 		<div className="chief-md">
-			<Markdown remarkPlugins={REMARK_PLUGINS} components={COMPONENTS}>
+			<Markdown remarkPlugins={plugins} components={COMPONENTS}>
 				{text}
 			</Markdown>
 		</div>
 	);
+}
+
+/**
+ * A Chief of Staff reply rendered as GitHub-flavoured Markdown, without raw
+ * HTML; bead ids (with the work board's prefixes) become chips.
+ */
+export function ChiefMarkdown({ text }: { readonly text: string }) {
+	const prefixKey = usePrefixKey();
+	const prefixes = useMemo(() => (prefixKey ? prefixKey.split(" ") : []), [prefixKey]);
+	return <ReplyMarkdown text={text} prefixes={prefixes} />;
 }

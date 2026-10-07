@@ -119,3 +119,48 @@
 .chief-md__img {
 	color: var(--ink-soft);
 }
+
+/* A bead id: a small monospace chip; a click opens its card on the work board. */
+.bead-chip-wrap {
+	position: relative;
+}
+
+.bead-chip {
+	padding: 0 4px;
+	border: 0;
+	border-radius: 4px;
+	background: #e4ecf2;
+	color: #2b5a7a;
+	font: 600 11.5px var(--font-mono);
+	text-decoration: underline dotted #2b5a7a80;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+
+.bead-chip[data-code="true"] {
+	background: #ebe2d1;
+}
+
+.bead-chip[data-known="false"] {
+	color: var(--ink-soft);
+}
+
+.bead-chip:hover,
+.bead-chip:focus-visible {
+	background: #d3e2ed;
+	outline: none;
+}
+
+.bead-chip-note {
+	position: absolute;
+	bottom: calc(100% + 4px);
+	left: 0;
+	z-index: 5;
+	padding: 3px 8px;
+	border-radius: 6px;
+	background: var(--ink);
+	color: #f6efe2;
+	font: 500 11px var(--font-ui);
+	white-space: nowrap;
+	pointer-events: none;
+}
