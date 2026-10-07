@@ -5,6 +5,7 @@ import { markSeen, useTrustInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
 import { useHud } from "../view-store";
 import { AskCard } from "./AskCard";
+import { DoneDetail } from "./DoneDetail";
 import { ErrorCard } from "./ErrorCard";
 import { openAgentScreen } from "./open-agent";
 import { SpendCard } from "./SpendCard";
@@ -29,7 +30,10 @@ function AgentCard({ item, model }: { readonly item: AgentItem; readonly model: 
 				</span>
 			</div>
 			<p className="hud-card-line">{KIND_LINE[item.kind]}</p>
-			{agent.activity ? <p className="hud-card-quote">{agent.activity}</p> : null}
+			{item.kind === "blocked" && agent.activity ? (
+				<p className="hud-card-quote">{agent.activity}</p>
+			) : null}
+			{item.kind === "done" ? <DoneDetail agent={agent} /> : null}
 			<div className="hud-card-actions">
 				<button
 					type="button"

@@ -5,6 +5,8 @@ import { activeAgents } from "@shared/company/roster-ops";
 import { type BridgeStatus, IPC } from "@shared/ipc";
 import { createLogger } from "@shared/log/logger";
 import { app, BrowserWindow, Menu } from "electron";
+import { registerAgentRepliesIpc } from "./agent-replies/ipc";
+import { AgentRepliesService } from "./agent-replies/service";
 import { createAlerts, registerAlertsIpc } from "./alerts/ipc";
 import { migrateLegacyDirs } from "./app-dirs";
 import { registerAppErrorsIpc, watchAppPage } from "./app-errors/ipc";
@@ -32,6 +34,7 @@ import { createSeenDoneStore } from "./office-stats/seen-done";
 import { createPool } from "./pool/create";
 import { clearPoolViewingWithPage, registerPoolIpc } from "./pool/ipc";
 import { createStaffDesk } from "./staff-desk/create";
+import { startInBackground } from "./start-in-background";
 import { createSwitchboardService } from "./switchboard/service";
 import { ObservePool } from "./terminal/observe-pool";
 import { startObserveSession } from "./terminal/observe-session";
@@ -175,6 +178,8 @@ const workBoard = createWorkBoard(app.getAppPath(), aiCost, (board) => {
 const appErrors = new AppErrorsService({
 	emit: (errors) => broadcast(IPC.appErrorsChanged, errors),
 });
+/** Done cards' 'Said:' line: agents' final replies, read from their omp session logs on demand. */
+const agentReplies = new AgentRepliesService();
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -208,6 +213,7 @@ async function startBridge(): Promise<void> {
 				pool.updateSnapshot(snapshot);
 				brainstorm.service.updateSnapshot(snapshot);
 				alerts.updateSnapshot(snapshot);
+				agentReplies.update(snapshot);
 				broadcast(IPC.snapshot, snapshot);
 			},
 			event: (event) => broadcast(IPC.event, event),
@@ -248,6 +254,7 @@ function registerHandlers(): void {
 	registerBrainstormIpc(brainstorm.service);
 	registerWorkBoardIpc(workBoard);
 	registerAppErrorsIpc(appErrors);
+	registerAgentRepliesIpc(agentReplies);
 	registerVoiceIpc(createVoice());
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerAlertsIpc(alerts);
@@ -267,24 +274,16 @@ app.whenReady().then(() => {
 	void startBridge();
 	weather.start();
 	calisthenics.start();
-	workforce
-		.start()
-		.catch((error: unknown) => createLogger("workforce").warn("not started", { error }));
+	startInBackground("workforce", workforce.start());
 	models.service.start();
 	chief.start();
 	void chief.history().then((messages) => mailQueue.chiefHistory(messages));
 	aiCost.start();
 	void appUpdate.start();
-	staffDesk
-		.start()
-		.catch((error: unknown) => createLogger("staff-desk").warn("not started", { error }));
-	whiteboard
-		.start()
-		.catch((error: unknown) => createLogger("whiteboard").warn("not started", { error }));
+	startInBackground("staff-desk", staffDesk.start());
+	startInBackground("whiteboard", whiteboard.start());
 	pool.start();
-	brainstorm
-		.start()
-		.catch((error: unknown) => createLogger("brainstorm").warn("not started", { error }));
+	startInBackground("brainstorm", brainstorm.start());
 	workBoard.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
