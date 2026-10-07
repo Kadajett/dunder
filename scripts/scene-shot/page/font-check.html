@@ -2,16 +2,13 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta
-			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'sha256-xrQJ5RgLmiTdj/6+aWsJOTE2Cvd3lawrBqgqfgRWaNQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:"
-		/>
-		<!-- Set Excalidraw's font base before any renderer module can import Excalidraw. -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Whiteboard font check</title>
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-xrQJ5RgLmiTdj/6+aWsJOTE2Cvd3lawrBqgqfgRWaNQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:" />
 		<script>(()=>{const assetBase=new URL("excalidraw-assets/",document.baseURI);window.EXCALIDRAW_ASSET_PATH=assetBase.href;const nativeFetch=window.fetch.bind(window);function fontAssetPath(url){const assetDirectory="/excalidraw-assets/";const localIndex=url.pathname.lastIndexOf(assetDirectory);if(url.protocol==="file:"&&localIndex>=0){const path=decodeURIComponent(url.pathname.slice(localIndex+assetDirectory.length));return path.startsWith("fonts/")?path:void 0;}if(url.origin!=="https://esm.sh"||!url.pathname.startsWith("/@excalidraw/excalidraw@"))return;const prodIndex=url.pathname.lastIndexOf("/dist/prod/");if(prodIndex<0)return;const path=decodeURIComponent(url.pathname.slice(prodIndex+11));return path.startsWith("fonts/")?path:void 0;}window.fetch=(input,init)=>{const requestUrl=input instanceof Request?input.url:input instanceof URL?input.href:input;const assetPath=fontAssetPath(new URL(requestUrl,document.baseURI));if(!assetPath)return nativeFetch(input,init);if(assetBase.protocol!=="file:")return nativeFetch(new URL(assetPath,assetBase),init);return window.office.whiteboard.readFont(assetPath).then(bytes=>new Response(bytes,{headers:{"content-type":"font/woff2"}}));};const NativeFontFace=window.FontFace;window.FontFace=new Proxy(NativeFontFace,{construct(target,args,newTarget){const [family,source,descriptors]=args;const rewritten=typeof source==="string"?source.replace(/https:\/\/esm\.sh\/@excalidraw\/excalidraw@[^/]+\/dist\/prod\//g,assetBase.href):source;return Reflect.construct(target,[family,rewritten,descriptors],newTarget);}});})();</script>
-		<title>Dunder</title>
 	</head>
 	<body>
 		<div id="root"></div>
-		<script type="module" src="./src/main.tsx"></script>
+		<script type="module" src="/font-check.tsx"></script>
 	</body>
 </html>

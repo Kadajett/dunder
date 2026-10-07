@@ -111,6 +111,7 @@ export const IPC = {
 	whiteboardMakeIdea: "whiteboard:make-idea",
 	whiteboardPut: "whiteboard:put",
 	whiteboardChanged: "whiteboard:changed",
+	whiteboardFont: "whiteboard:font",
 	/** Pool table: state (invoke), every change and ~30 Hz ball frames (main → renderer), Jeremy's actions (invoke). */
 	poolGet: "pool:get",
 	poolChanged: "pool:changed",

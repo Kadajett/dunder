@@ -125,6 +125,7 @@ const api: OfficeApi = {
 		get: () => ipcRenderer.invoke(IPC.whiteboardGet),
 		put: (request) => ipcRenderer.invoke(IPC.whiteboardPut, request),
 		makeIdea: (request) => ipcRenderer.invoke(IPC.whiteboardMakeIdea, request),
+		readFont: (assetPath) => ipcRenderer.invoke(IPC.whiteboardFont, assetPath),
 		onChanged: (listener) => listen(IPC.whiteboardChanged, listener),
 	},
 	pool: {

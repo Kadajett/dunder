@@ -1,3 +1,4 @@
+import type { AppError } from "@shared/app-errors";
 import { describe, expect, it } from "vitest";
 import { consoleErrorWorthKeeping, ERRORS_KEPT, recordError } from "./error-log";
 
@@ -12,6 +13,41 @@ describe("the renderer error log", () => {
 			["other", 1],
 		]);
 		expect(repeat.log[0]).toMatchObject({ firstAt: 1, lastAt: 3, stack: "s1" });
+	});
+
+	it("groups font failures that differ only in URL hashes and subset numbers", () => {
+		let log: readonly AppError[] = [];
+		for (let index = 1; index <= 50; index += 1) {
+			const hash = index.toString(16).padStart(32, "0");
+			log = recordError(
+				log,
+				{
+					message: `Loading the font https://esm.sh/@excalidraw/excalidraw@0.18.1/dist/prod/fonts/Xiaolai/Xiaolai-Regular-${hash}.woff2 subset ${index} violates font-src`,
+					where: "console",
+				},
+				index,
+			).log;
+		}
+		expect(log).toHaveLength(1);
+		expect(log[0]?.count).toBe(50);
+	});
+
+	it("excludes third-party console sources but retains app-source and uncaught errors", () => {
+		expect(
+			consoleErrorWorthKeeping(
+				"error",
+				"Loading font failed",
+				"https://esm.sh/@excalidraw/excalidraw/dist/prod/fonts/Xiaolai/font.woff2",
+			),
+		).toBe(false);
+		expect(
+			consoleErrorWorthKeeping(
+				"error",
+				"TypeError",
+				"file:///app/node_modules/@excalidraw/excalidraw/index.js",
+			),
+		).toBe(false);
+		expect(consoleErrorWorthKeeping("error", "app failure", "file:///app/out/app.js")).toBe(true);
 	});
 
 	it("keeps the same message from different places apart", () => {

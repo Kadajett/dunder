@@ -26,7 +26,7 @@ function TrustInboxButton({ snapshot }: { readonly snapshot: SessionSnapshot | n
 			className="hud-chip hud-icon-button hud-inbox"
 			aria-pressed={open}
 			aria-label={`Trust Inbox, ${items}`}
-			title={`Trust Inbox · ${items}: blocked agents and finished work not seen yet`}
+			title={`Trust Inbox · ${items}: asks, blocked agents, spend, app errors, and finished work`}
 			onClick={() => togglePanel("inbox")}
 		>
 			<InboxGlyph />

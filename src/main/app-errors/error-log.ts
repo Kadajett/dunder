@@ -4,9 +4,27 @@ import type { AppError, AppErrorReport } from "@shared/app-errors";
 /** Distinct errors kept; the oldest go first. */
 export const ERRORS_KEPT = 50;
 
-/** Same place and same first line: one error, counted. */
+/** A stable identity for noisy resource failures with per-file subset URLs. */
+function normalizedMessage(message: string): string {
+	const firstLine = message.split("\n", 1)[0] ?? "";
+	if (!/https?:\/\/|[a-f\d]{8,}/i.test(firstLine)) return firstLine;
+	return firstLine
+		.replace(/https?:\/\/\S+/g, "<url>")
+		.replace(/\b[a-f\d]{8,}\b/gi, "<hash>")
+		.replace(/\d+/g, "#");
+}
+
 function keyOf(report: Pick<AppErrorReport, "where" | "message">): string {
-	return `${report.where}\n${report.message.split("\n", 1)[0]}`;
+	return `${report.where}\n${normalizedMessage(report.message)}`;
+}
+
+export function isThirdPartyConsoleSource(sourceId: string | undefined): boolean {
+	return Boolean(
+		sourceId &&
+			(sourceId.startsWith("http://") ||
+				sourceId.startsWith("https://") ||
+				sourceId.includes("/node_modules/")),
+	);
 }
 
 /**
@@ -37,9 +55,15 @@ export function recordError(
 }
 
 /**
- * The console messages worth an inbox item: errors only, and not the
- * "Uncaught …" echo of an error the page already reported with its stack.
+ * The console messages worth an inbox item: app-source errors only, not
+ * third-party sources or the "Uncaught …" echo already reported with a stack.
  */
-export function consoleErrorWorthKeeping(level: string, message: string): boolean {
-	return level === "error" && !message.startsWith("Uncaught");
+export function consoleErrorWorthKeeping(
+	level: string,
+	message: string,
+	sourceId?: string,
+): boolean {
+	return (
+		level === "error" && !message.startsWith("Uncaught") && !isThirdPartyConsoleSource(sourceId)
+	);
 }
