@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { movePlan, WORK_POLL_MS, WorkBoardService } from "./service";
 
 const NOW = Date.parse("2026-10-06T12:00:00Z");
-const SINCE = "2026-10-05T12:00:00.000Z";
+/** Closed beads are read for 30 days (epics' spend); Done still shows the last day. */
+const SINCE = "2026-09-06T12:00:00.000Z";
 const READS = [
 	["list", "--json", "--status=open,in_progress,blocked", "-n", "0"],
 	["blocked", "--json"],
@@ -53,6 +54,7 @@ function harness(statuses: Record<string, string> = {}) {
 		},
 		emit: (board) => emitted.push(board),
 		notify: (agent, text) => notes.push([agent, text]),
+		spendOf: () => null,
 	});
 	const writes = () => calls.filter(([, command]) => !READ_COMMANDS.includes(command ?? ""));
 	return { service, calls, emitted, timers, fake, writes, notes };

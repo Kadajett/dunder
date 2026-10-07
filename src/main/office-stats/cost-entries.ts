@@ -94,3 +94,21 @@ export function agentSpends(
 		.map(([name, spend]) => ({ name, ...spend }))
 		.sort((a, b) => b.usd - a.usd || a.name.localeCompare(b.name));
 }
+
+/**
+ * What `agent` spent between `from` and `to` (inclusive, epoch ms) over the
+ * sessions credited to it; null when it has no session at all.
+ */
+export function spendInSpan(
+	sessions: readonly { readonly agent: string | undefined; readonly all: readonly CostEntry[] }[],
+	agent: string,
+	from: number,
+	to: number,
+): number | null {
+	const mine = sessions.filter((session) => session.agent === agent);
+	if (mine.length === 0) return null;
+	let usd = 0;
+	for (const session of mine)
+		for (const entry of session.all) if (entry.at >= from && entry.at <= to) usd += entry.usd;
+	return usd;
+}

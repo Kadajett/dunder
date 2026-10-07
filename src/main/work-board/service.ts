@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { BdRunner } from "../beads/bd";
 import { buildAsks } from "./asks";
 import { buildCards, parseBeads } from "./cards";
+import { type SpendOf, withSpend } from "./spend";
 
 const log = createLogger("work-board");
 
@@ -11,6 +12,8 @@ const log = createLogger("work-board");
 export const WORK_POLL_MS = 5_000;
 /** The Done lane looks back this far. */
 const DONE_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** Closed beads this recent still count towards their epic's spend. */
+const EPIC_WINDOW_MS = 30 * DONE_WINDOW_MS;
 
 export interface WorkBoardDeps {
 	readonly runBd: BdRunner;
@@ -22,6 +25,8 @@ export interface WorkBoardDeps {
 	readonly emit: (board: WorkBoard) => void;
 	/** Tell an agent something as an office message (delivered once it is free). */
 	readonly notify: (agent: string, text: string) => void;
+	/** An agent's AI spend over a time span, for each card's approximate cost. */
+	readonly spendOf: SpendOf;
 }
 
 /** A board as read from bd, before main stamps its revision. */
@@ -213,7 +218,8 @@ export class WorkBoardService {
 
 	async #read(): Promise<BoardContent> {
 		try {
-			const since = new Date(this.#deps.now() - DONE_WINDOW_MS).toISOString();
+			const now = this.#deps.now();
+			const since = new Date(now - EPIC_WINDOW_MS).toISOString();
 			// One at a time: parallel bd runs serialize on the Dolt database anyway (no faster).
 			const open = await this.#bd([
 				"list",
@@ -233,13 +239,16 @@ export class WorkBoardService {
 				"0",
 			]);
 			const openBeads = parseBeads(open);
-			const cards = buildCards({
+			const closedBeads = parseBeads(closed);
+			const lists = {
 				open: openBeads,
 				blocked: parseBeads(blocked),
 				ready: parseBeads(ready),
-				closed: parseBeads(closed),
-			});
-			return { state: "ok", cards, asks: buildAsks(openBeads) };
+				closed: closedBeads,
+			};
+			const cards = buildCards(lists, now - DONE_WINDOW_MS);
+			const priced = withSpend(cards, [...openBeads, ...closedBeads], this.#deps.spendOf, now);
+			return { state: "ok", cards: priced, asks: buildAsks(openBeads) };
 		} catch (error) {
 			return { state: "unavailable", reason: reasonOf(error) };
 		}

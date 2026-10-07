@@ -167,7 +167,7 @@ const pool = createPool({
 /** Needs-you alerts: an agent blocked or a new ask while Dunder is in the background. */
 const alerts = createAlerts();
 /** The left bar's work board over the app repo's Beads (the repo root in stable mode). */
-const workBoard = createWorkBoard(app.getAppPath(), (board) => {
+const workBoard = createWorkBoard(app.getAppPath(), aiCost, (board) => {
 	broadcast(IPC.workChanged, board);
 	alerts.updateBoard(board);
 });

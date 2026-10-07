@@ -3,11 +3,21 @@ import type { WorkBoard } from "@shared/work-board";
 import { runBd } from "../beads/bd";
 import { postToMailbox } from "../switchboard/service";
 import { WorkBoardService } from "./service";
+import type { SpendOf } from "./spend";
 
 const log = createLogger("work-board");
 
-/** The work board over the repo at `cwd`, reading and writing through the real `bd`. */
-export function createWorkBoard(cwd: string, emit: (board: WorkBoard) => void): WorkBoardService {
+/** Where each card's approximate cost comes from (the office's cost tracker). */
+export interface SpendSource {
+	spendBetween: SpendOf;
+}
+
+/** The work board over the repo at `cwd`, reading and writing through the real `bd`; cards priced from `spend`. */
+export function createWorkBoard(
+	cwd: string,
+	spend: SpendSource,
+	emit: (board: WorkBoard) => void,
+): WorkBoardService {
 	return new WorkBoardService({
 		runBd,
 		cwd,
@@ -22,5 +32,6 @@ export function createWorkBoard(cwd: string, emit: (board: WorkBoard) => void): 
 			postToMailbox(agent, text).catch((error: unknown) =>
 				log.warn("asker not told", { agent, error }),
 			),
+		spendOf: (agent, from, to) => spend.spendBetween(agent, from, to),
 	});
 }

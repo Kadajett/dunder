@@ -27,6 +27,8 @@ const card = (id: string, assignee: string, lane: WorkCard["lane"]): WorkCard =>
 	description: "",
 	acceptance: "",
 	updatedAt: "",
+	spend: null,
+	epicSpend: null,
 });
 
 describe("the AI cost tile's breakdown", () => {

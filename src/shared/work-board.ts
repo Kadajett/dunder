@@ -30,6 +30,14 @@ export interface WorkCard {
 	readonly acceptance: string;
 	/** ISO time of the last change, for ordering. */
 	readonly updatedAt: string;
+	/**
+	 * ~USD the assignee's AI spent from the bead's start to its close (or now),
+	 * in cents; null when there is no figure (not in progress or done, never
+	 * started, or the assignee isn't an omp agent in the office).
+	 */
+	readonly spend: number | null;
+	/** The same summed over the parent epic's beads (open, or closed in the last 30 days); null without one. */
+	readonly epicSpend: { readonly usd: number; readonly beads: number } | null;
 }
 
 /**

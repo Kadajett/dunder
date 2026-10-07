@@ -2,6 +2,7 @@ import { createLogger } from "@shared/log/logger";
 import { type WorkCard, workLanes } from "@shared/work-board";
 import { type DragEvent, useMemo, useState } from "react";
 import { useAgentStyle, useRosterStore } from "../hire/roster-store";
+import { epicTitle, spendLabel, spendTitle } from "./card-spend";
 import { WorkError } from "./WorkError";
 import { WorkMenuButton, type WorkMenuItem } from "./WorkMenu";
 import { laneLabels, priorities, shortId } from "./work-model";
@@ -153,8 +154,13 @@ export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowPro
 					{shortId(card.id)}
 				</span>
 				<AssigneeChip card={card} />
+				{card.spend !== null ? (
+					<span className="work-card__spend" title={spendTitle(card)}>
+						{spendLabel(card.spend)}
+					</span>
+				) : null}
 				{card.epic ? (
-					<span className="work-card__epic" title={`Epic: ${card.epic}`}>
+					<span className="work-card__epic" title={epicTitle(card)}>
 						{card.epic}
 					</span>
 				) : null}

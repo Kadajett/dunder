@@ -28,6 +28,8 @@ const beadSchema = z.object({
 	/** `bd list` only; null without any. */
 	labels: z.array(z.string()).nullish(),
 	closed_at: z.string().nullish(),
+	/** When it was claimed (moved to in progress); what a bead's spend is counted from. */
+	started_at: z.string().nullish(),
 	/** `bd list`: every edge, `type` "blocks" or "parent-child"; null without any. */
 	dependencies: z.array(z.object({ depends_on_id: z.string(), type: z.string() })).nullish(),
 	/** `bd blocked`: the open beads this one waits on. */
@@ -50,7 +52,7 @@ export interface BdLists {
 	readonly blocked: readonly Bead[];
 	/** `bd ready`: open beads nothing open blocks. */
 	readonly ready: readonly Bead[];
-	/** `bd list --status=closed --closed-after <24 h ago> -n 0`. */
+	/** `bd list --status=closed --closed-after <30 days ago> -n 0`: the Done lane and epics' spend. */
 	readonly closed: readonly Bead[];
 }
 
@@ -63,7 +65,7 @@ export function epicTag(title: string): string {
 	return `${bare.slice(0, EPIC_TAG_MAX - 1).trimEnd()}…`;
 }
 
-const isEpic = (bead: Bead): boolean => bead.issue_type === "epic";
+export const isEpic = (bead: Bead): boolean => bead.issue_type === "epic";
 /** Asks for Jeremy (bd's `human` label) live in the Trust Inbox, not on the board (see asks.ts). */
 export const isHumanAsk = (bead: Bead): boolean => (bead.labels ?? []).includes("human");
 
@@ -114,10 +116,10 @@ function placeOpen(lists: BdLists): Placed[] {
 
 const closedTime = (bead: Bead): number => Date.parse(bead.closed_at ?? bead.updated_at) || 0;
 
-/** The newest `DONE_LIMIT` closed non-epic beads. */
-function placeDone(closed: readonly Bead[]): Placed[] {
+/** The newest `DONE_LIMIT` non-epic beads closed since `since`. */
+function placeDone(closed: readonly Bead[], since: number): Placed[] {
 	return closed
-		.filter((bead) => !isEpic(bead) && !isHumanAsk(bead))
+		.filter((bead) => !isEpic(bead) && !isHumanAsk(bead) && closedTime(bead) >= since)
 		.sort((a, b) => closedTime(b) - closedTime(a))
 		.slice(0, DONE_LIMIT)
 		.map((bead) => ({ bead, lane: "done", waitingOn: [] }));
@@ -136,6 +138,9 @@ function toCard({ bead, lane, waitingOn }: Placed, epics: ReadonlyMap<string, st
 		description: bead.description ?? "",
 		acceptance: bead.acceptance_criteria ?? "",
 		updatedAt: bead.updated_at,
+		// Priced by the service, which knows the agents' spend (see spend.ts).
+		spend: null,
+		epicSpend: null,
 	};
 }
 
@@ -148,10 +153,13 @@ function compareCards(a: WorkCard, b: WorkCard): number {
 	);
 }
 
-/** The board's cards from bd's lists: grouped by lane, then by priority, then most recently updated. */
-export function buildCards(lists: BdLists): WorkCard[] {
+/**
+ * The board's cards from bd's lists: grouped by lane, then by priority, then
+ * most recently updated. Done shows beads closed since `doneSince`.
+ */
+export function buildCards(lists: BdLists, doneSince: number): WorkCard[] {
 	const epics = epicTitles(lists);
-	return [...placeOpen(lists), ...placeDone(lists.closed)]
+	return [...placeOpen(lists), ...placeDone(lists.closed, doneSince)]
 		.map((placed) => toCard(placed, epics))
 		.sort(compareCards);
 }
