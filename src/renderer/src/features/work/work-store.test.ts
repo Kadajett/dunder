@@ -1,14 +1,17 @@
 import type { WorkBoard, WorkBoardApi, WorkCard, WorkResult } from "@shared/work-board";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { connectWork } from "./work-connect";
 import {
 	ADD_ERROR,
-	connectWork,
+	assignCard,
 	createCard,
 	moveCard,
 	setCardPriority,
 	shownCards,
+	undoLast,
 	useWork,
 } from "./work-store";
+import { useWorkUndo } from "./work-undo";
 
 function card(id: string, lane: WorkCard["lane"]): WorkCard {
 	return {
@@ -56,6 +59,8 @@ interface FakeApi {
 	readonly api: WorkBoardApi;
 	/** Every write call in order, each settled by the test. */
 	readonly writes: Deferred<WorkResult>[];
+	/** Each write's arguments, in order. */
+	readonly calls: unknown[][];
 	readonly read: Deferred<WorkBoard>;
 	push(board: WorkBoard): void;
 }
@@ -63,7 +68,9 @@ interface FakeApi {
 function fakeApi(): FakeApi {
 	let listener: (board: WorkBoard) => void = () => undefined;
 	const writes: Deferred<WorkResult>[] = [];
-	const write = () => {
+	const calls: unknown[][] = [];
+	const write = (...args: unknown[]) => {
+		calls.push(args);
 		const pending = deferred<WorkResult>();
 		writes.push(pending);
 		return pending.promise;
@@ -82,7 +89,7 @@ function fakeApi(): FakeApi {
 		respond: write,
 		dismiss: write,
 	};
-	return { api, writes, read, push: (next) => listener(next) };
+	return { api, writes, calls, read, push: (next) => listener(next) };
 }
 
 /** What the bar shows, as `id:lane` in order. */
@@ -98,6 +105,7 @@ beforeEach(() => {
 	fake = fakeApi();
 	vi.stubGlobal("window", { office: { work: fake.api } });
 	useWork.setState({ board: null, edits: [], creating: [], errors: {} });
+	useWorkUndo.setState({ toast: null });
 	disconnect = connectWork();
 });
 
@@ -200,5 +208,42 @@ describe("work store", () => {
 		useWork.getState().reveal("o-1");
 		expect(useWork.getState()).toMatchObject({ agentFilter: null, expanded: "o-1" });
 		expect(useWork.getState().collapsed.done).toBe(false);
+	});
+});
+
+describe("undo", () => {
+	it("offers Undo once bd has a move to Done, and moves the card back to Review through bd", async () => {
+		fake.push(board(1, card("o-1", "review")));
+		const moving = moveCard("o-1", "done");
+		expect(useWorkUndo.getState().toast).toBeNull();
+		fake.push(board(2, card("o-1", "done")));
+		fake.writes[0]?.resolve({ ok: true, revision: 2 });
+		await moving;
+		expect(useWorkUndo.getState().toast).toMatchObject({
+			state: "offered",
+			label: "Moved 1 to Done",
+		});
+		const undoing = undoLast();
+		expect(fake.calls[1]).toEqual(["o-1", "review"]);
+		expect(useWorkUndo.getState().toast).toMatchObject({ state: "undoing" });
+		fake.push(board(3, card("o-1", "review")));
+		fake.writes[1]?.resolve({ ok: true, revision: 3 });
+		await undoing;
+		expect(useWorkUndo.getState().toast).toBeNull();
+		expect(shown()).toEqual(["o-1:review"]);
+	});
+
+	it("says a failed undo failed, in the toast and on the card", async () => {
+		fake.push(board(1, card("o-1", "ready")));
+		const assigning = assignCard("o-1", "theo");
+		fake.push(board(2, { ...card("o-1", "ready"), assignee: "theo" }));
+		fake.writes[0]?.resolve({ ok: true, revision: 2 });
+		await assigning;
+		const undoing = undoLast();
+		expect(fake.calls[1]).toEqual(["o-1", null]);
+		fake.writes[1]?.resolve({ ok: false, reason: "bd locked" });
+		await undoing;
+		expect(useWorkUndo.getState().toast).toMatchObject({ state: "failed", reason: "bd locked" });
+		expect(useWork.getState().errors["o-1"]).toBe("Couldn't assign it: bd locked");
 	});
 });

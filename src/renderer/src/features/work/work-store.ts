@@ -10,6 +10,7 @@ import type {
 import { useMemo } from "react";
 import { create } from "zustand";
 import { applyEdit, editChanges, type WorkEdit } from "./work-model";
+import { dropToast, editLabel, showToast, undoOf, useWorkUndo, type WorkUndo } from "./work-undo";
 
 const log = createLogger("work");
 
@@ -126,7 +127,7 @@ export function useWorkCards(): readonly WorkCard[] | undefined {
 	return useMemo(() => shownCards(board, edits), [board, edits]);
 }
 
-function workApi(): WorkBoardApi | null {
+export function workApi(): WorkBoardApi | null {
 	return "work" in window.office ? window.office.work : null;
 }
 
@@ -165,11 +166,15 @@ const failure: Readonly<Record<WorkEdit["kind"], string>> = {
 	assign: "Couldn't assign it",
 };
 
-async function runEdit(edit: WorkEdit, write: (api: WorkBoardApi) => Promise<WorkResult>) {
+/** Run Jeremy's edit; the card as it was before, with bd's result (null when nothing ran). */
+async function runEdit(
+	edit: WorkEdit,
+	write: (api: WorkBoardApi) => Promise<WorkResult>,
+): Promise<{ readonly before: WorkCard; readonly result: WorkResult } | null> {
 	const api = workApi();
 	const { board, edits } = useWork.getState();
 	const card = shownCards(board, edits)?.find((candidate) => candidate.id === edit.id);
-	if (!api || !card || !editChanges(card, edit)) return;
+	if (!api || !card || !editChanges(card, edit)) return null;
 	seq += 1;
 	const mine = seq;
 	useWork.setState((state) => ({
@@ -185,22 +190,75 @@ async function runEdit(edit: WorkEdit, write: (api: WorkBoardApi) => Promise<Wor
 			? state.errors
 			: { ...state.errors, [edit.id]: `${failure[edit.kind]}: ${result.reason}` },
 	}));
+	return { before: card, result };
+}
+
+/** An edit Jeremy made from the bar: once bd has it, the toast offers to undo it. */
+async function editWithUndo(edit: WorkEdit, write: (api: WorkBoardApi) => Promise<WorkResult>) {
+	const done = await runEdit(edit, write);
+	if (!done?.result.ok) return;
+	showToast({
+		state: "offered",
+		label: editLabel(done.before, edit),
+		undo: undoOf(done.before, edit),
+	});
 }
 
 const now = (): string => new Date().toISOString();
 
+const moveEdit = (id: string, lane: WorkLane): WorkEdit => ({ kind: "move", id, lane, at: now() });
+const priorityEdit = (id: string, priority: WorkPriority): WorkEdit => ({
+	kind: "priority",
+	id,
+	priority,
+	at: now(),
+});
+const assignEdit = (id: string, assignee: string | null): WorkEdit => ({
+	kind: "assign",
+	id,
+	assignee,
+	at: now(),
+});
+
 export function moveCard(id: string, lane: WorkLane): Promise<void> {
-	return runEdit({ kind: "move", id, lane, at: now() }, (api) => api.move(id, lane));
+	return editWithUndo(moveEdit(id, lane), (api) => api.move(id, lane));
 }
 
 export function setCardPriority(id: string, priority: WorkPriority): Promise<void> {
-	return runEdit({ kind: "priority", id, priority, at: now() }, (api) =>
-		api.setPriority(id, priority),
-	);
+	return editWithUndo(priorityEdit(id, priority), (api) => api.setPriority(id, priority));
 }
 
 export function assignCard(id: string, assignee: string | null): Promise<void> {
-	return runEdit({ kind: "assign", id, assignee, at: now() }, (api) => api.assign(id, assignee));
+	return editWithUndo(assignEdit(id, assignee), (api) => api.assign(id, assignee));
+}
+
+function runUndo(undo: WorkUndo) {
+	switch (undo.kind) {
+		case "move":
+			return runEdit(moveEdit(undo.id, undo.lane), (api) => api.move(undo.id, undo.lane));
+		case "priority":
+			return runEdit(priorityEdit(undo.id, undo.priority), (api) =>
+				api.setPriority(undo.id, undo.priority),
+			);
+		case "assign":
+			return runEdit(assignEdit(undo.id, undo.assignee), (api) =>
+				api.assign(undo.id, undo.assignee),
+			);
+	}
+}
+
+/** The toast's Undo: the inverse through bd; the toast goes only once bd confirms, or says why it failed. */
+export async function undoLast(): Promise<void> {
+	const toast = useWorkUndo.getState().toast;
+	if (toast?.state !== "offered") return;
+	useWorkUndo.setState({ toast: { ...toast, state: "undoing" } });
+	const done = await runUndo(toast.undo);
+	if (!done || done.result.ok) {
+		dropToast(toast.seq);
+		return;
+	}
+	if (useWorkUndo.getState().toast?.seq !== toast.seq) return;
+	showToast({ state: "failed", label: toast.label, reason: done.result.reason });
 }
 
 /** Create a P2 open task; its title shows at the top of Ready until the board has the real card. */
@@ -221,34 +279,6 @@ export async function createCard(title: string): Promise<void> {
 			? state.errors
 			: { ...state.errors, [ADD_ERROR]: `Couldn't add “${title}”: ${result.reason}` },
 	}));
-}
-
-/** Follow main's board (once per window); returns the cleanup. */
-export function connectWork(): () => void {
-	const api = workApi();
-	const { receive } = useWork.getState();
-	if (!api) {
-		receive({ state: "unavailable", reason: "This build has no work board." });
-		return () => undefined;
-	}
-	// A push that beats the first read is fresher; the read must not overwrite it.
-	let pushed = false;
-	let live = true;
-	const off = api.onChanged((board) => {
-		pushed = true;
-		receive(board);
-	});
-	api.get().then(
-		(board) => {
-			if (live && !pushed) receive(board);
-		},
-		(error: unknown) => {
-			log.warn("work board read failed", error instanceof Error ? error : { error: String(error) });
-			if (live && !pushed) receive({ state: "unavailable", reason: "Couldn't read the board." });
-		},
-	);
-	return () => {
-		live = false;
-		off();
-	};
+	// bd can't delete, so there is no Undo: the toast says how to take it back.
+	if (result.ok) showToast({ state: "added", label: `Added “${title}”` });
 }
