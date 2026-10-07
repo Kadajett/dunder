@@ -1,0 +1,18 @@
+/* A harness's login check: under the hire dialog's harness choice, and on Team cards when it fails. */
+.harness-status {
+	margin: 2px 0 0;
+	font: 500 11px / 1.35 var(--font-ui);
+	color: var(--ink-soft);
+}
+
+.harness-status[data-tone="ok"] {
+	color: #2f7d55;
+}
+
+.harness-status[data-tone="warn"] {
+	color: #9a6b12;
+}
+
+.harness-status[data-tone="error"] {
+	color: var(--status-blocked);
+}

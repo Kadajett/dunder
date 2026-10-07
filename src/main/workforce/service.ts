@@ -8,6 +8,7 @@ import { CHIEF_NAME, CHIEF_ROLE, CHIEF_WORKSPACE } from "@shared/chief";
 import type { Roster } from "@shared/company/roster";
 import { officeArgs, runHerdr } from "../herdr/cli";
 import type { ModelCatalog } from "../models/catalog";
+import { checkHarness } from "./harness-check";
 import { ARCHETYPE_ROLES, fileSeedSource } from "./seed";
 import { Staffing } from "./staffing";
 import { WorkforceSupervisor } from "./supervisor";
@@ -64,6 +65,8 @@ export function createStaffing(supervisor: WorkforceSupervisor, catalog: ModelCa
 		supervisor,
 		cli: (args, timeoutMs) => runHerdr(officeArgs(args), timeoutMs),
 		catalog: () => catalog.list(),
+		checkHarness: (harness) =>
+			checkHarness(harness, { ompModels: async () => (await catalog.list()).length }),
 		isDirectory: (path) =>
 			stat(path).then(
 				(info) => info.isDirectory(),

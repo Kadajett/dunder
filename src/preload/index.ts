@@ -104,6 +104,7 @@ const api: OfficeApi = {
 	},
 	workforce: {
 		defaults: () => ipcRenderer.invoke(IPC.workforceDefaults),
+		checkHarness: (harness) => ipcRenderer.invoke(IPC.workforceCheckHarness, harness),
 		hire: (request) => ipcRenderer.invoke(IPC.workforceHire, request),
 		fire: (name) => ipcRenderer.invoke(IPC.workforceFire, name),
 		restart: (name) => ipcRenderer.invoke(IPC.workforceRestart, name),

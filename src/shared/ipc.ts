@@ -91,6 +91,7 @@ export const IPC = {
 	workforceHire: "workforce:hire",
 	workforceFire: "workforce:fire",
 	workforceRestart: "workforce:restart",
+	workforceCheckHarness: "workforce:check-harness",
 	/** main → renderer: an `office-staff` request was handled (Activity Feed). */
 	staffOutcome: "staff:outcome",
 	/** Stable-mode updates: status (invoke), changes (main → renderer), apply and cancel (invoke). */

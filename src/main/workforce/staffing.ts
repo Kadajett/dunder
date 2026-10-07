@@ -1,4 +1,6 @@
-import { checkHire, type WorkforceResult } from "@shared/company/workforce";
+import type { Harness } from "@shared/company/roster";
+import { checkHire, type HarnessCheck, type WorkforceResult } from "@shared/company/workforce";
+import { createLogger } from "@shared/log/logger";
 import type { ModelOption } from "@shared/models";
 import { EXIT_COMMAND } from "./harness";
 import { type LiveAgentInfo, liveAgents, type OfficeCli } from "./spawner";
@@ -10,10 +12,14 @@ const BUSY_WAIT_MS = 120_000;
 const EXIT_WAIT_MS = 15_000;
 const EXIT_POLL_MS = 500;
 
+const log = createLogger("workforce");
+
 export interface StaffingDeps {
 	readonly supervisor: Pick<WorkforceSupervisor, "roster" | "hire" | "fire" | "respawnSoon">;
 	readonly cli: OfficeCli;
 	readonly catalog: () => Promise<readonly ModelOption[]>;
+	/** Whether a worker on this harness could answer (CLI there and logged in). */
+	readonly checkHarness: (harness: Harness) => Promise<HarnessCheck>;
 	readonly isDirectory: (path: string) => Promise<boolean>;
 	readonly sleep: (ms: number) => Promise<void>;
 }
@@ -54,13 +60,31 @@ export class Staffing {
 			if (hire.harness === "omp" && hire.model !== undefined && !catalog) {
 				return { ok: false, error: "model: omp's model catalog is unavailable right now" };
 			}
-			if (!(await this.#deps.isDirectory(hire.cwd))) {
-				return { ok: false, error: `cwd: ${hire.cwd} is not a directory` };
-			}
+			const problem = await this.#preflight(hire.cwd, hire.harness);
+			if (problem) return { ok: false, error: problem };
 			const { model, ...rest } = hire;
 			await this.#deps.supervisor.hire(model === undefined ? rest : { ...rest, model });
 			return { ok: true };
 		});
+	}
+
+	/**
+	 * Why the new worker couldn't start and answer, or null: its directory
+	 * exists, and its harness is installed and logged in. The dev1/dev2 lesson:
+	 * never put a worker on the roster that will sit blocked on a login.
+	 */
+	async #preflight(cwd: string, harness: Harness): Promise<string | null> {
+		if (!(await this.#deps.isDirectory(cwd))) return `cwd: ${cwd} is not a directory`;
+		const ready = await this.#deps.checkHarness(harness);
+		if (ready.state === "not-ready") return `harness: ${ready.reason}`;
+		if (ready.state === "unknown")
+			log.warn("hiring without a harness check", { harness, reason: ready.reason });
+		return null;
+	}
+
+	/** Whether a worker on `harness` could answer now: what the hire dialog shows before hiring. */
+	checkHarness(harness: Harness): Promise<HarnessCheck> {
+		return this.#deps.checkHarness(harness);
 	}
 
 	fire(name: string): Promise<WorkforceResult> {

@@ -1,16 +1,19 @@
 import { HARNESSES } from "@shared/company/roster";
-import { ROLE_PRESETS } from "@shared/company/workforce";
+import { type HarnessCheck, ROLE_PRESETS } from "@shared/company/workforce";
+import { HarnessStatus } from "./HarnessStatus";
 import { ModelField } from "./ModelField";
 import type { HireDraft } from "./use-hire-form";
 
 interface HireFieldsProps {
 	readonly draft: HireDraft;
 	readonly rooms: readonly string[];
+	/** Main's check that the chosen harness could answer (null: not checked). */
+	readonly harnessCheck: HarnessCheck | "checking" | null;
 	update(patch: Partial<HireDraft>): void;
 }
 
-/** Name, role, harness, model, room and project directory of the new hire. */
-export function HireFields({ draft, rooms, update }: HireFieldsProps) {
+/** Name, role, harness (with its login check), model, room and project directory of the new hire. */
+export function HireFields({ draft, rooms, harnessCheck, update }: HireFieldsProps) {
 	return (
 		<div className="hire-fields">
 			<label className="hire-field">
@@ -53,6 +56,7 @@ export function HireFields({ draft, rooms, update }: HireFieldsProps) {
 						</button>
 					))}
 				</div>
+				<HarnessStatus harness={draft.harness} check={harnessCheck} />
 			</div>
 			<div className="hire-field">
 				<span>Model</span>

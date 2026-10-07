@@ -6,6 +6,7 @@ import { type AgentModel, shortModelName } from "@shared/models";
 import { useMemo } from "react";
 import { formatClock } from "../../feed/feed-model";
 import { useFeed } from "../../feed/feed-store";
+import { HarnessWarning } from "../../hire/HarnessStatus";
 import { useHire } from "../../hire/hire-store";
 import { useRosterStore } from "../../hire/roster-store";
 import type { LiveAgent } from "../../office/model/live-agents";
@@ -87,6 +88,7 @@ function TeamCard(props: {
 				<span className="hud-card-meta">{STATUS_LABEL[agent.status]}</span>
 			</div>
 			{hired?.role ? <p className="hud-card-line">{hired.role}</p> : null}
+			<HarnessWarning kind={hired?.harness ?? agent.kind} />
 			<div className="hud-team-rows">
 				<Row label="now" value={latest && `${formatClock(latest.at)} ${latest.action}`} />
 				<Row label="pool" value={pool} />
