@@ -29,7 +29,7 @@ export function useTvTexture(
 			texture.needsUpdate = true;
 			invalidate();
 		};
-		return { pen: new Pen(ctx), painted };
+		return { pen: new Pen(ctx), painted, wall: true };
 	}, [screen, invalidate]);
 
 	useEffect(() => {

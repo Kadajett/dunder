@@ -73,7 +73,7 @@ function useCanvasSurface(canvas: HTMLCanvasElement | null, cssWidth: number): P
 		Object.assign(ctx.canvas, size);
 		// Painters draw in 1280×720 units; resizing the canvas reset the transform.
 		ctx.setTransform(scale, 0, 0, scale, 0, 0);
-		return { pen: new Pen(ctx), painted: () => {} };
+		return { pen: new Pen(ctx), painted: () => {}, wall: false };
 	}, [canvas, scale]);
 }
 

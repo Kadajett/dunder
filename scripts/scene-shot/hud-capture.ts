@@ -23,6 +23,7 @@ const STATES = [
 	"10-hire",
 	"11-everything",
 	"12-update-batched",
+	"13-tv-shipping",
 ];
 const OUT_DIR = "docs/screenshots/hud";
 const WIDTH = 1600;

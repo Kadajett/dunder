@@ -308,7 +308,18 @@ const asks: HumanAsk[] = [
 	},
 ];
 
-const board: WorkBoard = { state: "ok", revision: 7, cards, asks };
+/** The SHIPPING channel's figures (office-ya8 checks they read from the default camera). */
+const shipping = {
+	today: 7,
+	yesterday: 5,
+	leadMs: 2 * 60 * MIN + 10 * MIN,
+	reviewMs: 35 * MIN,
+	usd: 3.4,
+	ready: 4,
+	inReview: 2,
+};
+
+const board: WorkBoard = { state: "ok", revision: 7, cards, asks, shipping };
 
 // ---- notices -------------------------------------------------------------------------------
 

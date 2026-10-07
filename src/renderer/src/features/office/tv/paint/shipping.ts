@@ -82,3 +82,77 @@ export function paintShipping(pen: Pen, stats: ShippingStats | null): void {
 	paintToday(pen, stats);
 	paintMedians(pen, stats);
 }
+
+/** How long each wall page shows; the wall cycles through all of them. */
+export const WALL_PAGE_MS = 5_000;
+
+/** One wall page: a figure big enough to read across the room, and a short label under it. */
+export interface WallPage {
+	readonly value: string;
+	readonly label: string;
+	/** Next to the figure (today's page: yesterday's count). */
+	readonly aside?: { readonly text: string; readonly color: string };
+}
+
+/** ' ▲' when today beats yesterday, ' ▼' when it trails, '' when level. */
+function trendArrow(stats: ShippingStats): string {
+	if (stats.today > stats.yesterday) return " ▲";
+	if (stats.today < stats.yesterday) return " ▼";
+	return "";
+}
+
+/**
+ * What the wall TV cycles through: from the default camera the screen is
+ * ~75 px wide, so it shows one figure at a time in type a label can't be
+ * smaller than. Fullscreen keeps the full layout.
+ */
+export function wallPages(stats: ShippingStats): readonly WallPage[] {
+	const aside = {
+		text: `yest. ${stats.yesterday}${trendArrow(stats)}`,
+		color: versus(stats).color,
+	};
+	return [
+		{ value: String(stats.today), label: "shipped today", aside },
+		{ value: formatSpan(stats.leadMs), label: "start → close" },
+		{ value: formatSpan(stats.reviewMs), label: "in review" },
+		{ value: formatUsd(stats.usd), label: "AI per bead" },
+		{ value: `${stats.ready} · ${stats.inReview}`, label: "ready · review" },
+	];
+}
+
+/** Which wall page shows at `now`. */
+export function wallPageAt(now: number, pages: number): number {
+	return Math.floor(now / WALL_PAGE_MS) % pages;
+}
+
+/** SHIPPING on the wall: today's figures one at a time, large, with dots for where it is in the cycle. */
+export function paintShippingWall(pen: Pen, stats: ShippingStats | null, now: number): void {
+	if (!stats) {
+		paintShipping(pen, stats);
+		return;
+	}
+	const pages = wallPages(stats);
+	const at = wallPageAt(now, pages.length);
+	const page = pages[at] ?? pages[0];
+	if (!page) return;
+	// From the default camera the screen renders at ~1/17 scale: 270 px reads as ~16 px, 140 px as ~8 px.
+	const valueFont = font(800, 270, "ui");
+	pen.text(page.value, [MARGIN, BODY_TOP + 290], { font: valueFont, color: INK.cream });
+	if (page.aside) {
+		const right = MARGIN + pen.textWidth(page.value, valueFont) + 48;
+		pen.text(page.aside.text, [right, BODY_TOP + 290], {
+			font: font(800, 140, "ui"),
+			color: page.aside.color,
+			maxWidth: SCREEN_W - MARGIN - right,
+		});
+	}
+	pen.text(page.label, [MARGIN, BODY_TOP + 480], {
+		font: font(700, 140, "ui"),
+		color: INK.dim,
+		maxWidth: SCREEN_W - 2 * MARGIN,
+	});
+	pages.forEach((_, index) => {
+		const color = index === at ? INK.cream : INK.faint;
+		pen.dot([SCREEN_W - MARGIN - (pages.length - 1 - index) * 44, SCREEN_H - 40], 12, color);
+	});
+}

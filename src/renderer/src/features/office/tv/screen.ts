@@ -6,7 +6,7 @@ import { ACTIVITY_ROWS, paintActivity } from "./paint/activity";
 import { paintClock } from "./paint/clock";
 import { type Pen, paintBadge, paintChrome } from "./paint/kit";
 import { paintPulse } from "./paint/pulse";
-import { paintShipping } from "./paint/shipping";
+import { paintShipping, paintShippingWall, WALL_PAGE_MS } from "./paint/shipping";
 import { paintStandby, STANDBY_FRAME_MS } from "./paint/standby";
 import { paintWeather } from "./paint/weather";
 import type { OfficePulse } from "./pulse";
@@ -26,13 +26,15 @@ export interface TvFrame {
 	readonly inputs: TvInputs;
 	readonly now: number;
 	readonly showBadge: boolean;
+	/** The wall set (seen small, across the room) rather than the fullscreen overlay. */
+	readonly wall: boolean;
 }
 
 /**
  * Identity of what a frame would look like: the TV repaints only when this
  * changes. Every channel shows HH:MM, so the minute is always part of it.
  */
-export function frameKey({ channel, inputs, now, showBadge }: TvFrame): string {
+export function frameKey({ channel, inputs, now, showBadge, wall }: TvFrame): string {
 	const minute = Math.floor(now / 60_000);
 	const head = `${channel}|${showBadge}|${minute}`;
 	switch (channel) {
@@ -50,8 +52,11 @@ export function frameKey({ channel, inputs, now, showBadge }: TvFrame): string {
 				.join(",")}`;
 		case "clock":
 			return `${head}|${Math.floor(now / 1_000)}`;
-		case "shipping":
-			return `${head}|${JSON.stringify(inputs.shipping)}`;
+		case "shipping": {
+			// On the wall the figures take turns, so the page is part of the picture.
+			const page = wall ? Math.floor(now / WALL_PAGE_MS) : 0;
+			return `${head}|${page}|${JSON.stringify(inputs.shipping)}`;
+		}
 		case "standby":
 			return `${head}|${Math.floor(now / STANDBY_FRAME_MS)}`;
 	}
@@ -66,7 +71,7 @@ const TITLES: Record<Exclude<ChannelId, "standby">, { title: string; accent: str
 };
 
 /** Paint one full frame of `channel` onto the TV canvas. */
-export function paintFrame(pen: Pen, { channel, inputs, now, showBadge }: TvFrame): void {
+export function paintFrame(pen: Pen, { channel, inputs, now, showBadge, wall }: TvFrame): void {
 	if (channel === "standby") paintStandby(pen, now);
 	else {
 		const { title, accent } = TITLES[channel];
@@ -74,8 +79,19 @@ export function paintFrame(pen: Pen, { channel, inputs, now, showBadge }: TvFram
 		if (channel === "pulse") paintPulse(pen, inputs.pulse);
 		else if (channel === "weather") paintWeather(pen, inputs.weather, now);
 		else if (channel === "activity") paintActivity(pen, inputs.activity);
-		else if (channel === "shipping") paintShipping(pen, inputs.shipping);
+		else if (channel === "shipping") paintShippingChannel(pen, inputs.shipping, now, wall);
 		else paintClock(pen, now);
 	}
 	if (showBadge) paintBadge(pen, channelBadge(channel));
+}
+
+/** SHIPPING: the figures one at a time on the wall (read across the room), all of them in fullscreen. */
+function paintShippingChannel(
+	pen: Pen,
+	stats: ShippingStats | null,
+	now: number,
+	wall: boolean,
+): void {
+	if (wall) paintShippingWall(pen, stats, now);
+	else paintShipping(pen, stats);
 }

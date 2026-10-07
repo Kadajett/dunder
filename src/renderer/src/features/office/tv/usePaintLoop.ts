@@ -37,6 +37,8 @@ export interface PaintSurface {
 	readonly pen: Pen;
 	/** Called after each repaint (e.g. flag a texture for upload). */
 	readonly painted: () => void;
+	/** The wall set (seen small, across the room) rather than the fullscreen overlay. */
+	readonly wall: boolean;
 }
 
 /**
@@ -56,7 +58,13 @@ export function usePaintLoop(
 		if (!surface) return;
 		const tick = (): void => {
 			const now = Date.now();
-			const frame = { channel, inputs, now, showBadge: badgeVisible(switchedAt, now) };
+			const frame = {
+				channel,
+				inputs,
+				now,
+				showBadge: badgeVisible(switchedAt, now),
+				wall: surface.wall,
+			};
 			const key = `${fontsReady}|${frameKey(frame)}`;
 			if (last.current.surface === surface && last.current.key === key) return;
 			last.current = { surface, key };
