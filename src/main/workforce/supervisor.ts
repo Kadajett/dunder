@@ -235,8 +235,8 @@ export class WorkforceSupervisor {
 		this.#missingSince = trackMissing(this.#missingSince, roster, snapshot, now);
 	}
 
-	/** Fresh each spawn, so protocol and role edits reach the next start. Returns the text. */
-	async #writePrompt(plan: SpawnPlan): Promise<string> {
+	/** Fresh each spawn, so protocol and role edits reach the next start. */
+	async #writePrompt(plan: SpawnPlan): Promise<void> {
 		const protocol = await readFile(this.#deps.spawn.protocolPath, "utf8");
 		const briefPath = this.#deps.spawn.rolePrompts?.[plan.agent.role];
 		const roleBrief = briefPath === undefined ? undefined : await readFile(briefPath, "utf8");
@@ -249,7 +249,6 @@ export class WorkforceSupervisor {
 		const prompt = agentPrompt(protocol, plan.agent, brief);
 		await mkdir(dirname(plan.promptPath), { recursive: true });
 		await writeFile(plan.promptPath, prompt, "utf8");
-		return prompt;
 	}
 
 	async #spawn(plan: SpawnPlan): Promise<void> {
@@ -257,9 +256,9 @@ export class WorkforceSupervisor {
 		try {
 			// The snapshot may lag; never start a second copy of a live worker.
 			if ((await liveAgentNames(this.#deps.cli)).has(name)) return;
-			const prompt = await this.#writePrompt(plan);
+			await this.#writePrompt(plan);
 			const { promptPath, resume } = plan;
-			const args = harnessArgs({ agent: plan.agent, promptPath, prompt, resume });
+			const args = harnessArgs({ agent: plan.agent, promptPath, resume });
 			log.info("starting agent", { agent: name, harness, resume });
 			await executeSpawn(this.#deps.cli, plan, args, {
 				env: this.#deps.spawn.paneEnv,

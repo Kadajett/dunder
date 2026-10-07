@@ -1,7 +1,7 @@
 import { avatarStyleFor } from "@shared/avatar/style";
 import type { Harness, RosterAgent } from "@shared/company/roster";
 import { describe, expect, it } from "vitest";
-import { harnessArgs, resumeRef } from "./harness";
+import { codexInstructions, harnessArgs, resumeRef } from "./harness";
 
 const ID = "01a1124a-4710-7466-8205-712b37cf9d8d";
 
@@ -20,13 +20,13 @@ function worker(harness: Harness, extra: Partial<RosterAgent> = {}): RosterAgent
 }
 
 const launch = (agent: RosterAgent, resume?: string) =>
-	harnessArgs({ agent, promptPath: "/p/kim.md", prompt: 'line "one"\nline two', resume });
+	harnessArgs({ agent, promptPath: "/home/j/.config/herdr office/agent-prompts/kim.md", resume });
 
 describe("harnessArgs", () => {
 	it("runs omp in yolo mode with the prompt file, model and session", () => {
 		expect(launch(worker("omp", { model: "anthropic/x:high" }), "/s/kim.jsonl")).toEqual([
 			"--approval-mode=yolo",
-			"--append-system-prompt=/p/kim.md",
+			"--append-system-prompt=/home/j/.config/herdr office/agent-prompts/kim.md",
 			"--model=anthropic/x:high",
 			"--resume=/s/kim.jsonl",
 		]);
@@ -36,7 +36,7 @@ describe("harnessArgs", () => {
 		expect(launch(worker("claude"))).toEqual([
 			"--dangerously-skip-permissions",
 			"--append-system-prompt-file",
-			"/p/kim.md",
+			"/home/j/.config/herdr office/agent-prompts/kim.md",
 		]);
 		expect(launch(worker("claude", { model: "opus" }), ID).slice(3)).toEqual([
 			"--model",
@@ -46,16 +46,28 @@ describe("harnessArgs", () => {
 		]);
 	});
 
-	it("runs codex unsandboxed with the prompt as one-line developer instructions", () => {
+	it("runs codex unsandboxed, its developer instructions pointing at the prompt file", () => {
 		const args = launch(worker("codex", { model: "gpt-5" }));
 		expect(args).toEqual([
 			"--dangerously-bypass-approvals-and-sandbox",
 			"-c",
-			'developer_instructions="line \\"one\\"\\nline two"',
+			`developer_instructions=${JSON.stringify(codexInstructions("kim", "/home/j/.config/herdr office/agent-prompts/kim.md"))}`,
 			"--model",
 			"gpt-5",
 		]);
-		expect(args.some((arg) => arg.includes("\n"))).toBe(false);
+		expect(codexInstructions("kim", "/p/kim.md")).toContain("/p/kim.md");
+	});
+
+	it("keeps every harness's typed launch line one short line, whatever the prompt holds", () => {
+		// herdr types the command into a shell; a terminal cuts lines past 4095 bytes.
+		for (const harness of ["omp", "claude", "codex"] as const) {
+			const args = launch(worker(harness, { model: "openai/gpt-5:high" }), ID);
+			expect(args.join(" ").length, harness).toBeLessThan(1_000);
+			expect(
+				args.some((arg) => arg.includes("\n")),
+				harness,
+			).toBe(false);
+		}
 	});
 
 	it("resumes codex through its resume subcommand", () => {

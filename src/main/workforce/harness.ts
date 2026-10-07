@@ -7,8 +7,6 @@ export interface LaunchInput {
 	readonly agent: RosterAgent;
 	/** File holding the office protocol + "who you are" text. */
 	readonly promptPath: string;
-	/** The same text, for harnesses that take it inline. */
-	readonly prompt: string;
 	/** Session to resume (see `resumeRef`); undefined starts fresh. */
 	readonly resume: string | undefined;
 }
@@ -34,12 +32,28 @@ export function resumeRef(
 }
 
 /**
+ * Codex has no instructions-file flag that adds to its own (`model_instructions_file`
+ * replaces them), so its developer instructions say where the prompt file is.
+ * The prompt itself never goes on the command line: herdr types the command
+ * into the pane's shell, and a terminal line longer than 4095 bytes is cut,
+ * which left an unclosed quote ('Syntax error: end of file unexpected').
+ */
+export function codexInstructions(name: string, promptPath: string): string {
+	return [
+		`You are ${name}, an agent in the office.`,
+		`Your standing instructions, the office protocol and your role brief, are in the file ${promptPath}.`,
+		"Read that whole file with cat before doing anything else, follow it for this entire session,",
+		"and read it again after any context compaction.",
+	].join(" ");
+}
+
+/**
  * Native arguments after `herdr agent start <name> --kind <harness> --pane <id> --`.
  * Every worker runs without approval prompts and with the office protocol in
- * its instructions. herdr cannot type multi-line arguments into a shell, so
- * the prompt travels as a file (omp, claude) or a one-line TOML string (codex).
+ * its instructions. herdr types the command into a shell line, so the prompt
+ * always travels as a file path, never as text.
  */
-export function harnessArgs({ agent, promptPath, prompt, resume }: LaunchInput): string[] {
+export function harnessArgs({ agent, promptPath, resume }: LaunchInput): string[] {
 	const { model } = agent;
 	const builders: Record<Harness, () => string[]> = {
 		omp: () => [
@@ -60,7 +74,7 @@ export function harnessArgs({ agent, promptPath, prompt, resume }: LaunchInput):
 			"--dangerously-bypass-approvals-and-sandbox",
 			"-c",
 			// JSON string escapes are valid TOML basic-string escapes.
-			`developer_instructions=${JSON.stringify(prompt)}`,
+			`developer_instructions=${JSON.stringify(codexInstructions(agent.name, promptPath))}`,
 			...(model === undefined ? [] : ["--model", model]),
 		],
 	};
