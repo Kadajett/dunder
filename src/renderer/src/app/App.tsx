@@ -25,6 +25,7 @@ import { OfficeView } from "../features/office/OfficeView";
 import { TvFullscreen } from "../features/office/tv/TvFullscreen";
 import { connectPool } from "../features/pool/pool-store";
 import { TableView } from "../features/pool/TableView";
+import { WhatsNewCard } from "../features/whats-new/WhatsNewCard";
 import { WhiteboardOverlay } from "../features/whiteboard/WhiteboardOverlay";
 import { WorkBar } from "../features/work/WorkBar";
 import { connectWork } from "../features/work/work-store";
@@ -65,6 +66,7 @@ export function App() {
 				<ClassicView model={model} />
 			)}
 			<TopBar snapshot={snapshot} />
+			<WhatsNewCard />
 			<HudPanels model={model} snapshot={snapshot} />
 			{takeover ? null : <WorkBar />}
 			<ChiefOfStaffDock model={model} />

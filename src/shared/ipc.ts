@@ -16,6 +16,7 @@ import type { OfficeMessage } from "./switchboard";
 import type { TerminalCommand } from "./terminal";
 import type { WeatherFeed } from "./tv";
 import type { VoiceApi } from "./voice";
+import type { WhatsNewApi } from "./whats-new";
 import type { WhiteboardApi } from "./whiteboard";
 import type { WorkBoardApi } from "./work-board";
 
@@ -121,6 +122,10 @@ export const IPC = {
 	voiceAvailable: "voice:available",
 	voiceTranscribe: "voice:transcribe",
 	voiceSpeak: "voice:speak",
+	/** The card after an update: get, rate a bead, dismiss (invoke). */
+	whatsNewGet: "whats-new:get",
+	whatsNewRate: "whats-new:rate",
+	whatsNewDismiss: "whats-new:dismiss",
 } as const;
 
 export type BridgeStatus =
@@ -168,4 +173,5 @@ export interface OfficeApi {
 	readonly brainstorm: BrainstormApi;
 	readonly work: WorkBoardApi;
 	readonly voice: VoiceApi;
+	readonly whatsNew: WhatsNewApi;
 }

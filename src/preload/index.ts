@@ -152,6 +152,11 @@ const api: OfficeApi = {
 		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),
 		speak: (text) => ipcRenderer.invoke(IPC.voiceSpeak, text),
 	},
+	whatsNew: {
+		get: () => ipcRenderer.invoke(IPC.whatsNewGet),
+		rate: (request) => ipcRenderer.invoke(IPC.whatsNewRate, request),
+		dismiss: () => ipcRenderer.invoke(IPC.whatsNewDismiss),
+	},
 };
 
 contextBridge.exposeInMainWorld("office", api);

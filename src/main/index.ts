@@ -15,7 +15,6 @@ import { registerChiefIpc } from "./chief/ipc";
 import { createChief } from "./chief/service";
 import { registerCompaniesIpc } from "./companies/ipc";
 import { createCompanies } from "./companies/service";
-import { guardNavigation } from "./external-links";
 import { createHerdrApi, type HerdrApi } from "./herdr/api-client";
 import { OfficeBridge } from "./herdr/office-bridge";
 import { defaultSessionDeps, ensureOfficeServer } from "./herdr/session";
@@ -40,8 +39,10 @@ import { ScreensService } from "./terminal/screens-service";
 import { createVoice, registerVoiceIpc } from "./voice/ipc";
 import { fetchForecast } from "./weather/open-meteo";
 import { createWeatherService } from "./weather/weather-service";
+import { createWhatsNew, registerWhatsNewIpc } from "./whats-new/ipc";
 import { createWhiteboard } from "./whiteboard/create";
 import { registerWhiteboardIpc } from "./whiteboard/ipc";
+import { createMainWindow } from "./window";
 import { createWorkBoard } from "./work-board/create";
 import { registerWorkBoardIpc } from "./work-board/ipc";
 import { registerWorkforceIpc } from "./workforce/ipc";
@@ -206,32 +207,11 @@ async function startBridge(): Promise<void> {
 }
 
 function createWindow(): void {
-	const window = new BrowserWindow({
-		width: 1600,
-		height: 1000,
-		minWidth: 960,
-		minHeight: 640,
-		title: "Dunder",
-		backgroundColor: "#efe6d6",
-		show: false,
-		webPreferences: {
-			preload: join(__dirname, "../preload/index.js"),
-			contextIsolation: true,
-			nodeIntegration: false,
-			sandbox: true,
-		},
-	});
-	window.once("ready-to-show", () => window.show());
-	guardNavigation(window.webContents);
-	clearPoolViewingWithPage(pool, window.webContents);
-	const devUrl = process.env["ELECTRON_RENDERER_URL"];
-	if (devUrl) void window.loadURL(devUrl);
-	else void window.loadFile(join(__dirname, "../renderer/index.html"));
+	createMainWindow((contents) => clearPoolViewingWithPage(pool, contents));
 }
 
-app.whenReady().then(() => {
-	// The default menu binds Ctrl+R, Ctrl+W and friends, which terminal programs need.
-	Menu.setApplicationMenu(null);
+/** Every `window.office` handler, registered once the app is ready. */
+function registerHandlers(): void {
 	registerIpc({
 		bridge: () => bridge,
 		status: () => status,
@@ -252,12 +232,19 @@ app.whenReady().then(() => {
 	registerBrainstormIpc(brainstorm.service);
 	registerWorkBoardIpc(workBoard);
 	registerVoiceIpc(createVoice());
+	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
 		roster: () => workforce.roster(),
 		seen: createSeenDoneStore(join(app.getPath("userData"), "inbox-seen.json")),
 	});
+}
+
+app.whenReady().then(() => {
+	// The default menu binds Ctrl+R, Ctrl+W and friends, which terminal programs need.
+	Menu.setApplicationMenu(null);
+	registerHandlers();
 	createWindow();
 	void startBridge();
 	weather.start();
