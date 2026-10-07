@@ -145,6 +145,9 @@ export const IPC = {
 	whatsNewGet: "whats-new:get",
 	whatsNewRate: "whats-new:rate",
 	whatsNewDismiss: "whats-new:dismiss",
+	/** Today's unrated 'Try these' and rating one at the day's end (invoke). */
+	whatsNewTries: "whats-new:tries",
+	whatsNewRateTry: "whats-new:rate-try",
 	/** Needs-you alerts: the mute (invoke), chime and open-the-inbox requests (main → renderer). */
 	alertsMuted: "alerts:muted",
 	alertsSetMuted: "alerts:set-muted",

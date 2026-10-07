@@ -3,10 +3,12 @@ import { BeadChip } from "../chief/BeadChip";
 import { formatClock } from "../feed/feed-model";
 import { AgentDot } from "../work/AgentDot";
 import { laneLabels } from "../work/work-model";
+import { TriesSection } from "./TriesSection";
 import { dismissWrap, useWrap, wrapDue } from "./wrap-store";
 import "../chief/chief-markdown.css";
 import "../whats-new/whats-new.css";
 import "./plan.css";
+import "./day-end.css";
 
 const laneText = (lane: WrapPlanned["lane"]): string =>
 	lane === null ? "not on the board" : lane === "done" ? "done ✓" : laneLabels[lane].toLowerCase();
@@ -77,6 +79,7 @@ export function DayEndCard() {
 					))}
 				</ol>
 			</div>
+			<TriesSection />
 			<footer className="plan__actions">
 				<button type="button" className="whats-new__done" onClick={dismissWrap}>
 					Got it

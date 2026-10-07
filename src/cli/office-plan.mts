@@ -175,6 +175,7 @@ function describeWrap(wrap: Record<string, unknown>): string {
 	const spend =
 		typeof wrap["spendUsd"] === "number" ? `~$${wrap["spendUsd"].toFixed(2)}` : "unknown";
 	const unplanned = lines(wrap["unplanned"]).map((bead) => String(bead["id"]));
+	const tries = isObject(wrap["tries"]) ? wrap["tries"] : null;
 	return [
 		`Day's end: ${String(input["summary"] ?? "")}`,
 		...lines(wrap["planned"]).map(
@@ -186,6 +187,11 @@ function describeWrap(wrap: Record<string, unknown>): string {
 		),
 		`Shipped outside the plan: ${unplanned.length > 0 ? unplanned.join(", ") : "nothing"}`,
 		`AI spend today: ${spend}`,
+		...(tries && Number(tries["offered"]) > 0
+			? [
+					`Try these today: ${String(tries["offered"])} offered, ${String(tries["rated"])} rated, ${String(tries["untried"])} not tried`,
+				]
+			: []),
 		"Tomorrow:",
 		...lines(input["tomorrow"]).map(
 			(item, index) =>

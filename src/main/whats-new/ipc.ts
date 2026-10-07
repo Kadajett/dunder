@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { COMMIT_MARK, pathsByBead } from "@shared/change-notes.mts";
 import { IPC } from "@shared/ipc";
-import { type WhatsNewResult, whatsNewRateSchema } from "@shared/whats-new";
+import { tryRateSchema, type WhatsNewResult, whatsNewRateSchema } from "@shared/whats-new";
 import { app, ipcMain } from "electron";
 import { commitLog, isAncestor, runGit } from "../app-update/git";
 import { builtCommit } from "../app-update/relaunch";
@@ -42,5 +42,11 @@ export function registerWhatsNewIpc(whatsNew: WhatsNewService): void {
 		const parsed = whatsNewRateSchema.safeParse(payload);
 		if (!parsed.success) return Promise.resolve({ ok: false, reason: "invalid rating" });
 		return whatsNew.rate(parsed.data.id, parsed.data.rating, parsed.data.text);
+	});
+	ipcMain.handle(IPC.whatsNewTries, () => whatsNew.tries());
+	ipcMain.handle(IPC.whatsNewRateTry, (_event, payload: unknown): Promise<WhatsNewResult> => {
+		const parsed = tryRateSchema.safeParse(payload);
+		if (!parsed.success) return Promise.resolve({ ok: false, reason: "invalid rating" });
+		return whatsNew.rateTry(parsed.data.id, parsed.data.rating);
 	});
 }

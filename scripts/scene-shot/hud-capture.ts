@@ -25,6 +25,7 @@ const STATES = [
 	"11-everything",
 	"12-update-batched",
 	"13-tv-shipping",
+	"14-day-end",
 ];
 const OUT_DIR = "docs/screenshots/hud";
 const WIDTH = 1600;

@@ -166,6 +166,8 @@ const appErrors = new AppErrorsService({
 const agentReplies = new AgentRepliesService();
 /** The day's cycle: Max's morning plan at 9:00, his wrap-up against it at 18:00. */
 const calls = createCallKeeper(app.getPath("userData"));
+/** What's new after an update, and the day's 'Try these' that Day's end asks about. */
+const whatsNew = createWhatsNew({ workBoard, chief });
 const plan = createPlan({
 	userData: app.getPath("userData"),
 	chief,
@@ -174,6 +176,7 @@ const plan = createPlan({
 	broadcast,
 	bridge: () => bridge,
 	cost: aiCost,
+	tries: whatsNew,
 });
 
 function broadcast(channel: string, payload: unknown): void {
@@ -251,7 +254,7 @@ function registerHandlers(): void {
 	registerAppErrorsIpc(appErrors);
 	registerAgentRepliesIpc(agentReplies, chiefName);
 	registerVoiceIpc(createVoice(), calls);
-	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
+	registerWhatsNewIpc(whatsNew);
 	registerAlertsIpc(alerts);
 	registerWorktreesIpc(createWorktrees(companies));
 	registerAwayIpc(createAway({ workBoard, aiCost }));

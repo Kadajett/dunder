@@ -2,6 +2,8 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 
+import { triedSchema } from "./tries";
+
 const stateSchema = z.object({
 	version: z.literal(1),
 	/** The last build whose card Jeremy dismissed (or the first build ever run). */
@@ -13,6 +15,8 @@ const stateSchema = z.object({
 			ratings: z.record(z.string(), z.enum(["up", "down"])),
 		})
 		.nullable(),
+	/** Each day's 'Try these' and how they landed (Day's end asks), last 14 days. */
+	tried: triedSchema.optional(),
 });
 export type WhatsNewState = z.infer<typeof stateSchema>;
 

@@ -11,6 +11,7 @@ import type { OfficeBridge } from "../herdr/office-bridge";
 import type { CostTracker } from "../office-stats/cost-tracker";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
 import type { CallKeeper } from "../voice/call-keeper";
+import type { WhatsNewService } from "../whats-new/service";
 import type { WorkBoardService } from "../work-board/service";
 import {
 	officePlanDigestPath,
@@ -31,6 +32,8 @@ export interface DayCycleOptions {
 	readonly workBoard: Pick<WorkBoardService, "get" | "closedSince">;
 	readonly cost: Pick<CostTracker, "current">;
 	readonly calls: Pick<CallKeeper, "live">;
+	/** Today's 'Try these' counts for the wrap-up (What's new). */
+	readonly tries: Pick<WhatsNewService, "tryCounts">;
 	/** Send to every window (plan and wrap-up changes). */
 	readonly broadcast: (channel: string, payload: unknown) => void;
 }
@@ -110,6 +113,7 @@ export function createPlan(options: DayCycleOptions): DayCycle {
 			const cost = options.cost.current();
 			return cost.state === "ok" ? cost.usd : null;
 		},
+		tryCounts: () => options.tries.tryCounts(),
 		emit: (today) => options.broadcast(IPC.wrapChanged, today),
 	});
 	let tail: MailboxTail | undefined;

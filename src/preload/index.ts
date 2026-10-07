@@ -196,6 +196,8 @@ const api: OfficeApi = {
 		get: () => ipcRenderer.invoke(IPC.whatsNewGet),
 		rate: (request) => ipcRenderer.invoke(IPC.whatsNewRate, request),
 		dismiss: () => ipcRenderer.invoke(IPC.whatsNewDismiss),
+		tries: () => ipcRenderer.invoke(IPC.whatsNewTries),
+		rateTry: (request) => ipcRenderer.invoke(IPC.whatsNewRateTry, request),
 	},
 	alerts: {
 		muted: () => ipcRenderer.invoke(IPC.alertsMuted),

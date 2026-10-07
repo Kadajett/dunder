@@ -1,4 +1,5 @@
 import { type DayPlan, planInEffect } from "@shared/plan";
+import type { TryCounts } from "@shared/whats-new";
 import type { WorkBoard } from "@shared/work-board";
 import type { DayWrap, WrapPlanned } from "@shared/wrap";
 
@@ -7,6 +8,8 @@ export interface DayFacts {
 	readonly planned: readonly WrapPlanned[];
 	readonly unplanned: readonly { readonly id: string; readonly title: string }[];
 	readonly spendUsd: number | null;
+	/** Today's 'Try these' and how Jeremy rated them; null when unknown. */
+	readonly tries: TryCounts | null;
 }
 
 /**
@@ -18,7 +21,7 @@ export function dayFacts(
 	plan: DayPlan | null,
 	board: WorkBoard,
 	closedToday: readonly { readonly id: string; readonly title: string }[],
-	spendUsd: number | null,
+	extras: { readonly spendUsd: number | null; readonly tries: TryCounts | null },
 ): DayFacts {
 	const items = plan ? planInEffect(plan).items : [];
 	const cards = board.state === "ok" ? board.cards : [];
@@ -31,7 +34,7 @@ export function dayFacts(
 	});
 	const plannedIds = new Set(items.map((item) => item.bead));
 	const unplanned = closedToday.filter((bead) => !plannedIds.has(bead.id));
-	return { planned, unplanned, spendUsd };
+	return { planned, unplanned, ...extras };
 }
 
 const laneWords: Readonly<Record<string, string>> = {
@@ -55,9 +58,15 @@ export function eveningPrompt(facts: DayFacts): string {
 	const spend = facts.spendUsd === null ? "" : ` AI spend today ~$${facts.spendUsd.toFixed(2)}.`;
 	return [
 		"[office] Evening wrap-up: close the day against this morning's plan with office-plan wrap.",
-		`${planned} ${unplanned}${spend}`,
+		`${planned} ${unplanned}${spend}${triesLine(facts.tries)}`,
 		"Write a one- or two-sentence summary, why each unfinished planned item didn't land, and 1-3 proposals for tomorrow.",
 	].join(" ");
+}
+
+/** ' Try these: 3 offered, 1 rated, 1 not tried.' (what reached Jeremy), or '' with none offered. */
+export function triesLine(tries: TryCounts | null): string {
+	if (!tries || tries.offered === 0) return "";
+	return ` Try these today: ${tries.offered} offered, ${tries.rated} rated, ${tries.untried} not tried.`;
 }
 
 /** Added to the next morning's prompt: start from what the wrap-up proposed. */

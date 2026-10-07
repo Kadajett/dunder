@@ -1,12 +1,5 @@
-import {
-	NOW,
-	POOL_PLAYING,
-	refreshHeld,
-	reports,
-	setPool,
-	setUpdateStatus,
-	unstubbed,
-} from "./fake-office-hud";
+import { NOW, POOL_PLAYING, refreshHeld, reports, setPool, unstubbed } from "./fake-office-hud";
+import { batched, countdown } from "./hud-update-states";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
@@ -73,42 +66,6 @@ function expandWork(): void {
 
 const notes: string[] = [];
 
-/** An agent's update counting down, `seconds` from now (the app gives Jeremy 15 s). */
-function countdown(seconds: number): void {
-	setUpdateStatus({
-		state: "available",
-		head: "a91f3c0d2e",
-		commits: [
-			{ sha: "a91f3c0d2e", subject: "inbox: group repeat app errors (office-k2p.3)" },
-			{ sha: "77b2e1a9c4", subject: "work: drag cards between lanes (office-t3c)" },
-			{ sha: "3c0e9f12ab", subject: "call: barge-in stops Max mid-sentence (office-b8n)" },
-		],
-		behind: 3,
-		countdown: {
-			by: "theo",
-			reason: "ship the Trust Inbox error grouping",
-			applyAt: Date.now() + seconds * 1000,
-			extra: 1,
-		},
-	});
-}
-
-/** Agents' updates queued in the batch window (office-itt): 7 changes, the next update at about 83 min from now. */
-function batched(): void {
-	setUpdateStatus({
-		state: "available",
-		head: "a91f3c0d2e",
-		commits: [{ sha: "a91f3c0d2e", subject: "inbox: group repeat app errors (office-k2p.3)" }],
-		behind: 7,
-		batched: {
-			by: "theo",
-			reason: "ship the Trust Inbox error grouping",
-			extra: 4,
-			nextAt: Date.now() + 83 * 60_000,
-		},
-	});
-}
-
 async function poolTable(): Promise<void> {
 	setPool(POOL_PLAYING);
 	await wait(300);
@@ -163,6 +120,8 @@ const STATES: Record<string, () => Promise<void>> = {
 	"12-update-batched": withoutNotices(batched),
 	// The wall TV on SHIPPING at the default camera: every figure must read without fullscreen.
 	"13-tv-shipping": withoutNotices(() => useTv.getState().select("shipping")),
+	// Evening: the fake posts Max's wrap-up and today's unrated 'Try these' for this state.
+	"14-day-end": async () => undefined,
 };
 
 /** Last touches right before the shot, for state that runs out while the scene settles. */

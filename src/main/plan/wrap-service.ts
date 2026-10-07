@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createLogger } from "@shared/log/logger";
 import type { DayPlan } from "@shared/plan";
+import type { TryCounts } from "@shared/whats-new";
 import { type WorkBoard, workLanes } from "@shared/work-board";
 import { type DayWrap, wrapInputSchema } from "@shared/wrap";
 import { z } from "zod";
@@ -36,6 +37,11 @@ const storedWrapSchema = z.object({
 	),
 	unplanned: z.array(z.object({ id: z.string(), title: z.string() })),
 	spendUsd: z.number().nullable(),
+	// Wrap-ups written before the counts existed read as unknown.
+	tries: z
+		.object({ offered: z.number(), rated: z.number(), untried: z.number() })
+		.nullable()
+		.default(null),
 	dismissed: z.boolean(),
 }) satisfies z.ZodType<DayWrap>;
 
@@ -69,6 +75,8 @@ export interface WrapDeps {
 		since: number,
 	) => Promise<readonly { readonly id: string; readonly title: string }[]>;
 	readonly spendToday: () => number | null;
+	/** Today's 'Try these' and how Jeremy rated them (What's new); null when unknown. */
+	readonly tryCounts: () => Promise<TryCounts | null>;
 	readonly emit: (wrap: DayWrap | null) => void;
 }
 
@@ -145,7 +153,8 @@ export class WrapService {
 			this.#deps.board(),
 			this.#deps.closedSince(startOfDay).catch(() => []),
 		]);
-		return dayFacts(this.#deps.plan(), board, closed, this.#deps.spendToday());
+		const tries = await this.#deps.tryCounts().catch(() => null);
+		return dayFacts(this.#deps.plan(), board, closed, { spendUsd: this.#deps.spendToday(), tries });
 	}
 
 	/** New `office-plan` request lines (the day cycle tails the requests file for both services). */

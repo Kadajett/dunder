@@ -165,3 +165,43 @@ describe("WhatsNewService", () => {
 		expect((await noPaths.whatsNew.get())?.beads[0]?.internal).toBe(false);
 	});
 });
+
+describe("Day's end: rating today's 'Try these'", () => {
+	const NOON = new Date(2026, 9, 7, 12).getTime();
+	const at = { now: () => NOON };
+
+	it("offers the card's 'Try these' for the day, and keeps them and their ratings across a restart", async () => {
+		await seen();
+		const first = service(at);
+		expect(await first.whatsNew.tries()).toEqual([
+			{ id: "office-c3y", title: "What's new card", tryIt: "relaunch and rate a row" },
+		]);
+		expect(await first.whatsNew.tryCounts()).toEqual({ offered: 1, rated: 0, untried: 0 });
+		expect(await first.whatsNew.rateTry("office-c3y", "untried")).toEqual({ ok: true });
+		// 'Didn't try' stays local: no bd comment, no message to Max.
+		expect(first.calls).toEqual([]);
+		const restarted = service(at);
+		expect(await restarted.whatsNew.tries()).toEqual([]);
+		expect(await restarted.whatsNew.tryCounts()).toEqual({ offered: 1, rated: 0, untried: 1 });
+	});
+
+	it("rates 👍/👎 like the card: a bd comment, and 👎 tells Max; then it isn't asked again", async () => {
+		await seen();
+		const { whatsNew, calls } = service(at);
+		expect(await whatsNew.rateTry("office-c3y", "down")).toEqual({ ok: true });
+		expect(calls).toEqual([
+			"comment office-c3y 👎 at the day's end",
+			"chief 👎 office-c3y (What's new card): no details given",
+		]);
+		expect(await whatsNew.tries()).toEqual([]);
+		expect(await whatsNew.rateTry("office-zzz", "up")).toMatchObject({ ok: false });
+	});
+
+	it("doesn't ask at the day's end about a change already rated on the card", async () => {
+		await seen();
+		const { whatsNew } = service(at);
+		expect(await whatsNew.rate("office-c3y", "up", "")).toEqual({ ok: true });
+		expect(await whatsNew.tries()).toEqual([]);
+		expect(await whatsNew.tryCounts()).toEqual({ offered: 1, rated: 1, untried: 0 });
+	});
+});
