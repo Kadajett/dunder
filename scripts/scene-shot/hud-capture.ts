@@ -26,6 +26,7 @@ const STATES = [
 	"12-update-batched",
 	"13-tv-shipping",
 	"14-day-end",
+	"19-agent-card-hover-click",
 ];
 const OUT_DIR = "docs/screenshots/hud";
 const WIDTH = 1600;
@@ -51,7 +52,11 @@ const consoleSchema = z.object({
 	args: z.array(z.object({ value: z.unknown().optional() })),
 });
 const auditSchema = z
-	.object({ overlaps: z.array(z.unknown()), crashed: z.array(z.string()) })
+	.object({
+		overlaps: z.array(z.unknown()),
+		crashed: z.array(z.string()),
+		failures: z.array(z.string()),
+	})
 	.passthrough();
 
 /** Page errors and console errors/warnings for the state being captured. */
@@ -98,6 +103,7 @@ interface Result {
 	readonly state: string;
 	readonly ready: boolean;
 	readonly crashed: readonly string[];
+	readonly failures: readonly string[];
 }
 
 async function shoot(cdp: Cdp, baseUrl: string, outDir: string, state: string): Promise<Result> {
@@ -133,17 +139,23 @@ async function shoot(cdp: Cdp, baseUrl: string, outDir: string, state: string): 
 	await writeFile(png, Buffer.from(data, "base64"));
 	const report = { ...audit, ready: ready && audit !== null, pageErrors: [...pageErrors] };
 	await writeFile(join(outDir, `${state}.json`), `${JSON.stringify(report, null, 2)}\n`);
-	const result = { state, ready: report.ready, crashed: audit?.crashed ?? [] };
+	const result = {
+		state,
+		ready: report.ready,
+		crashed: audit?.crashed ?? [],
+		failures: audit?.failures ?? [],
+	};
 	log.info(`${state}: ${result.ready ? "ok" : "NOT READY"}`, {
 		seconds: Math.round((Date.now() - started) / 1000),
 		overlaps: audit?.overlaps.length ?? null,
 		crashed: result.crashed,
+		failures: result.failures,
 		png,
 	});
 	return result;
 }
 
-/** Captures `states` (all when empty); resolves false if any was not ready or crashed. */
+/** Captures `states` (all when empty); resolves false if any crashed or assertion failed. */
 export async function captureHud(
 	baseUrl: string,
 	repo: string,
@@ -165,8 +177,9 @@ export async function captureHud(
 	}
 	const notReady = results.filter((result) => !result.ready).map((result) => result.state);
 	const crashed = results.filter((result) => result.crashed.length > 0).map((r) => r.state);
-	const ok = notReady.length === 0 && crashed.length === 0;
-	const summary = { states: results.length, notReady, crashed, outDir };
+	const failed = results.filter((result) => result.failures.length > 0).map((r) => r.state);
+	const ok = notReady.length === 0 && crashed.length === 0 && failed.length === 0;
+	const summary = { states: results.length, notReady, crashed, failed, outDir };
 	if (ok) log.info("hud-shot: all states ok", summary);
 	else log.error("hud-shot: failures", summary);
 	return ok;
