@@ -1,4 +1,5 @@
 import "./brain.css";
+import "./BrainPanel.css";
 import { useMemo, useState } from "react";
 import { MemoryCard } from "./MemoryCard";
 import { type ProjectGroup, searchMemories } from "./memory-search";

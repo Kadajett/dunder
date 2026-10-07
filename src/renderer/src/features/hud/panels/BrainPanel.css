@@ -1,0 +1,21 @@
+.hud-panel-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.hud-panel-toolbar .hud-panel-search {
+	margin: 0;
+}
+
+.hud-panel-toolbar button {
+	flex: none;
+	padding: 8px 10px;
+	border: 0;
+	border-radius: 9px;
+	background: #efe6d6;
+	font: 600 11.5px var(--font-ui);
+	color: var(--ink);
+	cursor: pointer;
+}
