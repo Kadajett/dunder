@@ -129,7 +129,7 @@ function chiefName(): string | undefined {
 	const roster = workforce.roster();
 	return roster && activeAgents(roster).find((agent) => agent.role === CHIEF_ROLE)?.name;
 }
-/** The shared whiteboard: Jeremy's tldraw editor plus agents' `office-board` notes. */
+/** The shared whiteboard: Jeremy's Excalidraw editor plus agents' `office-board` notes. */
 const whiteboard = createWhiteboard({
 	userData: app.getPath("userData"),
 	currentCompanyId: () => companies.current().then((company) => company.id),

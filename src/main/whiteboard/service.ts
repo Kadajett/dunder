@@ -7,16 +7,13 @@ import type {
 	WhiteboardChange,
 	WhiteboardPutRequest,
 	WhiteboardPutResult,
+	WhiteboardScene,
 } from "@shared/whiteboard";
-import type { TLShape, TLStore } from "@tldraw/tlschema";
-import { addPost, boardSnapshot, clearBoard, digestItems, keepPosts, openBoard } from "./board-doc";
-import { boardPath, loadBoard, saveBoard, saveDigest, setAside } from "./board-file";
+import { addPost, digestItems, EMPTY_SCENE, mergeScenes } from "./board-doc";
+import { boardPath, loadBoard, saveBoard, saveDigest } from "./board-file";
 import { parseBoardRequests } from "./requests";
 
 const log = createLogger("whiteboard");
-
-/** Agent posts remembered for merging into editor saves that predate them. */
-const POSTS_KEPT = 200;
 
 export interface WhiteboardDeps {
 	/** `<userData>/whiteboards`: one board file per company. */
@@ -33,9 +30,7 @@ export interface WhiteboardDeps {
 interface OpenBoard {
 	readonly companyId: string;
 	revision: number;
-	readonly store: TLStore;
-	/** Agent posts by the revision they arrived at, newest last. */
-	posts: { readonly revision: number; readonly shape: TLShape }[];
+	scene: WhiteboardScene;
 	/** Revision of the last clear: editor saves from before it are refused. */
 	clearedAt: number;
 }
@@ -51,8 +46,9 @@ function serializer(): <T>(task: () => Promise<T>) => Promise<T> {
 }
 
 /**
- * The current company's whiteboard, owned by main: Jeremy's editor saves whole
- * documents, agents' `office-board` requests add notes and text on top, and
+ * The current company's whiteboard, owned by main as a plain Excalidraw scene:
+ * Jeremy's editor saves whole scenes, merged element by element (a newer
+ * version wins); agents' `office-board` requests add notes and text on top;
  * every accepted change is persisted, summarised for `office-board read` and
  * broadcast.
  */
@@ -72,27 +68,19 @@ export class WhiteboardService {
 		return this.#serial(async () => this.#view(await this.#current()));
 	}
 
-	/** `snapshot` is unchecked renderer JSON; tldraw's schema validates it (and throws on bad records). */
-	put(
-		request: Omit<WhiteboardPutRequest, "snapshot"> & { readonly snapshot: unknown },
-	): Promise<WhiteboardPutResult> {
+	/** The scene is already checked (`parseScene`) by the IPC handler. */
+	put(request: WhiteboardPutRequest): Promise<WhiteboardPutResult> {
 		return this.#serial(async () => {
 			const board = await this.#current();
 			if (request.companyId !== board.companyId)
 				return { state: "rejected", reason: "the company changed", board: this.#view(board) };
 			if (request.baseRevision < board.clearedAt)
 				return { state: "rejected", reason: "the board was cleared", board: this.#view(board) };
-			// Throws on records the schema rejects; the old document stays.
-			const store = openBoard(request.snapshot);
-			const newer = board.posts.filter((post) => post.revision > request.baseRevision);
-			const merged = keepPosts(
-				store,
-				newer.map((post) => post.shape),
-			);
-			const next = { ...board, store, revision: board.revision + 1 };
-			this.#board = next;
-			await this.#commit(next, { kind: "editor" });
-			return { state: "saved", board: this.#view(next), merged: merged > 0 };
+			const { scene, merged } = mergeScenes(board.scene, request.scene);
+			board.scene = scene;
+			board.revision += 1;
+			await this.#commit(board, { kind: "editor" });
+			return { state: "saved", board: this.#view(board), merged };
 		});
 	}
 
@@ -142,14 +130,13 @@ export class WhiteboardService {
 				log.warn("board clear refused: only the chief of staff clears the board", { by });
 				return;
 			}
-			clearBoard(board.store);
+			board.scene = EMPTY_SCENE;
 			board.revision += 1;
 			board.clearedAt = board.revision;
-			board.posts = [];
 			await this.#commit(board, { kind: "clear", by });
 			return;
 		}
-		const shape = addPost(board.store, {
+		const post = addPost(board.scene, {
 			kind: request.op,
 			author: by,
 			text: request.text,
@@ -157,9 +144,9 @@ export class WhiteboardService {
 			x: request.x,
 			y: request.y,
 		});
+		board.scene = post.scene;
 		board.revision += 1;
-		board.posts = [...board.posts, { revision: board.revision, shape }].slice(-POSTS_KEPT);
-		await this.#commit(board, { kind: request.op, by, records: [shape] });
+		await this.#commit(board, { kind: request.op, by, records: post.records });
 	}
 
 	async #current(): Promise<OpenBoard> {
@@ -183,19 +170,13 @@ export class WhiteboardService {
 	}
 
 	async #open(companyId: string): Promise<OpenBoard> {
-		const path = boardPath(this.#deps.dir, companyId);
-		let saved = await loadBoard(path, this.#now());
-		let store: TLStore;
-		try {
-			store = openBoard(saved.snapshot);
-		} catch (error) {
-			// A document this tldraw cannot read: keep it aside rather than overwrite it.
-			log.warn("saved board does not load", { companyId, error });
-			await setAside(path, this.#now());
-			saved = { revision: 0, snapshot: null };
-			store = openBoard(null);
-		}
-		this.#board = { companyId, revision: saved.revision, store, posts: [], clearedAt: 0 };
+		const saved = await loadBoard(boardPath(this.#deps.dir, companyId), this.#now());
+		this.#board = {
+			companyId,
+			revision: saved.revision,
+			scene: saved.scene ?? EMPTY_SCENE,
+			clearedAt: 0,
+		};
 		return this.#board;
 	}
 
@@ -204,7 +185,7 @@ export class WhiteboardService {
 			companyId: board.companyId,
 			revision: board.revision,
 			updatedAt: this.#now().toISOString(),
-			items: digestItems(board.store),
+			items: digestItems(board.scene),
 		};
 		// Only `office-board read` suffers if this fails; the board itself is saved.
 		await saveDigest(this.#deps.digestPath, digest).catch((error: unknown) =>
@@ -213,8 +194,8 @@ export class WhiteboardService {
 	}
 
 	#view(board: OpenBoard): WhiteboardBoard {
-		const snapshot = board.revision === 0 ? null : boardSnapshot(board.store);
-		return { companyId: board.companyId, revision: board.revision, snapshot };
+		const scene = board.revision === 0 ? null : board.scene;
+		return { companyId: board.companyId, revision: board.revision, scene };
 	}
 
 	#now(): Date {

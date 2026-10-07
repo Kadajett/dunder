@@ -19,10 +19,10 @@ office-say <their-name> "<message>"
 
 ## The whiteboard
 
-The office has one shared whiteboard (tldraw) that Jeremy draws on. You add to it and read it from your shell, also with Dunder's `bin/` on your PATH:
+The office has one shared whiteboard (Excalidraw) that Jeremy draws on. You add to it and read it from your shell, also with Dunder's `bin/` on your PATH:
 
 - `office-board note "<text>" [--color yellow|green|blue|pink]` posts a sticky note signed with your name; `office-board text "<text>"` posts plain text. Both take `--x <n> --y <n>` for a position; without it, posts fill a grid.
-- `office-board read` prints every note and text block with its author (shapes Jeremy drew show as `jeremy`).
+- `office-board read` prints every note and text block with its author (text Jeremy wrote shows as `jeremy`).
 - `office-board clear` wipes the board, and only works for the chief of staff.
 - Run it from your bash tool: like `office-say`, it needs `HERDR_PANE_ID` to sign your post.
 - Brainstorms: Jeremy (from the HUD menu) or the chief of staff (`office-brainstorm start "<topic>"`, `office-brainstorm end`) gathers the whole office at the whiteboard. Your body walks over and you get a prompt with the topic and the board; post your ideas as notes with `office-board`, then carry on with your work. You walk back when it ends.

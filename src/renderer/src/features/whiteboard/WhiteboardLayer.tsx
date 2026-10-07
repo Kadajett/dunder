@@ -1,15 +1,15 @@
-import "tldraw/tldraw.css";
+import "./excalidraw-assets";
+import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
+import { Excalidraw } from "@excalidraw/excalidraw";
+import type {
+	ExcalidrawImperativeAPI,
+	ExcalidrawInitialDataState,
+} from "@excalidraw/excalidraw/types";
 import type { WhiteboardBoard } from "@shared/whiteboard";
-import { getAssetUrlsByImport } from "@tldraw/assets/imports.vite";
-import { useCallback, useEffect, useState } from "react";
-import { type Editor, Tldraw } from "tldraw";
-import { editorNeedsLicense, TLDRAW_LICENSE_KEY } from "./tldraw-license";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBoardSync } from "./useBoardSync";
 import { useWhiteboard } from "./whiteboard-store";
-
-/** tldraw's fonts, icons and translations, bundled with the app: the CSP allows no CDN. */
-const ASSET_URLS = getAssetUrlsByImport();
 
 /** The board the editor shows; a new generation remounts it on a fresh document. */
 interface Loaded {
@@ -22,22 +22,32 @@ type LoadState =
 	| { readonly kind: "failed"; readonly reason: string }
 	| ({ readonly kind: "ready" } & Loaded);
 
+/** Only the canvas: no file open/save or theme switch, the board lives in main. */
+const UI_OPTIONS = {
+	canvasActions: { loadScene: false, saveToActiveFile: false, export: false, toggleTheme: false },
+} as const;
+
 function BoardEditor(props: {
 	readonly board: WhiteboardBoard;
 	readonly onReload: (board: WhiteboardBoard) => void;
 }) {
 	const { board } = props;
-	const [editor, setEditor] = useState<Editor | null>(null);
-	useBoardSync(editor, board, props.onReload);
+	const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+	useBoardSync(api, board, props.onReload);
+	const initialData = useMemo(
+		(): ExcalidrawInitialDataState => ({
+			elements: board.scene?.elements ?? [],
+			...(board.scene?.files ? { files: board.scene.files } : {}),
+			scrollToContent: true,
+		}),
+		[board],
+	);
 	return (
-		<Tldraw
-			{...(board.snapshot ? { snapshot: board.snapshot } : {})}
-			assetUrls={ASSET_URLS}
-			{...(TLDRAW_LICENSE_KEY ? { licenseKey: TLDRAW_LICENSE_KEY } : {})}
-			onMount={(mounted) => {
-				mounted.user.updateUserPreferences({ name: "Jeremy" });
-				setEditor(mounted);
-			}}
+		<Excalidraw
+			excalidrawAPI={setApi}
+			initialData={initialData}
+			UIOptions={UI_OPTIONS}
+			name="Office whiteboard"
 		/>
 	);
 }
@@ -72,26 +82,30 @@ function useBoard(): readonly [LoadState, (board: WhiteboardBoard) => void] {
 	return [state, reload];
 }
 
-/** Instead of an editor tldraw would blank after 5 s: what is missing, and what still works. */
-function LicenseNotice() {
+function BoardArea(props: {
+	readonly state: LoadState;
+	readonly onReload: (board: WhiteboardBoard) => void;
+}) {
+	const { state } = props;
+	if (state.kind === "ready") {
+		return (
+			<BoardEditor
+				key={`${state.board.companyId}:${state.generation}`}
+				board={state.board}
+				onReload={props.onReload}
+			/>
+		);
+	}
 	return (
-		<div className="whiteboard-status whiteboard-license">
-			<strong>The whiteboard editor needs a tldraw license key in the installed app.</strong>
-			<p>
-				Without one, tldraw stops drawing a few seconds after it opens. Agents can still post with
-				office-board, and the board on the break-room wall still shows everything.
-			</p>
-			<p>
-				Put the key in <code>~/.config/dunder/tldraw-license-key</code> (or set{" "}
-				<code>TLDRAW_LICENSE_KEY</code>) and update Dunder; the build bakes it in.
-			</p>
-		</div>
+		<p className="whiteboard-status">
+			{state.kind === "failed" ? `The whiteboard did not load: ${state.reason}` : "Loading…"}
+		</p>
 	);
 }
 
 /**
- * The office whiteboard in tldraw, over the whole window. Leaving is the Back
- * button, never Esc: tldraw uses Esc to drop the selection or the current tool.
+ * The office whiteboard in Excalidraw, over the whole window. Leaving is the
+ * Back button, never Esc: Excalidraw uses Esc to drop the selection or the tool.
  */
 export function WhiteboardLayer() {
 	const setOpen = useWhiteboard((state) => state.setOpen);
@@ -115,33 +129,8 @@ export function WhiteboardLayer() {
 				</div>
 			</header>
 			<div className="whiteboard-canvas">
-				{editorNeedsLicense(TLDRAW_LICENSE_KEY, window.location, import.meta.env.PROD) ? (
-					<LicenseNotice />
-				) : (
-					<BoardArea state={state} onReload={reload} />
-				)}
+				<BoardArea state={state} onReload={reload} />
 			</div>
 		</div>
-	);
-}
-
-function BoardArea(props: {
-	readonly state: LoadState;
-	readonly onReload: (board: WhiteboardBoard) => void;
-}) {
-	const { state } = props;
-	if (state.kind === "ready") {
-		return (
-			<BoardEditor
-				key={`${state.board.companyId}:${state.generation}`}
-				board={state.board}
-				onReload={props.onReload}
-			/>
-		);
-	}
-	return (
-		<p className="whiteboard-status">
-			{state.kind === "failed" ? `The whiteboard did not load: ${state.reason}` : "Loading…"}
-		</p>
 	);
 }

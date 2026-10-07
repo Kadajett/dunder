@@ -2,21 +2,22 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { excalidrawAssets } from "../vite/excalidraw-assets";
 
 const repo = resolve(__dirname, "../..");
 
 /** Serves the scene-shot pages (renderer code, stubbed IPC) for `npm run scene:shot`. */
 export default defineConfig({
 	root: resolve(__dirname, "page"),
-	plugins: [react({ exclude: [/\/node_modules\//, /\/\.vite\//] })],
+	plugins: [react({ exclude: [/\/node_modules\//, /\/\.vite\//] }), excalidrawAssets(repo)],
 	resolve: {
 		alias: {
 			"@shared": resolve(repo, "src/shared"),
 			"@renderer": resolve(repo, "src/renderer/src"),
 		},
 	},
-	// As in the app's renderer config: tldraw's `?url` asset imports must not be pre-bundled.
-	optimizeDeps: { exclude: ["@tldraw/assets"] },
+	// Found only behind the wall board's lazy import otherwise: Vite would re-optimize and reload mid-run.
+	optimizeDeps: { include: ["@excalidraw/excalidraw"] },
 	// node_modules may be a symlink (git worktrees share one); its real path must be servable too.
 	server: {
 		host: "127.0.0.1",
