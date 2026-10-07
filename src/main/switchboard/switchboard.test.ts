@@ -117,6 +117,38 @@ describe("Switchboard", () => {
 		board.stop();
 	});
 
+	it("keeps one recipient's mail in order when the first message has to wait (agent_busy)", async () => {
+		const call = vi
+			.fn<(method: string, params: { text: string }) => Promise<unknown>>()
+			.mockRejectedValueOnce(new HerdrApiError("agent_busy", "mid-turn"))
+			.mockResolvedValue({ type: "agent_prompted" });
+		const { send, dir } = setup(vi.fn());
+		send("w1:p1", "ben", "first: do X");
+		send("w1:p1", "ben", "second: never mind X");
+		let now = Date.now();
+		const board = new Switchboard({
+			api: { call: (method, params) => call(method, params as { text: string }) },
+			mailboxPath: join(dir, "mailbox.ndjson"),
+			statePath: join(dir, "state.json"),
+			emit: () => undefined,
+			now: () => now,
+		});
+		board.updateSnapshot(office({ nora: "idle", ben: "idle" }));
+		await board.start();
+		await vi.waitFor(() => expect(call).toHaveBeenCalledTimes(1));
+		// Past the prompt grace each time, so each round can deliver ben's next message.
+		for (const _round of [1, 2]) {
+			now += 10_000;
+			await board.pump();
+		}
+		board.stop();
+		const delivered = call.mock.calls.slice(1).map(([, params]) => params.text);
+		expect(delivered).toEqual([
+			expect.stringContaining("first: do X"),
+			expect.stringContaining("second: never mind X"),
+		]);
+	});
+
 	it("persists how far it read, so a restart does not redeliver", async () => {
 		const call = vi.fn(async () => ({}));
 		const first = setup(call);
