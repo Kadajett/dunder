@@ -123,6 +123,8 @@ export interface PreviousBuild {
 }
 
 export type RollbackResult = { readonly ok: true } | { readonly ok: false; readonly error: string };
+/** The rollback confirm's optional 'What broke?' line. */
+export const WHAT_BROKE_MAX = 200;
 
 /** `window.office.update`. */
 export interface AppUpdateApi {
@@ -136,6 +138,10 @@ export interface AppUpdateApi {
 	setBusy(busy: string | null): Promise<void>;
 	/** The kept previous build, or null when there is none to go back to. */
 	previous(): Promise<PreviousBuild | null>;
-	/** Swap the previous build back in and relaunch on it; resolves only on failure (or never, as the app quits). */
-	rollback(): Promise<RollbackResult>;
+	/**
+	 * Swap the previous build back in and relaunch on it, telling Max and the
+	 * beads in between (with `whatBroke`, Jeremy's optional one line); resolves
+	 * only on failure (or never, as the app quits).
+	 */
+	rollback(whatBroke?: string): Promise<RollbackResult>;
 }

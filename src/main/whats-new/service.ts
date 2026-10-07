@@ -9,7 +9,14 @@ import {
 	type WhatsNewResult,
 } from "@shared/whats-new";
 import type { WorkResult } from "@shared/work-board";
-import { beadsOfCommits, type CommitBead, type CommitBeads, planCard, tryItOf } from "./card";
+import {
+	type BuildHistory,
+	beadsOfCommits,
+	type CommitBead,
+	type CommitBeads,
+	planCard,
+	tryItOf,
+} from "./card";
 import { readWhatsNewState, type WhatsNewState, writeWhatsNewState } from "./state";
 
 const log = createLogger("whats-new");
@@ -104,11 +111,11 @@ export class WhatsNewService {
 		const { built } = this.#deps;
 		this.#state = await readWhatsNewState(this.#deps.statePath);
 		const lastSeen = this.#state?.lastSeenBuild;
-		const ancestor =
+		const history =
 			built !== undefined && lastSeen !== undefined && lastSeen !== built
-				? await this.#deps.git.isAncestor(lastSeen, built)
-				: false;
-		const plan = planCard(built, lastSeen, ancestor);
+				? await this.#history(lastSeen, built)
+				: "apart";
+		const plan = planCard(built, lastSeen, history);
 		if (built === undefined || plan.kind === "none") return null;
 		if (plan.kind === "first-launch") {
 			await this.#save({ version: 1, lastSeenBuild: built, pending: null });
@@ -124,6 +131,12 @@ export class WhatsNewService {
 		});
 		const card = await this.#withDetails(built, found, paths);
 		return { ...card, recent: plan.kind === "recent" };
+	}
+
+	/** How `built` relates to `lastSeen` in git history (see `BuildHistory`). */
+	async #history(lastSeen: string, built: string): Promise<BuildHistory> {
+		if (await this.#deps.git.isAncestor(lastSeen, built)) return "ahead";
+		return (await this.#deps.git.isAncestor(built, lastSeen)) ? "behind" : "apart";
 	}
 
 	/** Titles and try-it lines from bd; without bd, the commit summaries with rating off. */

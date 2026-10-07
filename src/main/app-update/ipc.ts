@@ -1,10 +1,15 @@
-import { updateBusySchema } from "@shared/app-update";
+import { updateBusySchema, WHAT_BROKE_MAX } from "@shared/app-update";
 import { IPC } from "@shared/ipc";
 import { ipcMain } from "electron";
 import { z } from "zod";
 import type { AppUpdater } from "./service";
 
 const reasonSchema = z.string().max(500).optional();
+/** Blank counts as not said; overlong text is cut, not refused (the rollback matters more). */
+const whatBrokeSchema = z
+	.string()
+	.transform((text) => text.trim().slice(0, WHAT_BROKE_MAX))
+	.optional();
 
 /** `window.office.update` handlers. Renderer payloads are untrusted. */
 export function registerAppUpdateIpc(updater: AppUpdater): void {
@@ -19,5 +24,7 @@ export function registerAppUpdateIpc(updater: AppUpdater): void {
 		updater.setBusy(parsed.success ? parsed.data : null);
 	});
 	ipcMain.handle(IPC.updatePrevious, () => updater.previous());
-	ipcMain.handle(IPC.updateRollback, () => updater.rollback());
+	ipcMain.handle(IPC.updateRollback, (_event, whatBroke: unknown) =>
+		updater.rollback(whatBrokeSchema.safeParse(whatBroke).data || undefined),
+	);
 }

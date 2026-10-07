@@ -8,7 +8,7 @@ import { checkCheckout, dependenciesChanged } from "./git";
 import { builtCommit, relaunchApp } from "./relaunch";
 import { markUpdateRelaunch } from "./relaunch-mark";
 import { officeUpdateRequestsPath } from "./requests";
-import { noteRollback, previousBuild } from "./rollback";
+import { noteRollback, previousBuild, type RollbackRange, rollbackText } from "./rollback";
 import { AppUpdater } from "./service";
 
 const log = createLogger("app-update");
@@ -20,6 +20,20 @@ export interface AppUpdateOptions {
 	emit(status: UpdateStatus): void;
 	/** Release what must not outlive the process (screens, services) before relaunching. */
 	shutdown(): Promise<void>;
+	/** Say it to the chief of staff (a rollback); false when there's no chief to tell. */
+	tellChief(text: string): Promise<boolean>;
+}
+
+/** Beads in the range get the rollback note; the text comes back for Max (without bead ids when bd can't list them). */
+async function noteOnBeads(root: string, range: RollbackRange): Promise<string> {
+	try {
+		const { text, failed } = await noteRollback(root, range);
+		if (failed.length > 0) log.warn("cannot note the rollback on beads", { beads: failed });
+		return text;
+	} catch (error) {
+		log.warn("cannot list the rolled-back commits", { error });
+		return rollbackText(range, []);
+	}
 }
 
 /** The app's updater, wired to git, the production build and Electron. */
@@ -43,17 +57,14 @@ export function createAppUpdater(options: AppUpdateOptions): AppUpdater {
 				relaunchApp(options.shutdown),
 			),
 		previous: () => (built ? previousBuild(root, built) : Promise.resolve(null)),
-		restore: async (previous) => {
+		restore: async (previous, whatBroke) => {
 			await restoreKept(root);
 			if (!built) return;
-			// Best effort: the rollback stands even when bd can't take the notes.
-			const failed = await noteRollback(root, { good: previous.commit, bad: built }).catch(
-				(error: unknown) => {
-					log.warn("cannot list the rolled-back commits", { error });
-					return [];
-				},
-			);
-			if (failed.length > 0) log.warn("cannot note the rollback on beads", { beads: failed });
+			// Best effort: the rollback stands even when bd or the chief can't take the note.
+			const range = { good: previous.commit, bad: built, ...(whatBroke ? { whatBroke } : {}) };
+			const text = await noteOnBeads(root, range);
+			if (!(await options.tellChief(`[office] ${text}`).catch(() => false)))
+				log.warn("the chief wasn't told about the rollback");
 		},
 	});
 }

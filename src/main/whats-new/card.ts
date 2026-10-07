@@ -58,16 +58,24 @@ export type CardPlan =
 	| { readonly kind: "recent" };
 
 /**
+ * How the running build relates to the last one Jeremy saw: `ahead` (the last
+ * seen is in this build's history: an update), `behind` (this build is in the
+ * last seen one's history: he went back, e.g. a rollback), or `apart`
+ * (neither: history was rewritten).
+ */
+export type BuildHistory = "ahead" | "behind" | "apart";
+
+/**
  * Whether to show a card for the running build. `lastSeen` is undefined when
- * there is no record yet; `ancestor` says whether it is in the build's history.
+ * there is no record yet. Going back shows nothing: those commits aren't new.
  */
 export function planCard(
 	built: string | undefined,
 	lastSeen: string | undefined,
-	ancestor: boolean,
+	history: BuildHistory,
 ): CardPlan {
 	if (built === undefined) return { kind: "none" };
 	if (lastSeen === undefined) return { kind: "first-launch" };
-	if (lastSeen === built) return { kind: "none" };
-	return ancestor ? { kind: "since", from: lastSeen } : { kind: "recent" };
+	if (lastSeen === built || history === "behind") return { kind: "none" };
+	return history === "ahead" ? { kind: "since", from: lastSeen } : { kind: "recent" };
 }

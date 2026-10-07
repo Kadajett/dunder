@@ -234,6 +234,18 @@
 	color: var(--status-blocked);
 }
 
+.update-section .update-rollback-why {
+	box-sizing: border-box;
+	width: calc(100% - 16px);
+	margin: 4px 8px;
+	padding: 6px 8px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: 500 12px var(--font-ui);
+}
+
 .update-section .update-rollback-cancel {
 	width: calc(100% - 16px);
 	margin: 2px 8px;
