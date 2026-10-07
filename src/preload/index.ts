@@ -143,6 +143,8 @@ const api: OfficeApi = {
 		setPriority: (id, priority) => ipcRenderer.invoke(IPC.workPriority, { id, priority }),
 		move: (id, lane) => ipcRenderer.invoke(IPC.workMove, { id, lane }),
 		assign: (id, assignee) => ipcRenderer.invoke(IPC.workAssign, { id, assignee }),
+		respond: (id, response) => ipcRenderer.invoke(IPC.workRespond, { id, response }),
+		dismiss: (id) => ipcRenderer.invoke(IPC.workDismiss, id),
 	},
 };
 

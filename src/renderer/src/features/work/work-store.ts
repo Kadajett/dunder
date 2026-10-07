@@ -37,10 +37,17 @@ interface WorkState {
 	readonly open: boolean;
 	/** Collapsed lanes (Done starts collapsed); kept while the bar is a pill, not across restarts. */
 	readonly collapsed: Readonly<Record<WorkLane, boolean>>;
+	/** The card opened in place (one at a time), if any. */
+	readonly expanded: string | null;
+	/** Asks Jeremy just answered or dismissed: hidden until bd confirms (or back with an error). */
+	readonly answering: readonly string[];
 	receive(board: WorkBoard): void;
 	setOpen(open: boolean): void;
 	toggleLane(lane: WorkLane): void;
 	dismissError(key: string): void;
+	expand(id: string | null): void;
+	/** Open the bar on `id`: the bar open, its lane unfolded, the card expanded. */
+	reveal(id: string): void;
 }
 
 function withoutKey(errors: Readonly<Record<string, string>>, key: string) {
@@ -56,11 +63,18 @@ export const useWork = create<WorkState>((set) => ({
 	errors: {},
 	open: globalThis.localStorage?.getItem(OPEN_KEY) !== "closed",
 	collapsed: { in_progress: false, blocked: false, ready: false, done: true },
+	expanded: null,
+	answering: [],
 	receive: (board) =>
 		set((state) => ({
 			board,
 			edits: state.edits.filter((pending) => !pending.settled),
 			creating: state.creating.filter((pending) => !pending.settled),
+			// Answered asks drop out of the board; forget them once they have.
+			answering:
+				board.state === "ok"
+					? state.answering.filter((id) => board.asks.some((ask) => ask.id === id))
+					: state.answering,
 		})),
 	setOpen: (open) => {
 		globalThis.localStorage?.setItem(OPEN_KEY, open ? "open" : "closed");
@@ -69,6 +83,17 @@ export const useWork = create<WorkState>((set) => ({
 	toggleLane: (lane) =>
 		set((state) => ({ collapsed: { ...state.collapsed, [lane]: !state.collapsed[lane] } })),
 	dismissError: (key) => set((state) => ({ errors: withoutKey(state.errors, key) })),
+	expand: (expanded) => set({ expanded }),
+	reveal: (id) =>
+		set((state) => {
+			globalThis.localStorage?.setItem(OPEN_KEY, "open");
+			const lane =
+				state.board?.state === "ok"
+					? state.board.cards.find((card) => card.id === id)?.lane
+					: undefined;
+			const collapsed = lane ? { ...state.collapsed, [lane]: false } : state.collapsed;
+			return { open: true, expanded: id, collapsed };
+		}),
 }));
 
 /** The cards as shown: main's board with the writes bd hasn't reflected yet. Undefined unless the board is ok. */

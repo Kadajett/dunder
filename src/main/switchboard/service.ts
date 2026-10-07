@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { appendFile, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { SessionSnapshot } from "@shared/herdr/schema";
-import type { OfficeMessage } from "@shared/switchboard";
+import { type MailLine, mailLineSchema, type OfficeMessage } from "@shared/switchboard";
 import type { HerdrApi } from "../herdr/api-client";
 import { Switchboard } from "./switchboard";
 
@@ -15,6 +17,24 @@ export function officeMailboxPath(
 ): string {
 	const state = env["XDG_STATE_HOME"] || join(home, ".local", "state");
 	return join(state, "dunder", "mailbox.ndjson");
+}
+
+/**
+ * Send an agent an office message from the app itself (no pane, so it reads
+ * "from someone"): one mailbox line, delivered by the switchboard once the
+ * agent is free, exactly like `office-say`.
+ */
+export async function postToMailbox(to: string, text: string): Promise<void> {
+	const line: MailLine = mailLineSchema.parse({
+		v: 1,
+		id: randomUUID(),
+		to,
+		text,
+		sentAt: new Date().toISOString(),
+	});
+	const path = officeMailboxPath(process.env, homedir());
+	await mkdir(dirname(path), { recursive: true });
+	await appendFile(path, `${JSON.stringify(line)}\n`);
 }
 
 export interface SwitchboardService {

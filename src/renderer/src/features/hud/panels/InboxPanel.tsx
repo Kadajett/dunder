@@ -2,6 +2,7 @@ import type { SessionSnapshot } from "@shared/herdr/schema";
 import type { OfficeModel } from "../../office/model/office-model";
 import { markSeen, useTrustInbox } from "../inbox-store";
 import type { TrustItem } from "../trust-inbox";
+import { AskCard } from "./AskCard";
 import { openAgentScreen } from "./open-agent";
 
 const KIND_LINE = {
@@ -9,7 +10,9 @@ const KIND_LINE = {
 	done: "finished, not seen yet",
 } as const;
 
-function InboxCard({ item, model }: { readonly item: TrustItem; readonly model: OfficeModel }) {
+type AgentItem = Exclude<TrustItem, { kind: "ask" }>;
+
+function AgentCard({ item, model }: { readonly item: AgentItem; readonly model: OfficeModel }) {
 	const { agent } = item;
 	const seat = model.seated.find((seated) => seated.agent.paneId === agent.paneId);
 	return (
@@ -46,7 +49,10 @@ function InboxCard({ item, model }: { readonly item: TrustItem; readonly model: 
 	);
 }
 
-/** Trust Inbox: blocked agents and finished work the user has not seen. */
+const itemKey = (item: TrustItem): string =>
+	item.kind === "ask" ? `ask:${item.ask.id}` : `${item.kind}:${item.agent.paneId}`;
+
+/** Trust Inbox: blocked agents, what agents asked of Jeremy, and finished work he has not seen. */
 export function InboxPanel(props: {
 	readonly model: OfficeModel;
 	readonly snapshot: SessionSnapshot | null;
@@ -55,15 +61,20 @@ export function InboxPanel(props: {
 	if (items.length === 0) {
 		return (
 			<p className="hud-panel-empty">
-				Nothing needs you. Blocked agents and finished work you have not seen yet land here.
+				Nothing needs you. Blocked agents, agents' asks and finished work you have not seen yet land
+				here.
 			</p>
 		);
 	}
 	return (
 		<>
-			{items.map((item) => (
-				<InboxCard key={`${item.kind}:${item.agent.paneId}`} item={item} model={props.model} />
-			))}
+			{items.map((item) =>
+				item.kind === "ask" ? (
+					<AskCard key={itemKey(item)} ask={item.ask} />
+				) : (
+					<AgentCard key={itemKey(item)} item={item} model={props.model} />
+				),
+			)}
 		</>
 	);
 }

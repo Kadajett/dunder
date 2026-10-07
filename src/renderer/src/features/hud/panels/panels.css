@@ -178,6 +178,36 @@
 	background: #f7faff;
 }
 
+/* An agent's ask for Jeremy: amber, between "blocked" and "done". */
+.hud-card[data-kind="ask"] {
+	border-color: #f1dca6;
+	background: #fffbf0;
+}
+
+.status-ask {
+	background: #e5a823;
+	box-shadow: 0 0 0 3px #e5a82333;
+}
+
+.hud-ask-detail {
+	margin: 6px 0 0;
+	font-size: 11.5px;
+	color: var(--ink-soft);
+	white-space: pre-wrap;
+}
+
+.hud-ask-answer textarea {
+	box-sizing: border-box;
+	width: 100%;
+	margin-top: 8px;
+	padding: 7px 9px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 8px;
+	font: 400 12px var(--font-ui);
+	color: var(--ink);
+	resize: vertical;
+}
+
 /* Team rows. */
 .hud-mii {
 	position: relative;

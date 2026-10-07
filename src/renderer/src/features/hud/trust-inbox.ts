@@ -1,5 +1,6 @@
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
 import type { SeenDone } from "@shared/office-stats";
+import type { HumanAsk } from "@shared/work-board";
 
 /** What the Trust Inbox needs to know about one live agent. */
 export interface InboxAgent {
@@ -15,6 +16,8 @@ export interface InboxAgent {
 
 export type TrustItem =
 	| { readonly kind: "blocked"; readonly agent: InboxAgent }
+	/** Something an agent flagged that only Jeremy can do or decide (a bd `human` bead). */
+	| { readonly kind: "ask"; readonly ask: HumanAsk }
 	| { readonly kind: "done"; readonly agent: InboxAgent };
 
 /** Whether the user already marked this agent's current `done` seen (the same state change). */
@@ -38,10 +41,15 @@ export function inboxAgents(snapshot: SessionSnapshot | null): InboxAgent[] {
 }
 
 /**
- * What needs the user: every blocked agent, then every finished agent whose
- * `done` has not been seen yet. Each group is sorted by name.
+ * What needs the user: every blocked agent (sorted by name), then the asks
+ * agents flagged for him (in main's order: most urgent, then oldest), then
+ * every finished agent whose `done` has not been seen yet (by name).
  */
-export function trustInbox(agents: readonly InboxAgent[], seen: SeenDone): TrustItem[] {
+export function trustInbox(
+	agents: readonly InboxAgent[],
+	seen: SeenDone,
+	asks: readonly HumanAsk[] = [],
+): TrustItem[] {
 	const byName = (a: InboxAgent, b: InboxAgent): number => a.name.localeCompare(b.name);
 	const blocked = agents.filter((agent) => agent.status === "blocked").sort(byName);
 	const done = agents
@@ -49,6 +57,7 @@ export function trustInbox(agents: readonly InboxAgent[], seen: SeenDone): Trust
 		.sort(byName);
 	return [
 		...blocked.map((agent) => ({ kind: "blocked" as const, agent })),
+		...asks.map((ask) => ({ kind: "ask" as const, ask })),
 		...done.map((agent) => ({ kind: "done" as const, agent })),
 	];
 }

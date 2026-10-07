@@ -13,6 +13,8 @@ function harness() {
 		setPriority: (id, priority) => ok("setPriority", id, priority),
 		move: (id, lane) => ok("move", id, lane),
 		assign: (id, assignee) => ok("assign", id, assignee),
+		respond: (id, response) => ok("respond", id, response),
+		dismiss: (id) => ok("dismiss", id),
 	};
 	return { handlers: workRequestHandlers(writes), calls };
 }

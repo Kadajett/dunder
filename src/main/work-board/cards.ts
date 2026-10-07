@@ -24,6 +24,9 @@ const beadSchema = z.object({
 	description: z.string().nullish(),
 	acceptance_criteria: z.string().nullish(),
 	updated_at: z.string(),
+	created_at: z.string().optional(),
+	/** `bd list` only; null without any. */
+	labels: z.array(z.string()).nullish(),
 	closed_at: z.string().nullish(),
 	/** `bd list`: every edge, `type` "blocks" or "parent-child"; null without any. */
 	dependencies: z.array(z.object({ depends_on_id: z.string(), type: z.string() })).nullish(),
@@ -61,6 +64,8 @@ export function epicTag(title: string): string {
 }
 
 const isEpic = (bead: Bead): boolean => bead.issue_type === "epic";
+/** Asks for Jeremy (bd's `human` label) live in the Trust Inbox, not on the board (see asks.ts). */
+export const isHumanAsk = (bead: Bead): boolean => (bead.labels ?? []).includes("human");
 
 function epicTitles(lists: BdLists): Map<string, string> {
 	const titles = new Map<string, string>();
@@ -85,7 +90,9 @@ interface Placed {
 
 /** One lane per bead: in progress beats blocked beats ready. Epics and unknown (deferred) ids drop out. */
 function placeOpen(lists: BdLists): Placed[] {
-	const open = new Map(lists.open.filter((bead) => !isEpic(bead)).map((bead) => [bead.id, bead]));
+	const open = new Map(
+		lists.open.filter((bead) => !isEpic(bead) && !isHumanAsk(bead)).map((bead) => [bead.id, bead]),
+	);
 	const openIds = new Set(lists.open.map((bead) => bead.id));
 	const blockedBy = new Map(lists.blocked.map((bead) => [bead.id, bead.blocked_by ?? []]));
 	const placed: Placed[] = [];
@@ -110,7 +117,7 @@ const closedTime = (bead: Bead): number => Date.parse(bead.closed_at ?? bead.upd
 /** The newest `DONE_LIMIT` closed non-epic beads. */
 function placeDone(closed: readonly Bead[]): Placed[] {
 	return closed
-		.filter((bead) => !isEpic(bead))
+		.filter((bead) => !isEpic(bead) && !isHumanAsk(bead))
 		.sort((a, b) => closedTime(b) - closedTime(a))
 		.slice(0, DONE_LIMIT)
 		.map((bead) => ({ bead, lane: "done", waitingOn: [] }));

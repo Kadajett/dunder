@@ -7,9 +7,10 @@ import "./work.css";
 
 function WorkLanes({ cards }: { readonly cards: readonly WorkCard[] }) {
 	const groups = useMemo(() => groupByLane(cards), [cards]);
-	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const expandedId = useWork((state) => state.expanded);
+	const expand = useWork((state) => state.expand);
 	const [dragging, setDragging] = useState<WorkCard | null>(null);
-	const toggleCard = (id: string): void => setExpandedId((current) => (current === id ? null : id));
+	const toggleCard = (id: string): void => expand(expandedId === id ? null : id);
 	return (
 		<>
 			{groups.map((group) => (

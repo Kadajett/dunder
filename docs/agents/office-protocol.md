@@ -40,6 +40,18 @@ When you have been idle for a minute, your character walks to the office pool ta
 - Never save trivia, status updates or anything already in the code or docs. One clear sentence or two beats a paragraph.
 - Your todo list is Beads: `bd ready` and your in-progress issues (`bd list --status=in_progress`).
 
+## Asking Jeremy for something only he can do
+
+When your work is blocked on something only Jeremy can do or decide (a login, a secret or API key, money, an account, a product call), flag it so it shows in his Trust Inbox:
+
+```bash
+bd create "<one-line ask, e.g. Run npm login and add NPM_TOKEN to the repo secrets>" -l human -a <your-name> --deps blocks:<your-bead> -d "<why, and exactly what to do>"
+```
+
+- One ask per bead, one line, phrased as what he should do. `-a <your-name>` is how the answer finds you; `--deps blocks:<bead>` shows him what it unblocks.
+- He answers or dismisses it from the inbox. The answer lands as a comment on the ask, the ask closes, and you get an office message.
+- Don't flag questions a colleague or Max can answer, status, or FYIs: the inbox must stay short or he stops reading it.
+
 ## Working on Dunder itself
 
 Jeremy runs a stable build of Dunder: editing its source never changes the app he is looking at. It rolls forward only when asked.

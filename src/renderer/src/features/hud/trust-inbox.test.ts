@@ -17,7 +17,18 @@ function office(...agents: [string, string, AgentStatus, number][]) {
 }
 
 const summary = (items: readonly TrustItem[]) =>
-	items.map((item) => `${item.kind}:${item.agent.name}`);
+	items.map((item) =>
+		item.kind === "ask" ? `ask:${item.ask.id}` : `${item.kind}:${item.agent.name}`,
+	);
+
+const ask = (id: string) => ({
+	id,
+	question: id,
+	detail: "",
+	asker: "nora",
+	blocks: [],
+	createdAt: "",
+});
 
 describe("trustInbox", () => {
 	it("lists blocked agents first, then finished ones, each by name", () => {
@@ -33,6 +44,16 @@ describe("trustInbox", () => {
 			"blocked:emma",
 			"blocked:jonas",
 			"done:ben",
+			"done:nora",
+		]);
+	});
+
+	it("puts agents' asks for Jeremy after blocked agents and before finished work, in main's order", () => {
+		const agents = office(["nora", "w1:p1", "done", 4], ["jonas", "w1:p2", "blocked", 7]);
+		expect(summary(trustInbox(agents, {}, [ask("o-ask2"), ask("o-ask1")]))).toEqual([
+			"blocked:jonas",
+			"ask:o-ask2",
+			"ask:o-ask1",
 			"done:nora",
 		]);
 	});
