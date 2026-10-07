@@ -32,6 +32,7 @@ import { createModels } from "./models/service";
 import { CostTracker } from "./office-stats/cost-tracker";
 import { registerOfficeStatsIpc } from "./office-stats/ipc";
 import { createSeenDoneStore } from "./office-stats/seen-done";
+import { createPlan, registerPlanIpc } from "./plan/ipc";
 import { createPool } from "./pool/create";
 import { clearPoolViewingWithPage, registerPoolIpc } from "./pool/ipc";
 import { createStaffDesk } from "./staff-desk/create";
@@ -163,6 +164,13 @@ const appErrors = new AppErrorsService({
 });
 /** Done cards' 'Said:' line: agents' final replies, read from their omp session logs on demand. */
 const agentReplies = new AgentRepliesService();
+/** The morning plan: Max proposes the day at 9:00, Jeremy approves or edits it. */
+const plan = createPlan({
+	userData: app.getPath("userData"),
+	chief,
+	bridge: () => bridge,
+	emit: (today) => broadcast(IPC.planChanged, today),
+});
 
 function broadcast(channel: string, payload: unknown): void {
 	for (const window of BrowserWindow.getAllWindows()) {
@@ -243,6 +251,7 @@ function registerHandlers(): void {
 	registerAlertsIpc(alerts);
 	registerWorktreesIpc(createWorktrees(companies));
 	registerAwayIpc(createAway({ workBoard, aiCost }));
+	registerPlanIpc(plan);
 	registerOfficeStatsIpc({
 		cost: aiCost,
 		appRoot: app.getAppPath(),
@@ -269,6 +278,7 @@ app.whenReady().then(() => {
 	startInBackground("whiteboard", whiteboard.start());
 	pool.start();
 	startInBackground("brainstorm", brainstorm.start());
+	startInBackground("plan", plan.start());
 	workBoard.start();
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -292,6 +302,7 @@ function stopServices(): void {
 	brainstorm.stop();
 	workBoard.stop();
 	appErrors.stop();
+	plan.stop();
 }
 
 app.on("window-all-closed", () => {
