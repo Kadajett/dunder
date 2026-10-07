@@ -1,0 +1,66 @@
+/* Day's end: how today's 'Try these' landed. */
+.day-end__tries {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding-top: 8px;
+	border-top: 1px solid var(--panel-edge);
+}
+
+.day-end__tries-heading {
+	margin: 0;
+	font: 700 10px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.day-end__tries ul {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.day-end__try-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.day-end__try-title {
+	overflow: hidden;
+	font-weight: 600;
+	font-size: 13px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.day-end__try-it {
+	margin: 2px 0 4px;
+	font-size: 12px;
+	line-height: 1.35;
+	color: #6b5a3e;
+}
+
+.day-end__try-choices {
+	display: flex;
+	gap: 6px;
+}
+
+.day-end__try-choices button {
+	padding: 3px 10px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--ink);
+	font: 600 12px var(--font-ui);
+	cursor: pointer;
+}
+
+.day-end__try-choices button:hover {
+	background: #efe6d6;
+}

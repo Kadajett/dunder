@@ -38,9 +38,10 @@ const FRESH_LAUNCH = [
 	"09b-pool-table-fresh",
 	"11-everything",
 ];
-const freshLaunch = FRESH_LAUNCH.includes(
-	new URLSearchParams(location.search).get("state") ?? "01-default",
-);
+const STATE = new URLSearchParams(location.search).get("state") ?? "01-default";
+const freshLaunch = FRESH_LAUNCH.includes(STATE);
+/** Evening: Max's wrap-up is posted and today's 'Try these' wait for a rating (office-83z). */
+const dayEnd = STATE === "14-day-end";
 
 /** The fixed clock hud.html installs before any module loads (2026-10-07 09:41 local). */
 export const NOW = Date.now();
@@ -690,6 +691,43 @@ function tolerant<T extends object>(target: T, path: string): T {
 	});
 }
 
+const todaysTries = [
+	{
+		id: "office-q1a",
+		title: "What's new: thumbs down asks what's off",
+		tryIt: "Thumb a row down on this card",
+	},
+	{
+		id: "office-u8e",
+		title: "Chief dock: render markdown tables in replies",
+		tryIt: "Ask Max for a spend table",
+	},
+	{
+		id: "office-7hk",
+		title: "Away card: what happened while you were gone",
+		tryIt: "Lock the screen for 2 h",
+	},
+];
+
+const dayWrap = {
+	date: new Date(NOW).toISOString().slice(0, 10),
+	postedAt: NOW - 5 * MIN,
+	input: {
+		summary:
+			"The inbox grouping and the call barge-in shipped; drag between lanes is still in review.",
+		misses: [{ bead: "office-t3c", why: "waiting on theo's review" }],
+		tomorrow: [{ bead: "office-t3c", what: "merge drag between lanes first" }],
+	},
+	planned: [
+		{ bead: "office-k2p.3", who: "theo", title: "Trust Inbox grouping", lane: "done" },
+		{ bead: "office-t3c", who: "theo", title: "Drag cards between lanes", lane: "review" },
+	],
+	unplanned: [{ id: "office-e3r", title: "Snooze asks until the morning" }],
+	spendUsd: 61.42,
+	tries: { offered: 3, rated: 0, untried: 0 },
+	dismissed: false,
+};
+
 const api = {
 	getSnapshot: async () => snapshot,
 	getStatus: async () => ({ state: "connected" }),
@@ -851,6 +889,13 @@ const api = {
 	whatsNew: {
 		get: async () => (freshLaunch ? whatsNew : null),
 		rate: async () => ({ ok: true }),
+		dismiss: async () => undefined,
+		tries: async () => (dayEnd ? todaysTries : []),
+		rateTry: async () => ({ ok: true }),
+	},
+	wrap: {
+		today: async () => (dayEnd ? dayWrap : null),
+		onChanged: () => unsubscribe,
 		dismiss: async () => undefined,
 	},
 	alerts: {

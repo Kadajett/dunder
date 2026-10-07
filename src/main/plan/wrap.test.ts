@@ -60,7 +60,8 @@ const closed = [
 
 describe("the day's facts", () => {
 	it("gives each planned item its lane now (done when closed today) and lists what shipped outside the plan", () => {
-		const facts = dayFacts(plan("2026-10-07"), board, closed, 12.5);
+		const tries = { offered: 3, rated: 1, untried: 1 };
+		const facts = dayFacts(plan("2026-10-07"), board, closed, { spendUsd: 12.5, tries });
 		expect(facts.planned).toEqual([
 			{ bead: "office-a", who: "carl", title: "title of office-a", lane: "review" },
 			{ bead: "office-b", who: "theo", title: "title of office-b", lane: "blocked" },
@@ -69,11 +70,12 @@ describe("the day's facts", () => {
 		]);
 		expect(facts.unplanned).toEqual([{ id: "office-x", title: "Unplanned fix" }]);
 		// A day without a plan: everything closed is unplanned.
-		expect(dayFacts(null, { state: "unavailable", reason: "bd" }, closed, null)).toEqual({
-			planned: [],
-			unplanned: closed,
-			spendUsd: null,
-		});
+		expect(
+			dayFacts(null, { state: "unavailable", reason: "bd" }, closed, {
+				spendUsd: null,
+				tries: null,
+			}),
+		).toEqual({ planned: [], unplanned: closed, spendUsd: null, tries: null });
 	});
 
 	it("hands the next morning yesterday's proposals, and nothing without a wrap-up", () => {
@@ -119,6 +121,7 @@ function harness(dir = mkdtempSync(join(tmpdir(), "wrap-"))) {
 		board: async () => board,
 		closedSince: async () => closed,
 		spendToday: () => 12.5,
+		tryCounts: async () => ({ offered: 3, rated: 1, untried: 1 }),
 		emit: (wrap) => emitted.push(wrap),
 	});
 	services.push(service);
@@ -168,6 +171,7 @@ describe("the evening prompt", () => {
 		);
 		expect(h.told[0]?.text).toContain("Shipped outside the plan: office-x.");
 		expect(h.told[0]?.text).toContain("AI spend today ~$12.50.");
+		expect(h.told[0]?.text).toContain("Try these today: 3 offered, 1 rated, 1 not tried.");
 		h.at(at(8, 19, 30));
 		await h.service.check();
 		h.at(at(9, 20, 30));
@@ -217,6 +221,7 @@ describe("office-plan wrap and Jeremy's notice", () => {
 			input: wrap,
 			unplanned: [{ id: "office-x", title: "Unplanned fix" }],
 			spendUsd: 12.5,
+			tries: { offered: 3, rated: 1, untried: 1 },
 			dismissed: false,
 		});
 		expect(today?.planned.map((item) => item.lane)).toEqual(["review", "blocked", "done", null]);

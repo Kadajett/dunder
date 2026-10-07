@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Unsubscribe } from "./screens";
+import type { TryCounts } from "./whats-new";
 import { type WorkLane, workIdSchema } from "./work-board";
 
 /**
@@ -53,6 +54,8 @@ export interface DayWrap {
 	readonly unplanned: readonly { readonly id: string; readonly title: string }[];
 	/** The office's AI spend today (USD); null when unknown. */
 	readonly spendUsd: number | null;
+	/** Today's 'Try these': offered, rated 👍/👎, marked 'didn't try'; null when unknown. */
+	readonly tries: TryCounts | null;
 	/** Jeremy closed the notice. */
 	readonly dismissed: boolean;
 }

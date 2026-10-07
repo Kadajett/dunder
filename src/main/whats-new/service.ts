@@ -2,6 +2,10 @@ import type { UpdateCommit } from "@shared/app-update";
 import { displayTitle, isInternalOnly } from "@shared/change-notes.mts";
 import { createLogger } from "@shared/log/logger";
 import {
+	type TryCounts,
+	type TryRating,
+	type TryToRate,
+	tryTheseOf,
 	WHATS_NEW_RECENT,
 	type WhatsNew,
 	type WhatsNewBead,
@@ -9,6 +13,7 @@ import {
 	type WhatsNewResult,
 } from "@shared/whats-new";
 import type { WorkResult } from "@shared/work-board";
+import { localDateKey } from "../calisthenics/schedule";
 import {
 	type BuildHistory,
 	beadsOfCommits,
@@ -18,6 +23,7 @@ import {
 	tryItOf,
 } from "./card";
 import { readWhatsNewState, type WhatsNewState, writeWhatsNewState } from "./state";
+import { noteOffered, type Tried, tryCounts, unratedToday, withTryRating } from "./tries";
 
 const log = createLogger("whats-new");
 
@@ -47,6 +53,7 @@ export interface WhatsNewDeps {
 	readonly tellChief: (
 		text: string,
 	) => Promise<{ readonly state: string; readonly reason?: string }>;
+	readonly now?: () => number;
 }
 
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -59,6 +66,8 @@ export class WhatsNewService {
 	readonly #deps: WhatsNewDeps;
 	#card: Promise<WhatsNew | null> | undefined;
 	#state: WhatsNewState | undefined;
+	/** Each day's 'Try these' and their ratings (saved with the state). */
+	#tried: Tried = {};
 	/** Ratings run one at a time, so each builds on the card the last one left. */
 	#rating: Promise<unknown> = Promise.resolve();
 
@@ -103,13 +112,56 @@ export class WhatsNewService {
 			beads: card.beads.map((each) => (each.id === id ? { ...each, rating } : each)),
 		};
 		this.#card = Promise.resolve(rated);
+		// Rated on the card: Day's end won't ask about it again.
+		this.#tried = withTryRating(this.#tried, id, rating);
 		await this.#save(this.#pendingWith(rated));
 		return { ok: true };
+	}
+
+	/** Today's 'Try these' still unrated, newest first, for Day's end. */
+	async tries(): Promise<readonly TryToRate[]> {
+		await this.get();
+		return unratedToday(this.#tried, this.#today());
+	}
+
+	/** Today's 'Try these' in numbers, for Max's evening wrap-up. */
+	async tryCounts(): Promise<TryCounts> {
+		await this.get();
+		return tryCounts(this.#tried, this.#today());
+	}
+
+	rateTry(id: string, rating: TryRating): Promise<WhatsNewResult> {
+		const next = this.#rating.then(() => this.#rateTry(id, rating));
+		this.#rating = next.catch(() => undefined);
+		return next;
+	}
+
+	/** Day's end: 👍/👎 as on the card (bd comment; 👎 tells Max); 'didn't try' kept here only. */
+	async #rateTry(id: string, rating: TryRating): Promise<WhatsNewResult> {
+		await this.get();
+		const offered = this.#tried[this.#today()]?.[id];
+		if (!offered) return { ok: false, reason: "That change wasn't offered today" };
+		if (rating !== "untried") {
+			const written = await this.#deps.comment(
+				id,
+				`${rating === "up" ? "👍" : "👎"} at the day's end`,
+			);
+			if (!written.ok) return written;
+			if (rating === "down") await this.#tellChief({ id, title: offered.title }, "");
+		}
+		this.#tried = withTryRating(this.#tried, id, rating);
+		if (this.#state) await this.#save(this.#state);
+		return { ok: true };
+	}
+
+	#today(): string {
+		return localDateKey(new Date(this.#deps.now?.() ?? Date.now()));
 	}
 
 	async #build(): Promise<WhatsNew | null> {
 		const { built } = this.#deps;
 		this.#state = await readWhatsNewState(this.#deps.statePath);
+		this.#tried = this.#state?.tried ?? {};
 		const lastSeen = this.#state?.lastSeenBuild;
 		const history =
 			built !== undefined && lastSeen !== undefined && lastSeen !== built
@@ -130,7 +182,16 @@ export class WhatsNewService {
 			return new Map<string, readonly string[]>();
 		});
 		const card = await this.#withDetails(built, found, paths);
-		return { ...card, recent: plan.kind === "recent" };
+		const shown = { ...card, recent: plan.kind === "recent" };
+		// What the card offers as 'Try these' is remembered for today's Day's end.
+		this.#tried = noteOffered(
+			this.#tried,
+			this.#today(),
+			tryTheseOf(shown.beads),
+			this.#deps.now?.() ?? Date.now(),
+		);
+		await this.#save(this.#state ?? { version: 1, lastSeenBuild: built, pending: null });
+		return shown;
 	}
 
 	/** How `built` relates to `lastSeen` in git history (see `BuildHistory`). */
@@ -174,7 +235,10 @@ export class WhatsNewService {
 		}
 	}
 
-	async #tellChief(bead: WhatsNewBead, text: string): Promise<void> {
+	async #tellChief(
+		bead: { readonly id: string; readonly title: string | null; readonly subject?: string },
+		text: string,
+	): Promise<void> {
 		const what = bead.title ?? bead.subject;
 		const result = await this.#deps
 			.tellChief(`👎 ${bead.id} (${what}): ${text || "no details given"}`)
@@ -191,9 +255,11 @@ export class WhatsNewService {
 		return { version: 1, lastSeenBuild, pending: { built: card.built, ratings } };
 	}
 
+	/** Saved with today's tries, whatever else changed. */
 	async #save(state: WhatsNewState): Promise<void> {
-		this.#state = state;
-		await writeWhatsNewState(this.#deps.statePath, state).catch((error: unknown) =>
+		const withTried: WhatsNewState = { ...state, tried: this.#tried };
+		this.#state = withTried;
+		await writeWhatsNewState(this.#deps.statePath, withTried).catch((error: unknown) =>
 			log.warn("could not save what's new state", { error }),
 		);
 	}
