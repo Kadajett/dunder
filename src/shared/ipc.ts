@@ -154,6 +154,7 @@ export const IPC = {
 	appErrorsChanged: "app-errors:changed",
 	/** A live agent's final reply of its last turn (invoke). */
 	agentsLastReply: "agents:last-reply",
+	agentsInterrupt: "agents:interrupt",
 	/** Agents' worktrees of the app repo: find one, open it in the editor (invoke). */
 	worktreesFind: "worktrees:find",
 	worktreesOpen: "worktrees:open",

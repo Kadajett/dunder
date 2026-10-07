@@ -237,7 +237,7 @@ function registerHandlers(): void {
 	registerBrainstormIpc(brainstorm.service);
 	registerWorkBoardIpc(workBoard);
 	registerAppErrorsIpc(appErrors);
-	registerAgentRepliesIpc(agentReplies);
+	registerAgentRepliesIpc(agentReplies, chiefName);
 	registerVoiceIpc(createVoice());
 	registerWhatsNewIpc(createWhatsNew({ workBoard, chief }));
 	registerAlertsIpc(alerts);
