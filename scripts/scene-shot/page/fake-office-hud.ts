@@ -15,7 +15,7 @@ import type { PlanProposal } from "@shared/plan";
 import type { PoolBall, PoolView } from "@shared/pool";
 import type { OfficeMessage } from "@shared/switchboard";
 import type { WhatsNew, WhatsNewRating } from "@shared/whats-new";
-import type { HumanAsk, WorkBoard, WorkCard } from "@shared/work-board";
+import type { HumanAsk, WorkBoard, WorkCard, WorkLane } from "@shared/work-board";
 import { fakeWhiteboard } from "./fake-board";
 import { makeQaFixtures } from "./qa-hud-fixtures";
 
@@ -52,6 +52,10 @@ const state = new URLSearchParams(location.search).get("state");
 const qaCalls: string[] = [];
 const qaFixtures = makeQaFixtures(NOW, state);
 export const qa = { calls: qaCalls, copied: [] as string[], failures: [] as string[] };
+const sendChief = async (text: string) => {
+	qaCalls.push(`chief.send:${text}`);
+	return { state: "sent" as const };
+};
 
 // ---- push channels -------------------------------------------------------------------------
 
@@ -210,6 +214,9 @@ function card(
 }
 
 const cards: WorkCard[] = [
+	...(state === "21-work-undo"
+		? [card("office-67k", "Work undo: restore a moved review bead", ["review", "sam"])]
+		: []),
 	card("office-k2p.3", "Trust Inbox: group repeat app errors by region", ["in_progress", "theo"], {
 		priority: 1,
 		epic: "Trust Inbox v2",
@@ -325,7 +332,7 @@ const shipping = {
 	inReview: 2,
 };
 
-const board: WorkBoard = { state: "ok", revision: 7, cards, asks, shipping };
+let board: WorkBoard = { state: "ok", revision: 7, cards, asks, shipping };
 
 // ---- notices -------------------------------------------------------------------------------
 
@@ -773,7 +780,7 @@ const api = {
 		}),
 		history: async () => chiefHistory,
 		onMessage: on("chief"),
-		send: async () => ({ state: "sent" }),
+		send: sendChief,
 	},
 	stats: {
 		costToday: async () => cost,
@@ -881,7 +888,20 @@ const api = {
 		onChanged: on("work"),
 		create: async () => ({ ok: true, revision: board.state === "ok" ? board.revision : 0 }),
 		setPriority: async () => ({ ok: true, revision: 7 }),
-		move: async () => ({ ok: true, revision: 7 }),
+		move: async (id: string, lane: WorkLane) => {
+			qaCalls.push(`work.move:${id}:${lane}`);
+			if (board.state !== "ok") return { ok: false, reason: "board unavailable" };
+			const revision = board.revision + 1;
+			board = {
+				...board,
+				revision,
+				cards: board.cards.map((candidate) =>
+					candidate.id === id ? { ...candidate, lane } : candidate,
+				),
+			};
+			emit("work", board);
+			return { ok: true, revision };
+		},
 		assign: async () => ({ ok: true, revision: 7 }),
 		respond: async () => ({ ok: true, revision: 7 }),
 		dismiss: async () => ({ ok: true, revision: 7 }),
@@ -930,6 +950,11 @@ const api = {
 		get: async () => (freshLaunch || state === "16-whats-new-feedback" ? whatsNew : null),
 		rate: async ({ id, rating, text }: { id: string; rating: WhatsNewRating; text: string }) => {
 			qaCalls.push(`whatsNew.rate:${id}:${rating}:${text}`);
+			if (rating === "down") {
+				const bead = whatsNew.beads.find((candidate) => candidate.id === id);
+				const title = bead?.title ?? bead?.subject ?? id;
+				await sendChief(`👎 ${id} (${title}): ${text || "no details given"}`);
+			}
 			return { ok: true };
 		},
 		dismiss: async () => {

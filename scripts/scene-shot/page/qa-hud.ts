@@ -1,10 +1,10 @@
-import { setSoundsOn, soundsOn } from "@renderer/features/audio/sound-store";
-import { useCall } from "@renderer/features/chief/call/call-store";
 import { useChief } from "@renderer/features/chief/chief-store";
 import { useHud } from "@renderer/features/hud/view-store";
 import { useSelection } from "@renderer/features/office/interaction/selection-store";
 import { useWork } from "@renderer/features/work/work-store";
-import { emit, qa } from "./fake-office-hud";
+import { qa } from "./fake-office-hud";
+import { micPicker, soundsOffCall } from "./qa-hud-call";
+import { workUndo } from "./qa-hud-work";
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -101,19 +101,57 @@ async function dayEnd(): Promise<void> {
 	);
 }
 
+async function hoverBeadedAgent(): Promise<boolean> {
+	const canvas = document.querySelector<HTMLCanvasElement>("canvas");
+	if (!canvas) return false;
+	const bounds = canvas.getBoundingClientRect();
+	let lastPane = "";
+	for (let y = bounds.top + 16; y < bounds.bottom; y += 64) {
+		for (let x = bounds.left + 16; x < bounds.right; x += 64) {
+			canvas.dispatchEvent(
+				new PointerEvent("pointermove", {
+					bubbles: true,
+					clientX: x,
+					clientY: y,
+					pointerId: 1,
+					pointerType: "mouse",
+				}),
+			);
+			const selection = useSelection.getState().selection;
+			if (selection?.kind !== "agent" || selection.paneId === lastPane) continue;
+			lastPane = selection.paneId;
+			await wait(30);
+			if (
+				document.querySelector(".agent-beads__item summary")?.textContent?.includes("office-k2p.3")
+			)
+				return true;
+		}
+	}
+	return false;
+}
+
 async function agentCard(): Promise<void> {
-	useSelection.getState().select({ kind: "agent", paneId: "w2:p1" });
+	useSelection.getState().clear();
+	assert(await hoverBeadedAgent(), "pointer sweep did not hover an agent with an in-progress bead");
 	assert(
 		await until(() => document.querySelector(".world-card") !== null),
-		"agent card did not open",
+		"agent card did not open from hover",
 	);
 	const details = document.querySelector<HTMLDetailsElement>(".agent-beads__item");
 	assert(details !== null, "agent card has no in-progress bead details");
+	const summary = details?.querySelector("summary")?.textContent ?? "";
+	assert(
+		summary.includes("office-k2p.3") &&
+			summary.includes("Trust Inbox: group repeat app errors by region"),
+		"agent card did not show the assigned bead id and title",
+	);
 	details?.querySelector("summary")?.click();
 	assert(details?.open === true, "agent bead details did not expand");
+	const detail = details?.querySelector(".agent-beads__detail")?.textContent ?? "";
 	assert(
-		details?.textContent?.includes("Acceptance criteria") ?? false,
-		"acceptance criteria not rendered",
+		detail.includes("Group errors by region") &&
+			detail.includes("Three identical errors show as one card"),
+		"agent bead description and acceptance criteria were not rendered",
 	);
 }
 
@@ -123,12 +161,22 @@ async function whatsNewFeedback(): Promise<void> {
 		"What's New card did not load",
 	);
 	document.querySelector<HTMLButtonElement>(".whats-new__review")?.click();
+	const upSelector = '[aria-label="Good: office-7hk"]';
 	assert(
-		await until(() => document.querySelector('[aria-label="Not right: office-7hk"]') !== null),
+		await until(() => document.querySelector(upSelector) !== null),
+		"thumbs-up button missing",
+	);
+	document.querySelector<HTMLButtonElement>(upSelector)?.click();
+	assert(
+		await until(() => qa.calls.includes("whatsNew.rate:office-7hk:up:")),
+		"thumbs-up did not call the rating API",
+	);
+	const downSelector = '[aria-label="Not right: office-j8s"]';
+	assert(
+		await until(() => document.querySelector(downSelector) !== null),
 		"thumbs-down button missing",
 	);
-	const down = document.querySelector<HTMLButtonElement>('[aria-label="Not right: office-7hk"]');
-	down?.click();
+	document.querySelector<HTMLButtonElement>(downSelector)?.click();
 	assert(
 		await until(() => document.querySelector<HTMLInputElement>(".whats-new__note") !== null),
 		"thumbs-down reason input missing",
@@ -141,9 +189,17 @@ async function whatsNewFeedback(): Promise<void> {
 	input.blur();
 	assert(
 		await until(() =>
-			qa.calls.includes("whatsNew.rate:office-7hk:down:The step needs a clearer example"),
+			qa.calls.includes("whatsNew.rate:office-j8s:down:The step needs a clearer example"),
 		),
 		"feedback reason was not submitted",
+	);
+	assert(
+		await until(() =>
+			qa.calls.includes(
+				"chief.send:👎 office-j8s (Mic popover: test your mic before a call): The step needs a clearer example",
+			),
+		),
+		"thumbs-down feedback did not call chief.send",
 	);
 	clickButton("Got it");
 	assert(
@@ -164,92 +220,45 @@ async function beadChips(): Promise<void> {
 	const chips = [...document.querySelectorAll<HTMLButtonElement>(".chief-chat .bead-chip")];
 	const known = chips.find((chip) => ids.has(chip.textContent?.trim() ?? ""));
 	assert(known !== undefined, "no known bead chip in chief history");
+	known?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+	assert(
+		Boolean(
+			known?.title.toLowerCase().includes("trust inbox: group repeat app errors") &&
+				known.title.toLowerCase().includes("in progress · theo"),
+		),
+		"known bead hover tooltip omitted title, lane, or assignee",
+	);
+	const knownId = known?.textContent?.trim();
 	known?.click();
 	assert(
-		await until(() => useWork.getState().expanded === known?.textContent?.trim()),
-		"known bead did not expand its work card",
+		await until(
+			() =>
+				knownId !== undefined &&
+				document.querySelector(".work-card--open .work-card__id")?.getAttribute("title") ===
+					knownId,
+		),
+		"known bead click did not reveal its work card",
+	);
+	const detail = document.querySelector(".work-card--open .work-card__detail");
+	assert(
+		detail?.textContent?.includes("Group errors by region") === true &&
+			detail.textContent.includes("Three identical errors show as one card"),
+		"known bead click did not show its description and acceptance criteria",
 	);
 	const unknown = chips.find((chip) => !ids.has(chip.textContent?.trim() ?? ""));
 	assert(unknown !== undefined, "no unknown bead chip in chief history");
+	unknown?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+	assert(unknown?.title === "not on the board", "unknown bead hover tooltip was missing");
 	unknown?.click();
 	assert(
-		await until(() => qa.copied.includes(unknown?.textContent?.trim() ?? "")),
-		"unknown bead id was not copied",
-	);
-}
-
-async function micPicker(): Promise<void> {
-	useChief.getState().open();
-	useCall.setState({
-		availability: { available: true },
-		active: true,
-		since: Date.now(),
-		phase: "listening",
-		muted: false,
-		mic: { deviceId: "default", label: "Default - Jabra Evolve2 65" },
-		level: 0,
-		heard: "",
-		error: null,
-		hint: null,
-	});
-	assert(
-		await until(() => document.querySelector(".chief-call__mic") !== null),
-		"call mic control did not render",
-	);
-	document.querySelector<HTMLElement>(".chief-call__mic")?.click();
-	assert(
-		await until(() => document.querySelector(".chief-mic") !== null),
-		"mic picker did not open",
-	);
-	assert(
-		await until(() => document.querySelectorAll(".chief-mic select option").length >= 3),
-		"fake audio input devices were not listed",
-	);
-}
-async function soundsOffCall(): Promise<void> {
-	setSoundsOn(true);
-	useChief.getState().open();
-	assert(
 		await until(
-			() => document.querySelector<HTMLButtonElement>('[aria-label="Call Max"]') !== null,
+			() =>
+				qa.copied.includes(unknown?.textContent?.trim() ?? "") &&
+				document.querySelector(".bead-chip-note")?.textContent?.includes("not on the board") ===
+					true,
 		),
-		"Call Max button missing",
+		"unknown bead id was not copied with its notice",
 	);
-	document.querySelector<HTMLButtonElement>('[aria-label="Call Max"]')?.click();
-	assert(await until(() => useCall.getState().active), "call did not start");
-	document.querySelector<HTMLButtonElement>('.hud-more > button[aria-haspopup="menu"]')?.click();
-	const toggleReady = await until(() =>
-		[...document.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')].some((item) =>
-			item.textContent?.includes("Sounds"),
-		),
-	);
-	assert(toggleReady, "Sounds menu toggle missing");
-	const toggle = [
-		...document.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]'),
-	].find((item) => item.textContent?.includes("Sounds"));
-	toggle?.click();
-	assert(
-		!soundsOn() && localStorage.getItem("dunder.sounds") === "off",
-		"Sounds toggle did not persist off",
-	);
-	emit("chief", {
-		id: "qa-spoken-reply",
-		author: "chief",
-		text: "A voice reply",
-		spoken: "The tested plan is ready.",
-		at: Date.now() + 1,
-	});
-	assert(
-		await until(() => document.querySelector(".chief-call__caption") !== null),
-		"sounds-off reply was not captioned",
-	);
-	assert(
-		document
-			.querySelector(".chief-call__caption")
-			?.textContent?.includes("The tested plan is ready.") ?? false,
-		"caption omitted the spoken line",
-	);
-	assert(!qa.calls.includes("voice.speak"), "voice API called while Sounds was off");
 }
 
 async function spendAlert(): Promise<void> {
@@ -274,4 +283,5 @@ export const QA_STATES: Record<string, () => Promise<void>> = {
 	"18-mic-picker": micPicker,
 	"19-spend-alert": spendAlert,
 	"20-sounds-off-call": soundsOffCall,
+	"21-work-undo": workUndo,
 };

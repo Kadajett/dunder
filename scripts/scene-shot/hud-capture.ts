@@ -35,6 +35,7 @@ const STATES = [
 	"19-spend-alert",
 	"19-agent-card-hover-click",
 	"20-sounds-off-call",
+	"21-work-undo",
 ];
 const OUT_DIR = "docs/screenshots/hud";
 const WIDTH = 1600;
