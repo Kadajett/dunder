@@ -1,8 +1,9 @@
 import { join } from "node:path";
+import { COMMIT_MARK, pathsByBead } from "@shared/change-notes.mts";
 import { IPC } from "@shared/ipc";
 import { type WhatsNewResult, whatsNewRateSchema } from "@shared/whats-new";
 import { app, ipcMain } from "electron";
-import { commitLog, isAncestor } from "../app-update/git";
+import { commitLog, isAncestor, runGit } from "../app-update/git";
 import { builtCommit } from "../app-update/relaunch";
 import type { ChiefService } from "../chief/chief-service";
 import type { WorkBoardService } from "../work-board/service";
@@ -22,6 +23,10 @@ export function createWhatsNew(wiring: WhatsNewWiring): WhatsNewService {
 		git: {
 			isAncestor: (from, to) => isAncestor(root, from, to),
 			log: (args) => commitLog(root, args),
+			paths: async (args) =>
+				pathsByBead(
+					await runGit(root, ["log", `--format=${COMMIT_MARK}%s`, "--name-only", ...args]),
+				),
 		},
 		details: (ids) => wiring.workBoard.details(ids),
 		comment: (id, text) => wiring.workBoard.comment(id, text, "Jeremy"),

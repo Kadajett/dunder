@@ -80,6 +80,7 @@ describe("office-notes: the draft", () => {
 		bead("office-d", "Pool night", "epic"),
 		bead("office-e", "Quiet updates: hold until Jeremy isn't busy", "feature"),
 		bead("office-f", "Faster boot", "feature", "Try it: open src/main/boot and time it"),
+		{ ...bead("office-g", "hud:shot harness", "task"), internal: true },
 	];
 	const draft = renderDraft({
 		range: "v0.1.0..HEAD",
@@ -90,7 +91,7 @@ describe("office-notes: the draft", () => {
 		today: "2026-10-07",
 	});
 
-	it("groups bullets into New, Fixed and Improved with Try it lines, leaving epics out", () => {
+	it("groups bullets into New, Fixed and Improved with Try it lines, leaving epics and under-the-hood beads out", () => {
 		const body = draft.slice(draft.indexOf("## What's new"));
 		expect(body).toBe(
 			[
@@ -125,7 +126,7 @@ describe("office-notes: the draft", () => {
 			"- Check (looks internal): Faster boot. Try it: Open src/main/boot and time it",
 		);
 		expect(header).toContain(
-			"- Left out: 1 epic(s), 2 bead(s) bd doesn't know, 3 commit(s) without a bead",
+			"- Left out: 1 epic(s), 1 under-the-hood bead(s), 2 bead(s) bd doesn't know, 3 commit(s) without a bead",
 		);
 	});
 

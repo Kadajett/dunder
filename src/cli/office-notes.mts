@@ -10,6 +10,13 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import {
+	beadOfSubject,
+	COMMIT_MARK,
+	displayTitle,
+	isInternalOnly,
+	pathsByBead,
+} from "../shared/change-notes.mts";
 
 const USAGE = `usage:
   office-notes draft [--since <git ref>] [--out <file>|-]
@@ -17,10 +24,6 @@ const USAGE = `usage:
       into docs/release-notes/next.md (or <file>, or stdout with -). Nothing is published.
 `;
 
-/** Matches `beadsOfCommits` in src/main/whats-new/card.ts (office-notes.test.ts keeps them in step). */
-const BEAD_ID = String.raw`[a-z][a-z0-9]*-[a-z0-9]+(?:\.[0-9]+)*`;
-const BEAD_COMMIT = new RegExp(`^(${BEAD_ID}): `, "i");
-const BEAD_MERGE = new RegExp(`^Merge bead/(${BEAD_ID})(?![\\w.-])`, "i");
 const TRY_IT = /^\s*try it:\s*(.*\S)\s*$/i;
 
 /** Bead ids named by commit subjects, newest first, each once; and how many commits named none. */
@@ -28,7 +31,7 @@ export function beadIdsOf(subjects: readonly string[]): { ids: string[]; unnamed
 	const ids = new Set<string>();
 	let unnamed = 0;
 	for (const subject of subjects) {
-		const id = (BEAD_COMMIT.exec(subject)?.[1] ?? BEAD_MERGE.exec(subject)?.[1])?.toLowerCase();
+		const id = beadOfSubject(subject)?.id;
 		if (id) ids.add(id);
 		else if (!/^Merge (?:remote-tracking )?branch /.test(subject)) unnamed += 1;
 	}
@@ -40,6 +43,8 @@ export interface Bead {
 	readonly title: string;
 	readonly type: string;
 	readonly notes: string;
+	/** Its commits touch only tooling, agent docs, tests or CI: nothing a user sees. */
+	readonly internal?: boolean;
 }
 
 /** Who and what the internal text may name: agents (fired ones too), the chief, the owner, bead id prefixes. */
@@ -58,9 +63,7 @@ const word = (name: string, suffix = ""): RegExp =>
 /** Rewrite one internal line for outsiders; `replaced` collects what was swapped, for the review list. */
 export function publicText(text: string, names: Names, replaced: Set<string>): string {
 	const ids = names.idPrefixes.map(escapeRegExp).join("|");
-	let out = text
-		.replace(/^\s*(?:idea|epic):\s*/i, "")
-		.replace(/^[\w ]*audit #\d+:\s*/i, "")
+	let out = displayTitle(text)
 		.replace(
 			ids ? new RegExp(String.raw`\(?\b(?:${ids})-[a-z0-9]+(?:\.[0-9]+)*\b\)?`, "gi") : /$^/,
 			"",
@@ -127,7 +130,9 @@ export interface DraftInput {
 export function renderDraft(input: DraftInput): string {
 	const replaced = new Set<string>();
 	const flagged: string[] = [];
-	const shipped = input.beads.filter((bead) => bead.type !== "epic");
+	const epics = input.beads.filter((bead) => bead.type === "epic").length;
+	const hidden = input.beads.filter((bead) => bead.type !== "epic" && bead.internal).length;
+	const shipped = input.beads.filter((bead) => bead.type !== "epic" && !bead.internal);
 	const bullet = (bead: Bead): string => {
 		const title = publicText(bead.title, input.names, replaced).replace(/\.$/, "");
 		const tryIt = tryItOf(bead.notes);
@@ -141,7 +146,8 @@ export function renderDraft(input: DraftInput): string {
 		return lines.length > 0 ? [`### ${heading}`, "", ...lines, ""] : [];
 	});
 	const leftOut = [
-		`${input.beads.length - shipped.length} epic(s)`,
+		`${epics} epic(s)`,
+		`${hidden} under-the-hood bead(s)`,
 		`${input.unknown} bead(s) bd doesn't know`,
 		`${input.unnamed} commit(s) without a bead`,
 	];
@@ -187,7 +193,7 @@ function rosterNames(
 	}
 }
 
-function beadsOf(ids: readonly string[]): Bead[] {
+function beadsOf(ids: readonly string[], paths: ReadonlyMap<string, readonly string[]>): Bead[] {
 	if (ids.length === 0) return [];
 	const json: unknown = JSON.parse(run("bd", ["show", ...ids, "--json"]));
 	if (!Array.isArray(json)) return [];
@@ -196,6 +202,7 @@ function beadsOf(ids: readonly string[]): Bead[] {
 		title: String(issue["title"] ?? ""),
 		type: String(issue["issue_type"] ?? "task"),
 		notes: String(issue["notes"] ?? ""),
+		internal: isInternalOnly(paths.get(String(issue["id"])) ?? []),
 	}));
 }
 
@@ -209,7 +216,8 @@ function draft(args: readonly string[]): number {
 	const { ids, unnamed } = beadIdsOf(
 		run("git", ["log", "--format=%s", range]).split("\n").filter(Boolean),
 	);
-	const beads = beadsOf(ids);
+	const paths = pathsByBead(run("git", ["log", `--format=${COMMIT_MARK}%s`, "--name-only", range]));
+	const beads = beadsOf(ids, paths);
 	const owner = run("git", ["config", "user.name"]).split(/\s+/)[0] || null;
 	const text = renderDraft({
 		range,

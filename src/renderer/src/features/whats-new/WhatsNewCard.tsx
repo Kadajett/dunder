@@ -1,10 +1,6 @@
-import {
-	WHATS_NEW_FEEDBACK_MAX,
-	WHATS_NEW_ROWS,
-	type WhatsNew,
-	type WhatsNewBead,
-} from "@shared/whats-new";
+import { WHATS_NEW_FEEDBACK_MAX, type WhatsNew, type WhatsNewBead } from "@shared/whats-new";
 import { useState } from "react";
+import { cardSections } from "./whats-new-model";
 import { dismissWhatsNew, rateBead, useWhatsNew } from "./whats-new-store";
 import "./whats-new.css";
 
@@ -82,47 +78,86 @@ function Row({
 /** How many changes shipped, beads and other commits together. */
 export const changeCount = (card: WhatsNew): number => card.beads.length + card.others.length;
 
-/** The shipped beads with thumbs, and the other commits folded; capped at 45 vh, then it scrolls. */
-export function WhatsNewRows({ card }: { readonly card: WhatsNew }) {
-	const [more, setMore] = useState(false);
-	const [othersOpen, setOthersOpen] = useState(false);
-	const rows = more ? card.beads : card.beads.slice(0, WHATS_NEW_ROWS);
-	const hidden = card.beads.length - rows.length;
+/** Titles only, no thumbs: what else shipped. */
+function TitleList({ beads }: { readonly beads: readonly WhatsNewBead[] }) {
 	return (
-		<div className="whats-new__list">
-			{rows.length > 0 && (
-				<ol className="whats-new__rows">
-					{rows.map((bead) => (
-						<Row key={bead.id} bead={bead} ratingOff={card.ratingOff} />
-					))}
-				</ol>
-			)}
-			{hidden > 0 && (
-				<button type="button" className="whats-new__more" onClick={() => setMore(true)}>
-					{hidden} more
-				</button>
-			)}
-			{card.others.length > 0 && (
-				<div className="whats-new__others">
-					<button
-						type="button"
-						className="whats-new__more"
-						aria-expanded={othersOpen}
-						onClick={() => setOthersOpen((open) => !open)}
-					>
-						+ {card.others.length} other {card.others.length === 1 ? "change" : "changes"}
-					</button>
-					{othersOpen && (
+		<ul>
+			{beads.map((bead) => (
+				<li key={bead.id} title={bead.id}>
+					{bead.title ?? bead.subject}
+				</li>
+			))}
+		</ul>
+	);
+}
+
+/** 'Also changed (N)': the beads not to try, commits without a bead, then 'Under the hood'. */
+function AlsoChanged({
+	card,
+	startOpen,
+}: {
+	readonly card: WhatsNew;
+	readonly startOpen: boolean;
+}) {
+	const [open, setOpen] = useState(startOpen);
+	const { also, others, underTheHood, alsoCount } = cardSections(card);
+	if (alsoCount === 0) return null;
+	return (
+		<div className="whats-new__others">
+			<button
+				type="button"
+				className="whats-new__more"
+				aria-expanded={open}
+				onClick={() => setOpen((value) => !value)}
+			>
+				Also changed ({alsoCount}) {open ? "▴" : "▾"}
+			</button>
+			{open && (
+				<>
+					<TitleList beads={also} />
+					{others.length > 0 && (
 						<ul>
-							{card.others.map((subject, index) => (
+							{others.map((subject, index) => (
 								// Subjects can repeat; the list never reorders.
 								// biome-ignore lint/suspicious/noArrayIndexKey: static list
 								<li key={index}>{subject}</li>
 							))}
 						</ul>
 					)}
-				</div>
+					{underTheHood.length > 0 && (
+						<>
+							<p className="whats-new__subhead">Under the hood</p>
+							<TitleList beads={underTheHood} />
+						</>
+					)}
+				</>
 			)}
+		</div>
+	);
+}
+
+/**
+ * 'Try these': at most three beads with a Try it line and thumbs, so a
+ * rating asks for something doable in a minute; everything else folds into
+ * 'Also changed'. Capped at 45 vh, then it scrolls.
+ */
+export function WhatsNewRows({ card }: { readonly card: WhatsNew }) {
+	const { tryThese } = cardSections(card);
+	return (
+		<div className="whats-new__list">
+			{tryThese.length > 0 ? (
+				<>
+					<p className="whats-new__subhead">Try these</p>
+					<ol className="whats-new__rows">
+						{tryThese.map((bead) => (
+							<Row key={bead.id} bead={bead} ratingOff={card.ratingOff} />
+						))}
+					</ol>
+				</>
+			) : (
+				<p className="whats-new__nothing">Nothing to try this time</p>
+			)}
+			<AlsoChanged card={card} startOpen={tryThese.length === 0} />
 		</div>
 	);
 }

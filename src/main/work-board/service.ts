@@ -55,7 +55,12 @@ const showSchema = z
 	.array(z.object({ status: z.string(), labels: z.array(z.string()).nullish() }))
 	.min(1);
 const detailsSchema = z.array(
-	z.object({ id: z.string(), title: z.string(), notes: z.string().optional() }),
+	z.object({
+		id: z.string(),
+		title: z.string(),
+		notes: z.string().optional(),
+		issue_type: z.string().optional(),
+	}),
 );
 export type BeadNotes = z.infer<typeof detailsSchema>[number];
 

@@ -1,4 +1,5 @@
 import type { UpdateCommit } from "@shared/app-update";
+import { displayTitle, isInternalOnly } from "@shared/change-notes.mts";
 import { createLogger } from "@shared/log/logger";
 import {
 	WHATS_NEW_RECENT,
@@ -8,7 +9,7 @@ import {
 	type WhatsNewResult,
 } from "@shared/whats-new";
 import type { WorkResult } from "@shared/work-board";
-import { beadsOfCommits, type CommitBead, planCard, tryItOf } from "./card";
+import { beadsOfCommits, type CommitBead, type CommitBeads, planCard, tryItOf } from "./card";
 import { readWhatsNewState, type WhatsNewState, writeWhatsNewState } from "./state";
 
 const log = createLogger("whats-new");
@@ -17,6 +18,7 @@ export interface BeadDetail {
 	readonly id: string;
 	readonly title: string;
 	readonly notes?: string | undefined;
+	readonly issue_type?: string | undefined;
 }
 
 export interface WhatsNewDeps {
@@ -27,6 +29,8 @@ export interface WhatsNewDeps {
 		isAncestor(from: string, to: string): Promise<boolean>;
 		/** `git log` over a range or with options, newest first. */
 		log(args: readonly string[]): Promise<readonly UpdateCommit[]>;
+		/** Files changed per bead over the same range or options (`pathsByBead`). */
+		paths(args: readonly string[]): Promise<ReadonlyMap<string, readonly string[]>>;
 	};
 	/** Title and notes per bead; bd leaves out ids it doesn't know. Throws when bd fails. */
 	readonly details: (ids: readonly string[]) => Promise<readonly BeadDetail[]>;
@@ -110,27 +114,32 @@ export class WhatsNewService {
 			await this.#save({ version: 1, lastSeenBuild: built, pending: null });
 			return null;
 		}
-		const commits = await this.#deps.git.log(
-			plan.kind === "since" ? [`${plan.from}..${built}`] : ["-n", String(WHATS_NEW_RECENT), built],
-		);
-		const found = beadsOfCommits(commits);
+		const range =
+			plan.kind === "since" ? [`${plan.from}..${built}`] : ["-n", String(WHATS_NEW_RECENT), built];
+		const found = beadsOfCommits(await this.#deps.git.log(range));
 		if (found.beads.length === 0 && found.others.length === 0) return null;
-		const card = await this.#withDetails(built, found.beads, found.others);
+		const paths = await this.#deps.git.paths(range).catch((error: unknown) => {
+			log.warn("no file lists for the what's new card", { error });
+			return new Map<string, readonly string[]>();
+		});
+		const card = await this.#withDetails(built, found, paths);
 		return { ...card, recent: plan.kind === "recent" };
 	}
 
 	/** Titles and try-it lines from bd; without bd, the commit summaries with rating off. */
 	async #withDetails(
 		built: string,
-		beads: readonly CommitBead[],
-		others: readonly string[],
+		{ beads, others }: CommitBeads,
+		paths: ReadonlyMap<string, readonly string[]>,
 	): Promise<Omit<WhatsNew, "recent">> {
 		const ratings = this.#state?.pending?.built === built ? this.#state.pending.ratings : {};
 		const row = (bead: CommitBead, detail?: BeadDetail): WhatsNewBead => ({
 			...bead,
-			title: detail?.title ?? null,
+			title: detail ? displayTitle(detail.title) : null,
 			tryIt: tryItOf(detail?.notes),
 			rating: ratings[bead.id] ?? null,
+			type: detail?.issue_type ?? null,
+			internal: isInternalOnly(paths.get(bead.id) ?? []),
 		});
 		try {
 			const details = new Map(

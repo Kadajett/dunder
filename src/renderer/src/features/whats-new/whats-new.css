@@ -188,3 +188,18 @@
 	font-size: 12px;
 	color: var(--ink-soft);
 }
+
+/* office-7ji: 'Try these' / 'Also changed' / 'Under the hood' headings, and the empty state. */
+.whats-new__subhead {
+	margin: 4px 0 2px;
+	font: 700 10px var(--font-mono);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+}
+
+.whats-new__nothing {
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: 12.5px;
+}
