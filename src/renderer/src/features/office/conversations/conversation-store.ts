@@ -40,7 +40,8 @@ export const useConversations = create<ConversationState>((set) => ({
 }));
 
 export type Speech =
-	| { readonly kind: "saying"; readonly message: OfficeMessage }
+	/** `until`: when the bubble stops being shown (ms). */
+	| { readonly kind: "saying"; readonly message: OfficeMessage; readonly until: number }
 	| { readonly kind: "waiting"; readonly message: OfficeMessage };
 
 /**
@@ -56,8 +57,8 @@ export function speechFor(
 	if (!latest) return undefined;
 	const { message } = latest;
 	if (message.state === "queued") return { kind: "waiting", message };
-	if (message.state === "delivered" && now - latest.changedAt < BUBBLE_MS)
-		return { kind: "saying", message };
+	const until = latest.changedAt + BUBBLE_MS;
+	if (message.state === "delivered" && now < until) return { kind: "saying", message, until };
 	return undefined;
 }
 

@@ -25,6 +25,8 @@ describe("speech bubbles", () => {
 			speechFor(useConversations.getState().heard, "nora", 60_000 + BUBBLE_MS - 1),
 		).toMatchObject({
 			kind: "saying",
+			// The bubble's one timer is set for this; it must be exactly when it falls silent.
+			until: 60_000 + BUBBLE_MS,
 		});
 		expect(
 			speechFor(useConversations.getState().heard, "nora", 60_000 + BUBBLE_MS),

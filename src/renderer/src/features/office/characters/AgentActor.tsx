@@ -172,9 +172,13 @@ export function AgentActor({ agent, world, phase, poolTable, overlay }: AgentAct
 
 	const change = (next: Brain): void => {
 		if (next === brain.current) return;
+		const newMode = next.mode !== brain.current.mode;
 		brain.current = next;
 		walk.current = { segment: 0, along: 0 };
-		setMode(next.mode);
+		// Only a new mode re-renders. React keeps even a same-value setState queued until the
+		// component's next render, so setting it on every think grew that queue for as long
+		// as the agent sat still (office-82q soak: ~1.2 MB in 30 minutes).
+		if (newMode) setMode(next.mode);
 	};
 
 	useFrame((state, delta) => {
