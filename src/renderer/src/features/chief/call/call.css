@@ -21,12 +21,6 @@
 	cursor: not-allowed;
 }
 
-.chief-call__start--live:disabled {
-	opacity: 1;
-	color: #3f9a5b;
-	cursor: default;
-}
-
 .chief-call {
 	position: relative;
 	display: flex;
