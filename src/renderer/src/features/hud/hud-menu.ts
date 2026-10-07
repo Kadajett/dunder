@@ -20,7 +20,9 @@ export type MenuAction =
 	| { readonly kind: "edit" }
 	| { readonly kind: "whiteboard" }
 	/** Open the topic dialog, or end the running brainstorm. */
-	| { readonly kind: "brainstorm" };
+	| { readonly kind: "brainstorm" }
+	/** Open the window's devtools (its keyboard shortcut is taken by the office). */
+	| { readonly kind: "devtools" };
 
 export interface MenuEntry {
 	readonly label: string;
@@ -91,6 +93,17 @@ export function menuSections(state: MenuState): readonly MenuSection[] {
 			})),
 		},
 		{ heading: "Layout", entries: [editEntry(state)] },
+		{
+			heading: "Help",
+			entries: [
+				{
+					label: "Open devtools",
+					role: "menuitem",
+					hint: "Ctrl+Shift+I",
+					action: { kind: "devtools" },
+				},
+			],
+		},
 	];
 }
 

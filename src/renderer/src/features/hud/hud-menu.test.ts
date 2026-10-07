@@ -16,7 +16,7 @@ const checked = (state: MenuState) =>
 		.map((entry) => entry.label);
 
 describe("menuSections", () => {
-	it("holds every former top-bar action except the inbox, plus the whiteboard and brainstorms", () => {
+	it("holds every former top-bar action except the inbox, plus the whiteboard, brainstorms and devtools", () => {
 		expect(entries(BASE).map((entry) => entry.action)).toEqual([
 			{ kind: "panel", panel: "clients" },
 			{ kind: "panel", panel: "brain" },
@@ -26,6 +26,7 @@ describe("menuSections", () => {
 			{ kind: "view", view: "office" },
 			{ kind: "view", view: "classic" },
 			{ kind: "edit" },
+			{ kind: "devtools" },
 		]);
 	});
 

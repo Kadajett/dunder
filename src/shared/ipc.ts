@@ -1,3 +1,4 @@
+import type { AppErrorsApi } from "./app-errors";
 import type { AppUpdateApi } from "./app-update";
 import type { BrainstormApi } from "./brainstorm";
 import type { CalisthenicsApi } from "./calisthenics";
@@ -126,6 +127,12 @@ export const IPC = {
 	whatsNewGet: "whats-new:get",
 	whatsNewRate: "whats-new:rate",
 	whatsNewDismiss: "whats-new:dismiss",
+	/** Renderer errors: the list (invoke), a report (send), dismiss and open devtools (invoke), changes (main → renderer). */
+	appErrorsList: "app-errors:list",
+	appErrorsReport: "app-errors:report",
+	appErrorsDismiss: "app-errors:dismiss",
+	appErrorsDevtools: "app-errors:devtools",
+	appErrorsChanged: "app-errors:changed",
 } as const;
 
 export type BridgeStatus =
@@ -174,4 +181,5 @@ export interface OfficeApi {
 	readonly work: WorkBoardApi;
 	readonly voice: VoiceApi;
 	readonly whatsNew: WhatsNewApi;
+	readonly errors: AppErrorsApi;
 }

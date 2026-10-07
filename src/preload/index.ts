@@ -147,6 +147,13 @@ const api: OfficeApi = {
 		respond: (id, response) => ipcRenderer.invoke(IPC.workRespond, { id, response }),
 		dismiss: (id) => ipcRenderer.invoke(IPC.workDismiss, id),
 	},
+	errors: {
+		list: () => ipcRenderer.invoke(IPC.appErrorsList),
+		onChanged: (listener) => listen(IPC.appErrorsChanged, listener),
+		report: (report) => ipcRenderer.send(IPC.appErrorsReport, report),
+		dismiss: (id) => ipcRenderer.invoke(IPC.appErrorsDismiss, id),
+		openDevtools: () => ipcRenderer.invoke(IPC.appErrorsDevtools),
+	},
 	voice: {
 		available: () => ipcRenderer.invoke(IPC.voiceAvailable),
 		transcribe: (audio, mimeType) => ipcRenderer.invoke(IPC.voiceTranscribe, audio, mimeType),

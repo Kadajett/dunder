@@ -1,0 +1,39 @@
+/* A crashed region's notice: small, readable over the office, never a blank window. */
+.error-notice {
+	position: relative;
+	z-index: 1200;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 10px;
+	max-width: 520px;
+	margin: 12px;
+	padding: 10px 14px;
+	border-radius: 10px;
+	background: #fffdf8f5;
+	box-shadow: 0 6px 16px #6b553a33;
+	font: 400 12px / 1.4 var(--font-ui);
+	color: var(--ink);
+	pointer-events: auto;
+}
+
+.error-notice strong {
+	font-weight: 700;
+}
+
+.error-notice code {
+	flex-basis: 100%;
+	font: 400 11px / 1.4 var(--font-mono);
+	color: #b42318;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.error-notice button {
+	padding: 4px 10px;
+	border-radius: 6px;
+	border: 1px solid #d8cdb9;
+	background: #fff;
+	font: 600 12px / 1 var(--font-ui);
+	cursor: pointer;
+}

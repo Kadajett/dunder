@@ -7,6 +7,8 @@ import { ClassicView } from "../features/classic/ClassicView";
 import { connectCompanies, useCompany } from "../features/company/company-store";
 import { EditDock } from "../features/edit/EditDock";
 import { useEditedLayout } from "../features/edit/edit-store";
+import { ErrorBoundary } from "../features/errors/ErrorBoundary";
+import { connectAppErrors } from "../features/errors/errors-store";
 import { connectFeed } from "../features/feed/feed-store";
 import { useOfficeSession } from "../features/herdr/useOfficeSession";
 import { HireDialog } from "../features/hire/HireDialog";
@@ -52,29 +54,58 @@ export function App() {
 	useEffect(connectFeed, []);
 	useEffect(connectWork, []);
 	useEffect(connectPool, []);
+	useEffect(connectAppErrors, []);
 	return (
 		<div className="office-app" data-view={view}>
 			{view === "office" ? (
 				<>
-					<OfficeView layout={layout} model={model} />
-					<WorldCards model={model} layout={layout} snapshot={snapshot} />
-					<EditDock />
-					<FocusOverlay />
-					<TableView />
-					<AutopilotNotice />
-					<TvFullscreen />
+					<ErrorBoundary region="office view">
+						<OfficeView layout={layout} model={model} />
+					</ErrorBoundary>
+					<ErrorBoundary region="agent cards">
+						<WorldCards model={model} layout={layout} snapshot={snapshot} />
+					</ErrorBoundary>
+					<ErrorBoundary region="layout editor">
+						<EditDock />
+					</ErrorBoundary>
+					<ErrorBoundary region="terminal view">
+						<FocusOverlay />
+					</ErrorBoundary>
+					<ErrorBoundary region="pool table view">
+						<TableView />
+						<AutopilotNotice />
+					</ErrorBoundary>
+					<ErrorBoundary region="TV">
+						<TvFullscreen />
+					</ErrorBoundary>
 				</>
 			) : (
-				<ClassicView model={model} />
+				<ErrorBoundary region="classic view">
+					<ClassicView model={model} />
+				</ErrorBoundary>
 			)}
-			<TopBar snapshot={snapshot} />
-			<WhatsNewCard />
-			<HudPanels model={model} snapshot={snapshot} />
-			{takeover ? null : <WorkBar />}
-			<ChiefOfStaffDock model={model} />
-			<HireDialog snapshot={snapshot} />
-			<WhiteboardOverlay />
-			<BrainstormDialog />
+			<ErrorBoundary region="top bar">
+				<TopBar snapshot={snapshot} />
+			</ErrorBoundary>
+			<ErrorBoundary region="what's new card">
+				<WhatsNewCard />
+			</ErrorBoundary>
+			<ErrorBoundary region="side panel">
+				<HudPanels model={model} snapshot={snapshot} />
+			</ErrorBoundary>
+			<ErrorBoundary region="work bar">{takeover ? null : <WorkBar />}</ErrorBoundary>
+			<ErrorBoundary region="chief of staff dock">
+				<ChiefOfStaffDock model={model} />
+			</ErrorBoundary>
+			<ErrorBoundary region="hire dialog">
+				<HireDialog snapshot={snapshot} />
+			</ErrorBoundary>
+			<ErrorBoundary region="whiteboard">
+				<WhiteboardOverlay />
+			</ErrorBoundary>
+			<ErrorBoundary region="brainstorm dialog">
+				<BrainstormDialog />
+			</ErrorBoundary>
 			{status.state === "connected" ? null : (
 				<div className="bridge-banner" data-state={status.state}>
 					herdr session “office”: {status.state === "error" ? status.message : status.state}
