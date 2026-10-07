@@ -1,7 +1,7 @@
 import "./excalidraw-assets";
 import "@excalidraw/excalidraw/index.css";
 import "./whiteboard.css";
-import { Excalidraw } from "@excalidraw/excalidraw";
+import { Excalidraw, viewportCoordsToSceneCoords } from "@excalidraw/excalidraw";
 import type {
 	ExcalidrawImperativeAPI,
 	ExcalidrawInitialDataState,
@@ -9,6 +9,7 @@ import type {
 import type { WhiteboardBoard } from "@shared/whiteboard";
 import { type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useWork } from "../work/work-store";
+import { noteAt, tagNote } from "./sticky-note";
 import { useBoardSync } from "./useBoardSync";
 import { useWhiteboard } from "./whiteboard-store";
 
@@ -58,21 +59,19 @@ function BoardEditor(props: {
 		}),
 		[board],
 	);
-	const onContextMenu = useCallback(
+	// Capture phase: on a sticky, 'Make idea bead' replaces Excalidraw's own menu.
+	const onContextMenuCapture = useCallback(
 		(event: MouseEvent<HTMLDivElement>) => {
 			setError(null);
 			if (!api) return;
-			const selected = api.getAppState().selectedElementIds;
-			const elements = api.getSceneElements();
-			const note = elements.find((element) => {
-				const data = dataOf(element.customData);
-				return element.type === "text" && selected[element.id] && data["kind"] === "note";
-			});
+			const point = viewportCoordsToSceneCoords(event, api.getAppState());
+			const note = noteAt(api.getSceneElements(), point.x, point.y);
 			if (note?.type !== "text") {
 				setAction(null);
 				return;
 			}
 			event.preventDefault();
+			event.stopPropagation();
 			const data = dataOf(note.customData);
 			const elementIds = new Set([note.id, ...(note.containerId ? [note.containerId] : [])]);
 			setAction({
@@ -101,20 +100,7 @@ function BoardEditor(props: {
 				author: action.author,
 			});
 			api.updateScene({
-				elements: api.getSceneElements().map((element) => {
-					if (!action.elementIds.has(element.id)) return element;
-					const data = dataOf(element.customData);
-					return {
-						...element,
-						...(element.type === "text"
-							? {
-									text: `${element.text}\n↗ ${id}`,
-									originalText: `${element.originalText}\n↗ ${id}`,
-								}
-							: {}),
-						customData: { ...data, beadId: id },
-					};
-				}),
+				elements: tagNote(api.getSceneElements(), action.elementIds, id, Date.now()),
 			});
 			setAction(null);
 		} catch (reason) {
@@ -126,7 +112,7 @@ function BoardEditor(props: {
 			className="whiteboard-editor"
 			role="application"
 			aria-label="Whiteboard drawing"
-			onContextMenu={onContextMenu}
+			onContextMenuCapture={onContextMenuCapture}
 		>
 			<Excalidraw
 				excalidrawAPI={setApi}
