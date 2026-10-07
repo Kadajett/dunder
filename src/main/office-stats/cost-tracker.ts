@@ -10,6 +10,7 @@ import {
 	dayKey,
 	keepRecent,
 	parseCostLine,
+	spendInSpan,
 } from "./cost-entries";
 
 const log = createLogger("office-stats");
@@ -22,6 +23,8 @@ interface TrackedSession {
 	agent: string | undefined;
 	readonly days: Map<string, number>;
 	recent: readonly CostEntry[];
+	/** Every priced turn read so far, oldest first: what a bead's time span is priced from. */
+	readonly all: CostEntry[];
 }
 
 /**
@@ -66,7 +69,7 @@ export class CostTracker {
 				continue;
 			}
 			const tail = new SessionTail(path, "start");
-			this.#sessions.set(path, { tail, agent: agent.name, days: new Map(), recent: [] });
+			this.#sessions.set(path, { tail, agent: agent.name, days: new Map(), recent: [], all: [] });
 			added = true;
 		}
 		this.#untracked = snapshot.agents
@@ -96,6 +99,15 @@ export class CostTracker {
 		};
 	}
 
+	/**
+	 * What `agent` spent from `from` to `to` (epoch ms) across the sessions it
+	 * last used; null when no omp session is known for it (another harness, or
+	 * not in the office).
+	 */
+	spendBetween(agent: string, from: number, to: number): number | null {
+		return spendInSpan([...this.#sessions.values()], agent, from, to);
+	}
+
 	async poll(): Promise<void> {
 		if (this.#polling) return;
 		this.#polling = true;
@@ -109,6 +121,7 @@ export class CostTracker {
 				const entries = lines.flatMap((line) => parseCostLine(line) ?? []);
 				addToDays(session.days, entries);
 				session.recent = keepRecent(session.recent, entries, since);
+				session.all.push(...entries);
 			}
 		} finally {
 			this.#polling = false;

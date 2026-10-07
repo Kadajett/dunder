@@ -62,10 +62,17 @@
 }
 
 .work-card__id,
+.work-card__spend,
 .work-card__epic {
 	font: 500 10.5px var(--font-mono);
 	color: var(--ink-soft);
 	white-space: nowrap;
+}
+
+.work-card__spend {
+	/* The epic tag gives way first; the figure stays whole. */
+	flex: none;
+	cursor: help;
 }
 
 .work-card__epic {

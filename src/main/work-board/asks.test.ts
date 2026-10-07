@@ -52,7 +52,7 @@ describe("buildAsks", () => {
 
 	it("keeps asks off the board's lanes", () => {
 		const ready = open;
-		const cards = buildCards({ open, blocked: [], ready, closed: [] });
+		const cards = buildCards({ open, blocked: [], ready, closed: [] }, 0);
 		expect(cards.map((card) => card.id)).toEqual(["o-b5r"]);
 	});
 });

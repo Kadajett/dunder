@@ -17,7 +17,8 @@ function lists(fields: Partial<BdLists>): BdLists {
 	return { open: [], blocked: [], ready: [], closed: [], ...fields };
 }
 
-const lanesOf = (board: BdLists) => buildCards(board).map(({ id, lane }) => [id, lane]);
+const build = (board: BdLists) => buildCards(board, 0);
+const lanesOf = (board: BdLists) => build(board).map(({ id, lane }) => [id, lane]);
 
 describe("parseBeads", () => {
 	it("reads bd's list output, keeping only the fields the board needs", () => {
@@ -71,7 +72,7 @@ describe("buildCards lanes", () => {
 
 	it("blocks an open bead with open blockers and says what it waits on", () => {
 		const waiting = bead("a-2", { status: "open" });
-		const [card] = buildCards(
+		const [card] = build(
 			lists({ open: [waiting], blocked: [{ ...waiting, blocked_by: ["a-1", "a-5"] }] }),
 		);
 		expect(card).toMatchObject({ lane: "blocked", waitingOn: ["a-1", "a-5"] });
@@ -86,7 +87,7 @@ describe("buildCards lanes", () => {
 				{ depends_on_id: "a-epic", type: "parent-child" },
 			],
 		});
-		const cards = buildCards(lists({ open: [bead("a-1", { status: "in_progress" }), stuck] }));
+		const cards = build(lists({ open: [bead("a-1", { status: "in_progress" }), stuck] }));
 		expect(cards.find((card) => card.id === "a-2")).toMatchObject({
 			lane: "blocked",
 			waitingOn: ["a-1"],
@@ -109,8 +110,17 @@ describe("buildCards lanes", () => {
 		const closed = [1, 2, 3, 4, 5, 6, 7].map((hour) =>
 			bead(`a-${hour}`, { status: "closed", closed_at: `2026-10-06T0${hour}:00:00Z` }),
 		);
-		const done = buildCards(lists({ closed })).map((card) => card.id);
+		const done = build(lists({ closed })).map((card) => card.id);
 		expect(done.sort()).toEqual(["a-3", "a-4", "a-5", "a-6", "a-7"]);
+	});
+
+	it("shows only beads closed since the Done window opened (older ones only count for epics)", () => {
+		const closed = [
+			bead("a-old", { status: "closed", closed_at: "2026-10-04T12:00:00Z" }),
+			bead("a-new", { status: "closed", closed_at: "2026-10-06T08:00:00Z" }),
+		];
+		const since = Date.parse("2026-10-05T12:00:00Z");
+		expect(buildCards(lists({ closed }), since).map((card) => card.id)).toEqual(["a-new"]);
 	});
 });
 
@@ -126,7 +136,7 @@ describe("buildCards order and fields", () => {
 			ready: [bead("a-old"), bead("a-p0"), bead("a-new")],
 			closed: [bead("a-done", { status: "closed", priority: 0 })],
 		});
-		expect(buildCards(board).map((card) => card.id)).toEqual([
+		expect(build(board).map((card) => card.id)).toEqual([
 			"a-wip",
 			"a-p0",
 			"a-new",
@@ -144,7 +154,7 @@ describe("buildCards order and fields", () => {
 			acceptance_criteria: "done when",
 		});
 		// bd ready omits `parent`; the card must still carry the epic.
-		const [card] = buildCards(lists({ open: [epic, child], ready: [bead("a-e.1")] }));
+		const [card] = build(lists({ open: [epic, child], ready: [bead("a-e.1")] }));
 		expect(card).toEqual({
 			id: "a-e.1",
 			title: "title a-e.1",
@@ -156,11 +166,13 @@ describe("buildCards order and fields", () => {
 			description: "what",
 			acceptance: "done when",
 			updatedAt: "2026-10-06T12:00:00Z",
+			spend: null,
+			epicSpend: null,
 		});
 	});
 
 	it("leaves epic null for a parent that is not an epic", () => {
-		const [card] = buildCards(
+		const [card] = build(
 			lists({ open: [bead("a-1"), bead("a-1.1", { parent: "a-1", status: "in_progress" })] }),
 		);
 		expect(card).toMatchObject({ id: "a-1.1", epic: null, assignee: null });
