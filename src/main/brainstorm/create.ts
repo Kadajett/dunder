@@ -7,12 +7,12 @@ import { createLogger } from "@shared/log/logger";
 import { z } from "zod";
 import { officeArgs, runHerdr } from "../herdr/cli";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { readSavedOffset } from "../switchboard/offset-file";
 import { officeBoardDigestPath } from "../whiteboard/requests";
 import { BrainstormService } from "./service";
 
 const log = createLogger("brainstorm");
 const PROMPT_TIMEOUT_MS = 20_000;
-const offsetSchema = z.object({ offset: z.number().int().nonnegative() });
 const digestSchema = z.object({
 	items: z.array(z.object({ kind: z.string(), author: z.string(), text: z.string() })),
 });
@@ -76,10 +76,8 @@ export function createBrainstorm(options: BrainstormOptions): BrainstormWiring {
 	return {
 		service,
 		async start() {
-			const offset = await readFile(statePath, "utf8").then(
-				(text) => offsetSchema.safeParse(JSON.parse(text)).data?.offset ?? 0,
-				() => 0,
-			);
+			// A lost place reads from the top; requests older than REQUEST_MAX_AGE_MS are dropped.
+			const offset = (await readSavedOffset(statePath)) ?? 0;
 			tail = await tailMailbox({
 				path: officeBrainstormRequestsPath(process.env, homedir()),
 				offset,

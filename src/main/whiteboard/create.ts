@@ -1,27 +1,15 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createLogger } from "@shared/log/logger";
 import type { WhiteboardChange } from "@shared/whiteboard";
-import { z } from "zod";
 import { type MailboxTail, tailMailbox } from "../switchboard/mailbox";
+import { readSavedOffset } from "../switchboard/offset-file";
 import { linesSince, REPLAY_MAX_AGE_MS } from "../switchboard/replay";
 import { officeBoardDigestPath, officeBoardRequestsPath } from "./requests";
 import { WhiteboardService } from "./service";
 
 const log = createLogger("whiteboard");
-const stateSchema = z.object({ offset: z.number().int().nonnegative() });
-
-/** The saved offset, or null when it is missing or unreadable (the place is lost). */
-async function savedOffset(statePath: string): Promise<number | null> {
-	const text = await readFile(statePath, "utf8").catch(() => null);
-	if (text === null) return null;
-	try {
-		return stateSchema.safeParse(JSON.parse(text)).data?.offset ?? null;
-	} catch {
-		return null;
-	}
-}
 
 /** Requests made since `notBefore`, logging how many older ones a lost place skipped. */
 function recentRequests(lines: readonly string[], notBefore: number): readonly string[] {
@@ -58,7 +46,7 @@ export function createWhiteboard(options: WhiteboardOptions): Whiteboard {
 	return {
 		service,
 		async start() {
-			const saved = await savedOffset(statePath);
+			const saved = await readSavedOffset(statePath);
 			// Lost place: read from the top, but only take the last hour's requests.
 			const notBefore = saved === null ? Date.now() - REPLAY_MAX_AGE_MS : undefined;
 			tail = await tailMailbox({
