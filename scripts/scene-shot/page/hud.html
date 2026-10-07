@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Dunder HUD screenshot</title>
+		<script>
+			// Fixed clock, installed before any module loads: 2026-10-07 09:41 local (the capture
+			// sets the timezone), then advancing with performance.now so app timers and waits work.
+			(() => {
+				const RealDate = Date;
+				const start = new RealDate(2026, 9, 7, 9, 41, 0).getTime();
+				const origin = performance.now();
+				const now = () => Math.floor(start + performance.now() - origin);
+				class FixedDate extends RealDate {
+					constructor(...args) {
+						super(...(args.length === 0 ? [now()] : args));
+					}
+					static now() {
+						return now();
+					}
+				}
+				globalThis.Date = FixedDate;
+			})();
+		</script>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./hud.tsx"></script>
+	</body>
+</html>
