@@ -6,7 +6,7 @@ function harness() {
 	const calls: unknown[][] = [];
 	const ok = (...args: unknown[]): Promise<WorkResult> => {
 		calls.push(args);
-		return Promise.resolve({ ok: true });
+		return Promise.resolve({ ok: true, revision: 1 });
 	};
 	const writes: WorkWrites = {
 		create: (title) => ok("create", title),
