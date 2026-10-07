@@ -1,6 +1,7 @@
 import type { ChiefPresence } from "@shared/chief";
 import { useEffect, useState } from "react";
 import { keepCall, resumeAfterUpdate } from "./call-keep";
+import { isMuteChord, MUTE_CHORD_LABEL } from "./call-keys";
 import {
 	hangUp,
 	loadVoiceAvailability,
@@ -13,15 +14,7 @@ import { callLabel } from "./call-turn";
 import { LevelMeter } from "./LevelMeter";
 import { MicPopover } from "./MicPopover";
 import "./call.css";
-
-/** Mute toggle from anywhere during a call, a focused terminal included (captured before it). */
-export const MUTE_CHORD_LABEL = "Ctrl+Shift+Space";
-
-function isMuteChord(event: KeyboardEvent): boolean {
-	return (
-		event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.code === "Space"
-	);
-}
+import { useShortcutSheet } from "../../../shortcuts";
 
 function PhoneIcon() {
 	return (
@@ -47,7 +40,7 @@ export function useCallWiring(presence: ChiefPresence): void {
 	useEffect(() => {
 		if (!active) return;
 		const onKey = (event: KeyboardEvent): void => {
-			if (!isMuteChord(event)) return;
+			if (useShortcutSheet.getState().open || !isMuteChord(event)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			if (!event.repeat) toggleMute();

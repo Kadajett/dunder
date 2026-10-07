@@ -25,6 +25,8 @@ export type MenuAction =
 	| { readonly kind: "brainstorm" }
 	/** Turn every app sound on or off. */
 	| { readonly kind: "sounds" }
+	/** Open the shortcut inventory. */
+	| { readonly kind: "shortcuts" }
 	/** Open the window's devtools (its keyboard shortcut is taken by the office). */
 	| { readonly kind: "devtools" };
 
@@ -112,6 +114,12 @@ export function menuSections(state: MenuState): readonly MenuSection[] {
 		{
 			heading: "Help",
 			entries: [
+				{
+					label: "Keyboard shortcuts",
+					role: "menuitem",
+					hint: "?",
+					action: { kind: "shortcuts" },
+				},
 				{
 					label: "Open devtools",
 					role: "menuitem",

@@ -1,5 +1,6 @@
 import type { UpdateStatus } from "@shared/app-update";
 import { Fragment, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useShortcutSheet } from "../../shortcuts";
 import { setSoundsOn, soundsOn, useSounds } from "../audio/sound-store";
 import { useBrainstormDialog } from "../brainstorm/BrainstormDialog";
 import { endBrainstorm, useBrainstorm, useBrainstormStore } from "../brainstorm/brainstorm-store";
@@ -35,6 +36,9 @@ function runAction(action: MenuAction): void {
 			return;
 		case "sounds":
 			setSoundsOn(!soundsOn());
+			return;
+		case "shortcuts":
+			useShortcutSheet.getState().setOpen(true);
 			return;
 		case "devtools":
 			openDevtools();

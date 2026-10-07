@@ -10,6 +10,7 @@ import {
 	type PoolView,
 } from "@shared/pool";
 import { useEffect, useState } from "react";
+import { useShortcutSheet } from "../../shortcuts";
 import { useChief } from "../chief/chief-store";
 import { type ScreenRect, useFocus } from "../office/focus/focus-store";
 import { LEAVE_CHORD_LABEL, leavesFocus } from "../office/focus/leave-keys";
@@ -132,7 +133,7 @@ function useLeaveKeys(active: boolean, leave: () => void): void {
 	useEffect(() => {
 		if (!active) return;
 		const onKey = (event: KeyboardEvent): void => {
-			if (!leavesFocus("table", event)) return;
+			if (useShortcutSheet.getState().open || !leavesFocus("table", event)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			leave();

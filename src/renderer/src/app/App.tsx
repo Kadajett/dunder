@@ -32,6 +32,7 @@ import { TvFullscreen } from "../features/office/tv/TvFullscreen";
 import { connectPlan } from "../features/plan/plan-store";
 import { connectPool } from "../features/pool/pool-store";
 import { TableView } from "../features/pool/TableView";
+import { ShortcutsSheet } from "../features/shortcuts/ShortcutsSheet";
 import { WhiteboardOverlay } from "../features/whiteboard/WhiteboardOverlay";
 import { WorkBar } from "../features/work/WorkBar";
 import { connectWork } from "../features/work/work-connect";
@@ -111,6 +112,9 @@ export function App() {
 			</ErrorBoundary>
 			<ErrorBoundary region="brainstorm dialog">
 				<BrainstormDialog />
+			</ErrorBoundary>
+			<ErrorBoundary region="keyboard shortcuts">
+				<ShortcutsSheet />
 			</ErrorBoundary>
 			{status.state === "connected" ? null : (
 				<div className="bridge-banner" data-state={status.state}>

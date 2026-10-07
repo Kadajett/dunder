@@ -6,6 +6,8 @@ Under the hood every agent runs in [herdr](https://herdr.dev), the terminal mult
 
 The Team panel keeps **Open screen** on each card; use the ⋯ menu for Beads, Open in editor, Switch model and Interrupt with its confirmation.
 
+Press `?` outside a terminal or text field to see grouped keyboard shortcuts; open the top-bar menu and choose **Keyboard shortcuts** to find them later.
+
 ![The Dunder office: agents at their desks, live monitors, panels and the activity feed](docs/screenshots/m3-hud-office.png)
 
 ## Install
