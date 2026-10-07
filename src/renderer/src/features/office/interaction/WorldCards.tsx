@@ -1,13 +1,15 @@
-import "./cards.css";
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import type { Layout } from "@shared/layout/schema";
 import { StaffActions } from "../../hire/StaffActions";
+import { useWorkCards } from "../../work/work-store";
 import { openScreen } from "../focus/open-screen";
 import type { OfficeModel, SeatedAgent } from "../model/office-model";
 import { ModelPicker } from "../models/ModelPicker";
+import { AgentBeads } from "./agent-beads";
 import { LibraryCard } from "./LibraryCard";
 import { MailroomCard } from "./MailroomCard";
 import { useSelection } from "./selection-store";
+import "./cards.css";
 
 const STATUS_LABEL = {
 	working: "working",
@@ -29,6 +31,7 @@ function Row({ label, value }: { readonly label: string; readonly value: string 
 
 function AgentCard({ seat, close }: { readonly seat: SeatedAgent; readonly close: () => void }) {
 	const { agent } = seat;
+	const cards = useWorkCards();
 	return (
 		<aside className="world-card">
 			<header>
@@ -43,6 +46,7 @@ function AgentCard({ seat, close }: { readonly seat: SeatedAgent; readonly close
 			<Row label="room" value={agent.workspaceLabel ? `#${agent.workspaceLabel}` : undefined} />
 			<Row label="desk" value={seat.desk.id} />
 			<Row label="pane" value={agent.paneId} />
+			<AgentBeads agentName={agent.name} cards={cards} />
 			<ModelPicker agentName={agent.name} />
 			<button
 				type="button"
