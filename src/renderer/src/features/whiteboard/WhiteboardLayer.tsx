@@ -7,7 +7,7 @@ import type {
 	ExcalidrawInitialDataState,
 } from "@excalidraw/excalidraw/types";
 import type { WhiteboardBoard } from "@shared/whiteboard";
-import { type MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWork } from "../work/work-store";
 import { noteAt, tagNote } from "./sticky-note";
 import { useBoardSync } from "./useBoardSync";
@@ -50,6 +50,9 @@ function BoardEditor(props: {
 	const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
 	const [action, setAction] = useState<StickyAction | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	// One bead per note: a double-click must not create two while the first is in flight.
+	const making = useRef(false);
+	const [busy, setBusy] = useState(false);
 	useBoardSync(api, board, props.onReload);
 	const initialData = useMemo(
 		(): ExcalidrawInitialDataState => ({
@@ -86,15 +89,17 @@ function BoardEditor(props: {
 		[api],
 	);
 	const makeIdea = useCallback(async () => {
-		if (!api || !action) return;
+		if (!api || !action || making.current) return;
 		setError(null);
+		if (action.beadId) {
+			useWhiteboard.getState().setOpen(false);
+			useWork.getState().reveal(action.beadId);
+			setAction(null);
+			return;
+		}
+		making.current = true;
+		setBusy(true);
 		try {
-			if (action.beadId) {
-				useWhiteboard.getState().setOpen(false);
-				useWork.getState().reveal(action.beadId);
-				setAction(null);
-				return;
-			}
 			const id = await window.office.whiteboard.makeIdea({
 				text: action.text,
 				author: action.author,
@@ -105,6 +110,9 @@ function BoardEditor(props: {
 			setAction(null);
 		} catch (reason) {
 			setError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			making.current = false;
+			setBusy(false);
 		}
 	}, [action, api]);
 	return (
@@ -125,9 +133,10 @@ function BoardEditor(props: {
 					type="button"
 					className="whiteboard-idea-action"
 					style={{ left: action.x, top: action.y }}
+					disabled={busy}
 					onClick={() => void makeIdea()}
 				>
-					{action.beadId ? `Open ${action.beadId}` : "Make idea bead"}
+					{action.beadId ? `Open ${action.beadId}` : busy ? "Making…" : "Make idea bead"}
 				</button>
 			)}
 			{error && (
