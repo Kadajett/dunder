@@ -154,8 +154,10 @@ const workBoard = createWorkBoard(app.getAppPath(), aiCost, (board) => {
 	broadcast(IPC.workChanged, board);
 	alerts.updateBoard(board);
 });
-/** GitHub issues labelled 'office' onto the board (pull-only: nothing goes back to GitHub). */
-const issueSync = createIssueSync(app.getAppPath(), () => void workBoard.refresh());
+/** GitHub issues labelled 'office' onto the board; fixed ones closed on GitHub only with Jeremy's setting on. */
+const issueSync = createIssueSync(app.getAppPath(), app.getPath("userData"), () =>
+	workBoard.refresh(),
+);
 /** Renderer errors Jeremy sees in the Trust Inbox (no devtools needed). */
 const appErrors = new AppErrorsService({
 	emit: (errors) => broadcast(IPC.appErrorsChanged, errors),

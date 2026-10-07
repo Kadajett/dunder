@@ -1,5 +1,6 @@
 import { createLogger } from "@shared/log/logger";
 import {
+	type GhIssue,
 	GITHUB_LABEL,
 	ghIssuesSchema,
 	type IssueBead,
@@ -7,6 +8,7 @@ import {
 	issueBeadsSchema,
 	planIssueSync,
 } from "./issues";
+import { planReportBack, type ReportBack } from "./report-back";
 
 const log = createLogger("github-issues");
 
@@ -16,28 +18,36 @@ export const ISSUE_POLL_MS = 5 * 60_000;
 export interface IssueSyncDeps {
 	/** `owner/repo` the office takes issues from; null when the checkout isn't on GitHub. */
 	readonly repo: () => Promise<string | null>;
-	/** Read the repo's 'office' issues as `gh issue list --json` output. The sync's only GitHub call. */
+	/** Read the repo's 'office' issues as `gh issue list --json` output. */
 	readonly listIssues: (repo: string) => Promise<string>;
 	/** `bd <args>` in the office's repo. */
 	readonly bd: (args: readonly string[]) => Promise<string>;
-	/** Log the bd writes instead of running them. */
+	/** Log the bd writes and the GitHub closes instead of running them. */
 	readonly dryRun: boolean;
 	/** Beads changed: refresh the work board now. */
 	readonly changed: () => void;
 	readonly setTimer: (callback: () => void, ms: number) => () => void;
+	/** Jeremy's setting (`github-issues.json`, off by default): close fixed issues on GitHub. */
+	readonly reportBack: () => Promise<boolean>;
+	/** The newest commit naming each bead (see `commitsByBead`). */
+	readonly commits: () => Promise<ReadonlyMap<string, string>>;
+	/** Close the issue with the comment (the sync's only GitHub write; fixed args). */
+	readonly closeIssue: (repo: string, number: number, comment: string) => Promise<void>;
 }
 
-/** One pass: what was (or, dry, would be) written to bd. */
+/** One pass: what was (or, dry, would be) written to bd, and the issues closed on GitHub. */
 export interface IssueSyncPass {
 	readonly repo: string | null;
 	readonly steps: readonly IssueStep[];
+	readonly closed: readonly ReportBack[];
 }
 
 /**
  * Pulls GitHub issues labelled 'office' onto the work board as beads, every
- * `ISSUE_POLL_MS`. Pull-only: it reads GitHub and writes only bd. Nothing
- * goes back to GitHub; a closed bead whose issue is still open is logged
- * for the report-back Jeremy hasn't approved yet.
+ * `ISSUE_POLL_MS`. It writes bd; the one thing that goes back to GitHub is
+ * report-back, when Jeremy turns it on: a fixed issue is closed with its
+ * commit and try-it line (nothing else from the bead). Off, those issues
+ * are only logged.
  */
 export class IssueSync {
 	readonly #deps: IssueSyncDeps;
@@ -63,7 +73,7 @@ export class IssueSync {
 
 	async pass(): Promise<IssueSyncPass> {
 		const repo = await this.#deps.repo();
-		if (!repo) return { repo, steps: [] };
+		if (!repo) return { repo, steps: [], closed: [] };
 		const issues = ghIssuesSchema.parse(JSON.parse(await this.#deps.listIssues(repo)));
 		const beads = issueBeadsSchema.parse(
 			JSON.parse(
@@ -71,15 +81,10 @@ export class IssueSync {
 			),
 		);
 		const steps = planIssueSync(issues, beads);
-		this.#noteClosed(
-			beads,
-			new Set(
-				issues.filter((issue) => issue.state.toUpperCase() === "OPEN").map((issue) => issue.url),
-			),
-		);
+		const closed = await this.#reportBack(repo, issues, beads);
 		if (this.#deps.dryRun) {
 			for (const step of steps) log.info("dry run: would run bd", { args: step.args });
-			return { repo, steps };
+			return { repo, steps, closed };
 		}
 		for (const step of steps) {
 			await this.#deps.bd(step.args);
@@ -88,21 +93,37 @@ export class IssueSync {
 			});
 		}
 		if (steps.length > 0) this.#deps.changed();
-		return { repo, steps };
+		return { repo, steps, closed };
 	}
 
-	/** Report-back is off in v1: say which issues it would close, once each. */
-	#noteClosed(beads: readonly IssueBead[], open: ReadonlySet<string>): void {
-		for (const bead of beads) {
-			const url = bead.external_ref;
-			if (bead.status !== "closed" || !url || !open.has(url) || this.#reported.has(bead.id))
-				continue;
-			this.#reported.add(bead.id);
-			log.info("bead closed; its GitHub issue stays open (report-back is off)", {
-				bead: bead.id,
-				url,
-			});
+	/** Close fixed issues on GitHub (report-back on), or say once each which ones it would (off). */
+	async #reportBack(
+		repo: string,
+		issues: readonly GhIssue[],
+		beads: readonly IssueBead[],
+	): Promise<ReportBack[]> {
+		const due = planReportBack(repo, issues, beads, await this.#deps.commits());
+		if (!(await this.#deps.reportBack())) {
+			for (const close of due.filter((each) => !this.#reported.has(each.bead))) {
+				this.#reported.add(close.bead);
+				log.info("bead fixed; its GitHub issue stays open (report-back is off)", { ...close });
+			}
+			return [];
 		}
+		const closed: ReportBack[] = [];
+		for (const close of due) {
+			if (this.#deps.dryRun) {
+				log.info("dry run: would close the GitHub issue", { ...close });
+				closed.push(close);
+				continue;
+			}
+			// A failure is retried next pass; a closed issue never comes back here (it isn't open).
+			await this.#deps.closeIssue(repo, close.number, close.text).then(
+				() => closed.push(close),
+				(error: unknown) => log.warn("cannot close the GitHub issue", { url: close.url, error }),
+			);
+		}
+		return closed;
 	}
 
 	async #tick(): Promise<void> {
