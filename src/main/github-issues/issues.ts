@@ -31,6 +31,8 @@ export const issueBeadsSchema = z.array(
 		description: z.string().nullish(),
 		status: z.string(),
 		external_ref: z.string().nullish(),
+		/** Read only for its last 'Try it:' line (report-back); never sent anywhere whole. */
+		notes: z.string().nullish(),
 	}),
 );
 export type IssueBead = z.infer<typeof issueBeadsSchema>[number];
