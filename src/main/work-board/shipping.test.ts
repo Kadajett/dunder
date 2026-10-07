@@ -1,7 +1,7 @@
 import type { WorkCard } from "@shared/work-board";
 import { describe, expect, it } from "vitest";
 import type { Bead } from "./cards";
-import { median, noteReview, shippingStats } from "./shipping";
+import { median, noteReview, shippingStats, withReviewSince } from "./shipping";
 
 const HOUR = 60 * 60 * 1000;
 /** 15:00 local on a day; midnight is 15 h before. */
@@ -96,5 +96,22 @@ describe("median", () => {
 		expect(median([5, 1, 3])).toBe(3);
 		expect(median([4, 1, 3, 2])).toBe(2.5);
 		expect(median([])).toBeNull();
+	});
+});
+
+describe("withReviewSince", () => {
+	it("keeps a Review card's entry time when a notes edit moves its last update, and falls back to that update when unknown", () => {
+		const since = noteReview(new Map(), [card("a", "review", 2 * HOUR)], now);
+		// An hour later someone edits a's notes: updated_at is now, the wait isn't.
+		const later = [card("a", "review", 0), card("b", "review", HOUR), card("c", "ready")];
+		const shown = withReviewSince(later, noteReview(since, later, now));
+		expect(shown.map((each) => each.reviewSince)).toEqual([
+			iso(now - 2 * HOUR),
+			iso(now - HOUR),
+			undefined,
+		]);
+		expect(withReviewSince([card("d", "review", HOUR)], new Map())[0]?.reviewSince).toBe(
+			iso(now - HOUR),
+		);
 	});
 });

@@ -40,6 +40,8 @@ export interface WorkCard {
 	readonly acceptance: string;
 	/** ISO time of the last change, for ordering. */
 	readonly updatedAt: string;
+	/** Review cards: when the work board first saw the bead in Review (ISO); its last update when that's unknown. */
+	readonly reviewSince?: string;
 	/** ISO time the bead entered In progress; null when it has never been claimed. */
 	readonly startedAt: string | null;
 	/**

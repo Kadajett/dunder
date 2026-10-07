@@ -27,7 +27,7 @@ function ReviewWait({ since }: { readonly since: string }) {
 		return () => clearInterval(timer);
 	}, []);
 	const at = new Date(since);
-	const title = `Waiting for Max's review since ${at.toLocaleString()}. That is the bead's last update: bd doesn't record when the review label was added.`;
+	const title = `Waiting for Max's review since ${at.toLocaleString()}, when the work board first saw it in Review.`;
 	return (
 		<p className="work-card__waiting work-card__waiting--review" title={title}>
 			waiting {waitedFor(since, now)}
@@ -241,7 +241,7 @@ export function WorkCardRow({ card, expanded, onToggle, onDrag }: WorkCardRowPro
 					waiting on {card.waitingOn.map(shortId).join(", ")}
 				</p>
 			) : null}
-			{card.lane === "review" ? <ReviewWait since={card.updatedAt} /> : null}
+			{card.lane === "review" ? <ReviewWait since={card.reviewSince ?? card.updatedAt} /> : null}
 			{card.lane === "review" && card.merge ? <MergeNote merge={card.merge} id={card.id} /> : null}
 			{expanded ? <CardDetail card={card} /> : null}
 			<WorkError errorKey={card.id} />
