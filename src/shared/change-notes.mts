@@ -65,3 +65,14 @@ export function pathsByBead(log: string): Map<string, string[]> {
 	}
 	return paths;
 }
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+
+/** Remove exact bead ids; their prefix alone can match command names like `office-notes`. */
+export function stripBeadIds(text: string, ids: readonly string[]): string {
+	const alternatives = ids
+		.map(escapeRegExp)
+		.sort((left, right) => right.length - left.length)
+		.join("|");
+	if (!alternatives) return text;
+	return text.replace(new RegExp(String.raw`\(?\b(?:${alternatives})\b(?![\w.-])\)?`, "gi"), "");
+}

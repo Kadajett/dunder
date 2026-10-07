@@ -6,7 +6,7 @@ const names: Names = {
 	agents: ["carl", "theo", "pip"],
 	chief: "max",
 	owner: "Jeremy",
-	idPrefixes: ["office"],
+	beadIds: ["office-b5r", "office-dk7.2"],
 };
 
 const bead = (id: string, title: string, type: string, notes = ""): Bead => ({
@@ -127,6 +127,27 @@ describe("office-notes: the draft", () => {
 		);
 		expect(header).toContain(
 			"- Left out: 1 epic(s), 1 under-the-hood bead(s), 2 bead(s) bd doesn't know, 3 commit(s) without a bead",
+		);
+	});
+
+	it("keeps command labels that resemble bead ids intact in public bullets", () => {
+		const output = renderDraft({
+			range: "v0.1.0..HEAD",
+			beads: [
+				bead(
+					"office-b5r",
+					"Public release notes for Dunder users, drafted from merged beads (office-notes draft)",
+					"feature",
+				),
+			],
+			unknown: 0,
+			unnamed: 0,
+			names,
+			today: "2026-10-07",
+		});
+
+		expect(output).toContain(
+			"- Public release notes for Dunder users, drafted from merged beads (office-notes draft)",
 		);
 	});
 
