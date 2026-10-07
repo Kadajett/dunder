@@ -14,7 +14,7 @@ function office(statuses: Readonly<Record<string, AgentStatus>>) {
 	});
 }
 
-function harness(open: readonly string[] = []) {
+function harness(open: readonly string[] = [], brainstorming: readonly string[] = []) {
 	const views: PoolView[] = [];
 	const frames: PoolFrame[] = [];
 	const digests: PoolView[] = [];
@@ -23,6 +23,7 @@ function harness(open: readonly string[] = []) {
 		emit: (view) => views.push(view),
 		emitFrame: (frame) => frames.push(frame),
 		isOpen: (paneId) => open.includes(paneId),
+		inBrainstorm: (name) => brainstorming.includes(name),
 		saveDigest: async (view) => {
 			digests.push(view);
 		},
@@ -58,13 +59,18 @@ describe("PoolService", () => {
 		service.stop();
 	});
 
-	it("doesn't count an agent Jeremy has open in terminal focus as idle", () => {
-		const { service } = harness(["w1:p2"]);
-		service.start();
-		service.updateSnapshot(office({ theo: "idle", mika: "idle" }));
-		vi.advanceTimersByTime(ELIGIBLE_AFTER_MS);
-		expect(service.view()).toMatchObject({ mode: "practice", shooter: "theo" });
-		service.stop();
+	it("doesn't count an agent Jeremy has open in terminal focus, or one in a brainstorm, as idle", () => {
+		for (const { open, brainstorming } of [
+			{ open: ["w1:p2"], brainstorming: [] },
+			{ open: [], brainstorming: ["mika"] },
+		]) {
+			const { service } = harness(open, brainstorming);
+			service.start();
+			service.updateSnapshot(office({ theo: "idle", mika: "idle" }));
+			vi.advanceTimersByTime(ELIGIBLE_AFTER_MS);
+			expect(service.view()).toMatchObject({ mode: "practice", shooter: "theo" });
+			service.stop();
+		}
 	});
 
 	it("sends a prompted agent back to its desk; an emptied side forfeits", () => {

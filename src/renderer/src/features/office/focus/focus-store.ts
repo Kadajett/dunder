@@ -1,8 +1,10 @@
 import { create } from "zustand";
+import type { TablePlacement } from "../../pool/table-space";
 import type { ScreenPlacement } from "../scene/station";
 
 /** The computer the user clicked: whose screen to open, and where it sits. */
-export interface FocusTarget {
+export interface ScreenFocus {
+	readonly kind: "screen";
 	readonly deskId: string;
 	readonly paneId: string;
 	readonly agentName: string;
@@ -12,7 +14,15 @@ export interface FocusTarget {
 	readonly screen: ScreenPlacement;
 }
 
-/** The monitor's on-screen rectangle in CSS pixels, relative to the canvas. */
+/** The pool table, seen from above for Jeremy to play. */
+export interface TableFocus {
+	readonly kind: "table";
+	readonly table: TablePlacement;
+}
+
+export type FocusTarget = ScreenFocus | TableFocus;
+
+/** The focused thing's on-screen rectangle in CSS pixels, relative to the canvas (a table's cloth). */
 export interface ScreenRect {
 	readonly left: number;
 	readonly top: number;
@@ -21,9 +31,9 @@ export interface ScreenRect {
 }
 
 /**
- * Focus lifecycle: `entering` while the camera tweens to the monitor,
- * `focused` once it is head-on (the terminal mounts), `leaving` while it
- * tweens back. `null` is the office overview.
+ * Focus lifecycle: `entering` while the camera tweens to the monitor or table,
+ * `focused` once it is settled (the terminal or table view mounts), `leaving`
+ * while it tweens back. `null` is the office overview.
  */
 export type FocusPhase = "entering" | "focused" | "leaving";
 
@@ -32,7 +42,7 @@ interface FocusState {
 	readonly phase: FocusPhase | null;
 	readonly rect: ScreenRect | null;
 	focus(target: FocusTarget): void;
-	/** Leave focus (never bound to Esc: terminal programs need it). */
+	/** Leave focus (a screen never binds it to Esc: terminal programs need it; the table does). */
 	leave(): void;
 	settled(rect: ScreenRect): void;
 	returned(): void;

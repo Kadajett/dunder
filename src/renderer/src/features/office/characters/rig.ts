@@ -3,7 +3,8 @@ import type { Group } from "three";
 
 /** `exercising` follows the group workout routine (see `exercise.ts`) instead of the clock. */
 export type MiiPose = "seated" | "standing" | "walking" | "exercising";
-export type MiiActivity = "typing" | "idle" | "waving";
+/** `cue`: standing at the pool table, holding a cue upright in the camera-side hand. */
+export type MiiActivity = "typing" | "idle" | "waving" | "cue";
 
 /* Body dimensions (metres). Hips are the rig root; everything above hangs off them. */
 export const HIP_Y = 0.48;

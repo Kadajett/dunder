@@ -7,6 +7,8 @@ import type { Group } from "three";
 import { inBrainstorm } from "../../brainstorm/brainstorm-store";
 import { useAgentWorkout } from "../../calisthenics/workout-store";
 import { useAgentStyle } from "../../hire/roster-store";
+import { usePool } from "../../pool/pool-store";
+import { standingSpots, type TablePlacement } from "../../pool/table-space";
 import {
 	type Brain,
 	type BrainWorld,
@@ -38,6 +40,7 @@ const POSE: Record<Brain["mode"], MiiPose> = {
 	hanging: "standing",
 	exercising: "exercising",
 	meeting: "standing",
+	playing: "standing",
 };
 
 interface Walk {
@@ -116,12 +119,14 @@ export interface AgentActorProps {
 	readonly agent: LiveAgent;
 	readonly world: BrainWorld;
 	readonly phase: number;
+	/** Where the office pool table stands; the engine's game seats idle agents at it. */
+	readonly poolTable: TablePlacement | null;
 	/** Extra content that travels with the body (e.g. a speech bubble), in body-local space. */
 	readonly overlay?: ReactNode;
 }
 
-/** A live agent's body: sits and works at its desk, wanders when idle, joins workouts. */
-export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
+/** A live agent's body: sits and works at its desk, wanders when idle, joins workouts, plays pool. */
+export function AgentActor({ agent, world, phase, poolTable, overlay }: AgentActorProps) {
 	const style = useAgentStyle(agent.name);
 	const brain = useRef<Brain>(initialBrain(0, world.random));
 	const [mode, setMode] = useState<Brain["mode"]>(brain.current.mode);
@@ -174,6 +179,9 @@ export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 			clock,
 			world.colleagueSpot,
 		);
+		const pool = poolTable
+			? standingSpots(poolTable, usePool.getState().view).get(agent.name)
+			: undefined;
 		const tick = {
 			type: "tick",
 			status: status.current,
@@ -182,11 +190,13 @@ export function AgentActor({ agent, world, phase, overlay }: AgentActorProps) {
 			workout: signal,
 			visit,
 			meeting: inBrainstorm(agent.name),
+			pool,
 		} as const;
 		change(stepBrain(brain.current, tick, world));
 	});
 
-	const activity = mode === "seated" ? SEATED_ACTIVITY[agent.status] : "idle";
+	const activity =
+		mode === "seated" ? SEATED_ACTIVITY[agent.status] : mode === "playing" ? "cue" : "idle";
 	return (
 		<>
 			<group

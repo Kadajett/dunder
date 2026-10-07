@@ -78,6 +78,29 @@ export interface PoolSide {
 
 export type PoolBallInHand = "kitchen" | "anywhere";
 
+/**
+ * Where ball in hand may put the cue ball: on the cloth, clear of every ball,
+ * behind the head string for a kitchen. The engine's rule; table view mirrors it.
+ */
+export function canPlaceCue(
+	balls: readonly PoolBall[],
+	spot: { readonly x: number; readonly y: number },
+	area: PoolBallInHand,
+): boolean {
+	const r = POOL_TABLE.ballRadius;
+	if (!Number.isFinite(spot.x) || !Number.isFinite(spot.y)) return false;
+	if (Math.abs(spot.x) > POOL_TABLE.length / 2 - r || Math.abs(spot.y) > POOL_TABLE.width / 2 - r) {
+		return false;
+	}
+	if (area === "kitchen" && spot.x > HEAD_STRING_X) return false;
+	return balls.every(
+		(ball) =>
+			ball.pocket !== null ||
+			ball.id === CUE_BALL ||
+			Math.hypot(ball.x - spot.x, ball.y - spot.y) >= 2 * r,
+	);
+}
+
 export interface PoolShotReport {
 	readonly by: string;
 	/** One line, e.g. 'nora: potted 12, 9 · stripes continue'. */

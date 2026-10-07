@@ -5,6 +5,7 @@ import { useFocus } from "./focus-store";
 /** Zoom into an agent's computer and open its live terminal. */
 export function openScreen({ desk, agent }: SeatedAgent): void {
 	useFocus.getState().focus({
+		kind: "screen",
 		deskId: desk.id,
 		paneId: agent.paneId,
 		agentName: agent.name,

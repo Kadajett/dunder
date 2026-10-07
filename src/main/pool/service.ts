@@ -38,6 +38,8 @@ export interface PoolDeps {
 	readonly emitFrame: (frame: PoolFrame) => void;
 	/** Whether Jeremy has this pane open in terminal focus (its agent isn't free to play). */
 	readonly isOpen: (paneId: string) => boolean;
+	/** Whether the agent takes part in the running brainstorm (it stays at the whiteboard). */
+	readonly inBrainstorm: (name: string) => boolean;
 	/** Where `office-pool state` reads the table. */
 	readonly saveDigest: (view: PoolView) => Promise<void>;
 	readonly now?: () => number;
@@ -102,7 +104,8 @@ export class PoolService {
 							name: agent.name,
 							free:
 								(agent.agent_status === "idle" || agent.agent_status === "done") &&
-								!this.#deps.isOpen(agent.pane_id),
+								!this.#deps.isOpen(agent.pane_id) &&
+								!this.#deps.inBrainstorm(agent.name),
 						},
 					]
 				: [],

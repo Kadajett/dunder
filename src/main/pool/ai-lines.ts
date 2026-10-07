@@ -1,5 +1,6 @@
 import {
 	CUE_BALL,
+	canPlaceCue,
 	HEAD_STRING_X,
 	POCKET_IDS,
 	POCKETS,
@@ -10,7 +11,6 @@ import {
 	type PoolShotInput,
 } from "@shared/pool";
 import { MAX_SPEED, ROLL_DECEL } from "./physics";
-import { canPlaceCue } from "./table";
 
 const R = POOL_TABLE.ballRadius;
 /** Cuts thinner than this (cosine of ~72°) miss too often to try. */
