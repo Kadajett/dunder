@@ -161,28 +161,33 @@
 	background: #b4362f;
 }
 
-/* Mic check: floats above the strip. */
+/* Mic check: inside the strip, under its level meter (the chat above stays readable). */
 .chief-mic {
-	position: absolute;
-	right: 12px;
-	bottom: calc(100% + 6px);
-	left: 12px;
-	z-index: 2;
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	padding: 12px;
-	border: 1px solid var(--panel-edge);
-	border-radius: 14px;
-	background: var(--panel);
-	box-shadow: 0 14px 34px rgb(107 85 58 / 0.25);
+	gap: 6px;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
 	font-size: 13px;
 }
 
-.chief-mic__header {
+.chief-mic__row {
 	display: flex;
-	justify-content: space-between;
-	font-weight: 700;
+	align-items: center;
+	gap: 8px;
+}
+
+.chief-mic__select {
+	flex: 1;
+	min-width: 0;
+	padding: 6px 8px;
+	border: 1px solid var(--panel-edge);
+	border-radius: 10px;
+	background: #fffdf8;
+	color: var(--ink);
+	font: inherit;
 }
 
 .chief-mic__close {
@@ -194,31 +199,13 @@
 	cursor: pointer;
 }
 
-.chief-mic__inputs {
-	margin: 0;
-	padding: 0;
-	list-style: none;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.chief-mic__inputs label {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	cursor: pointer;
-}
-
-.chief-mic__empty,
 .chief-mic__using {
-	margin: 0;
 	color: var(--ink-soft);
 	font-size: 12px;
 }
 
 .chief-mic__test {
-	padding: 8px 10px;
+	padding: 6px 10px;
 	border: 1px solid var(--panel-edge);
 	border-radius: 10px;
 	background: #fffdf8;

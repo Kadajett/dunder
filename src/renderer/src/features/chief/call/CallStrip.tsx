@@ -12,7 +12,7 @@ import {
 } from "./call-store";
 import { callLabel } from "./call-turn";
 import { LevelMeter } from "./LevelMeter";
-import { MicPopover } from "./MicPopover";
+import { MicPanel } from "./MicPanel";
 import "./call.css";
 import { useShortcutSheet } from "../../../shortcuts";
 
@@ -85,7 +85,6 @@ export function CallStrip({ name }: { readonly name: string }) {
 			data-phase={call.phase}
 			data-muted={call.muted}
 		>
-			{micOpen && <MicPopover onClose={() => setMicOpen(false)} />}
 			<div className="chief-call__state">
 				<span className="chief-call__light" aria-hidden="true" />
 				<span className="chief-call__label" aria-live="polite">
@@ -93,7 +92,12 @@ export function CallStrip({ name }: { readonly name: string }) {
 				</span>
 			</div>
 			<LevelMeter />
-			{call.heard && <p className="chief-call__heard">Heard: “{call.heard}”</p>}
+			{/* The mic check takes the 'Heard' line's place, inside the strip: the chat above stays clear. */}
+			{micOpen ? (
+				<MicPanel onClose={() => setMicOpen(false)} />
+			) : (
+				call.heard && <p className="chief-call__heard">Heard: “{call.heard}”</p>
+			)}
 			{call.caption && (
 				<p
 					className="chief-call__caption"
