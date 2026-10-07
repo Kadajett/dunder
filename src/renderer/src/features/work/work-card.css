@@ -75,6 +75,14 @@
 	cursor: help;
 }
 
+/* The expanded card's 'AI spend so far ~$4.64', above the description. */
+.work-card__spend-line {
+	margin: 6px 0 0;
+	font: 600 11px var(--font-mono);
+	color: var(--ink-soft);
+	cursor: help;
+}
+
 .work-card__epic {
 	min-width: 0;
 	overflow: hidden;

@@ -5,6 +5,21 @@ export function spendLabel(usd: number): string {
 	return `~$${usd.toFixed(2)}`;
 }
 
+/**
+ * Whether the card's row shows its spend: only in Done, looking back. While
+ * the queue is scanned (In progress, Review, Blocked, Ready) the title needs
+ * the room; the expanded card always says it.
+ */
+export function rowShowsSpend(card: WorkCard): boolean {
+	return card.lane === "done" && card.spend !== null;
+}
+
+/** The expanded card's line: 'AI spend so far ~$4.64' (or 'AI spend ~$4.64' once done). */
+export function spendLine(card: WorkCard): string | null {
+	if (card.spend === null) return null;
+	return `AI spend${card.lane === "done" ? "" : " so far"} ${spendLabel(card.spend)}`;
+}
+
 /** How a card's figure was worked out, for its tooltip. */
 export function spendTitle(card: WorkCard): string {
 	const until = card.lane === "done" ? "closed it" : "now";
