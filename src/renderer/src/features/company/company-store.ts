@@ -1,4 +1,9 @@
-import type { CompaniesApi, Company, CompanySummary } from "@shared/company/company";
+import type {
+	CompaniesApi,
+	Company,
+	CompanySettings,
+	CompanySummary,
+} from "@shared/company/company";
 import { firstCompany, summarize } from "@shared/company/company-ops";
 import { create } from "zustand";
 
@@ -64,8 +69,9 @@ export async function createCompany(name: string, subtitle: string): Promise<voi
 	await requireApi().create(name, subtitle);
 }
 
-export async function renameCompany(id: string, name: string, subtitle: string): Promise<void> {
+/** Save the company's name, subtitle and spend alarm. */
+export async function updateCompanySettings(id: string, settings: CompanySettings): Promise<void> {
 	const api = requireApi();
-	await api.rename(id, name, subtitle);
+	await api.updateSettings(id, settings);
 	await refreshList(api);
 }

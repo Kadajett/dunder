@@ -79,6 +79,19 @@ describe("trustInbox", () => {
 	it("is empty with no snapshot", () => {
 		expect(trustInbox(inboxAgents(null), {})).toEqual([]);
 	});
+
+	it("puts runaway spenders after asks and before finished work, and drops ones no longer in the office", () => {
+		const agents = office(["nora", "w1:p1", "done", 4], ["jonas", "w1:p2", "working", 7]);
+		const spenders = [
+			{ name: "jonas", recentUsd: 9, bead: undefined },
+			{ name: "gone", recentUsd: 20, bead: undefined },
+		];
+		expect(summary(trustInbox(agents, {}, [ask("office-a1")], spenders))).toEqual([
+			"ask:office-a1",
+			"spend:jonas",
+			"done:nora",
+		]);
+	});
 });
 
 describe("inboxAgents", () => {

@@ -1,6 +1,7 @@
 import type { AgentStatus, SessionSnapshot } from "@shared/herdr/schema";
 import type { SeenDone } from "@shared/office-stats";
 import type { HumanAsk } from "@shared/work-board";
+import type { Spender } from "./spend";
 
 /** What the Trust Inbox needs to know about one live agent. */
 export interface InboxAgent {
@@ -18,6 +19,8 @@ export type TrustItem =
 	| { readonly kind: "blocked"; readonly agent: InboxAgent }
 	/** Something an agent flagged that only Jeremy can do or decide (a bd `human` bead). */
 	| { readonly kind: "ask"; readonly ask: HumanAsk }
+	/** An agent spending more than the company's alarm in the last 30 minutes. */
+	| { readonly kind: "spend"; readonly agent: InboxAgent; readonly spender: Spender }
 	| { readonly kind: "done"; readonly agent: InboxAgent };
 
 /** Whether the user already marked this agent's current `done` seen (the same state change). */
@@ -43,21 +46,28 @@ export function inboxAgents(snapshot: SessionSnapshot | null): InboxAgent[] {
 /**
  * What needs the user: every blocked agent (sorted by name), then the asks
  * agents flagged for him (in main's order: most urgent, then oldest), then
- * every finished agent whose `done` has not been seen yet (by name).
+ * agents spending fast (fastest first), then every finished agent whose
+ * `done` has not been seen yet (by name).
  */
 export function trustInbox(
 	agents: readonly InboxAgent[],
 	seen: SeenDone,
 	asks: readonly HumanAsk[] = [],
+	spenders: readonly Spender[] = [],
 ): TrustItem[] {
 	const byName = (a: InboxAgent, b: InboxAgent): number => a.name.localeCompare(b.name);
 	const blocked = agents.filter((agent) => agent.status === "blocked").sort(byName);
 	const done = agents
 		.filter((agent) => agent.status === "done" && !isSeen(agent, seen))
 		.sort(byName);
+	const spending = spenders.flatMap((spender) => {
+		const agent = agents.find((candidate) => candidate.name === spender.name);
+		return agent ? [{ kind: "spend" as const, agent, spender }] : [];
+	});
 	return [
 		...blocked.map((agent) => ({ kind: "blocked" as const, agent })),
 		...asks.map((ask) => ({ kind: "ask" as const, ask })),
+		...spending,
 		...done.map((agent) => ({ kind: "done" as const, agent })),
 	];
 }

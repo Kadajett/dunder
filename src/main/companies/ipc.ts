@@ -3,10 +3,10 @@ import { ipcMain } from "electron";
 import { z } from "zod";
 import type { CompaniesService } from "./service";
 
-/** Shapes only; the service validates names, subtitles and layouts. */
+/** Shapes only; the service validates names, subtitles, settings and layouts. */
 const textSchema = z.string();
 const createSchema = z.object({ name: textSchema, subtitle: textSchema });
-const renameSchema = createSchema.extend({ id: textSchema });
+const settingsSchema = z.object({ id: textSchema, settings: z.unknown() });
 
 /** `window.office.companies` handlers. Renderer payloads are untrusted. */
 export function registerCompaniesIpc(companies: CompaniesService): void {
@@ -19,9 +19,9 @@ export function registerCompaniesIpc(companies: CompaniesService): void {
 		const { name, subtitle } = createSchema.parse(payload);
 		return companies.create(name, subtitle);
 	});
-	ipcMain.handle(IPC.companiesRename, (_event, payload: unknown) => {
-		const { id, name, subtitle } = renameSchema.parse(payload);
-		return companies.rename(id, name, subtitle);
+	ipcMain.handle(IPC.companiesUpdateSettings, (_event, payload: unknown) => {
+		const { id, settings } = settingsSchema.parse(payload);
+		return companies.updateSettings(id, settings);
 	});
 	ipcMain.handle(IPC.companiesSaveLayout, (_event, layout: unknown) =>
 		companies.saveLayout(layout),

@@ -1,5 +1,17 @@
 import type { Unsubscribe } from "./screens";
 
+/** How far back the runaway-spend alarm looks. */
+export const SPEND_WINDOW_MINUTES = 30;
+
+/** One omp agent's AI spend, from its session logs. */
+export interface AgentSpend {
+	readonly name: string;
+	/** US dollars today. */
+	readonly usd: number;
+	/** US dollars in the last `SPEND_WINDOW_MINUTES`. */
+	readonly recentUsd: number;
+}
+
 /** Today's AI spend: every office agent's omp session log, summed in main. */
 export type CostToday =
 	| {
@@ -10,6 +22,10 @@ export type CostToday =
 			readonly usd: number;
 			/** Session logs that contributed to the scan. */
 			readonly sessions: number;
+			/** Per omp agent, biggest spender today first. */
+			readonly agents: readonly AgentSpend[];
+			/** Agents in the office on other harnesses (claude, codex): their logs are not read. */
+			readonly untracked: readonly string[];
 	  }
 	| { readonly state: "unavailable"; readonly reason: string };
 

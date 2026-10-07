@@ -3,7 +3,11 @@ import { createLogger } from "@shared/log/logger";
 import type { SeenDone } from "@shared/office-stats";
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
+import { useCompany } from "../company/company-store";
 import { useHumanAsks } from "../work/asks-store";
+import { useWorkCards } from "../work/work-store";
+import { useCostToday } from "./live-data";
+import { runawaySpenders } from "./spend";
 import { type InboxAgent, inboxAgents, type TrustItem, trustInbox } from "./trust-inbox";
 
 const log = createLogger("trust-inbox");
@@ -24,13 +28,17 @@ function loadSeen(): void {
 	);
 }
 
-/** What needs the user right now (Trust Inbox): the live snapshot plus the asks on the work board. */
+/** What needs the user right now (Trust Inbox): the live snapshot, the asks on the work board, runaway spend. */
 export function useTrustInbox(snapshot: SessionSnapshot | null): TrustItem[] {
 	useEffect(loadSeen, []);
 	const seen = useSeen((state) => state.seen);
 	const asks = useHumanAsks();
+	const cost = useCostToday();
+	const threshold = useCompany().spendAlarmUsd;
+	const cards = useWorkCards();
 	const agents = useMemo(() => inboxAgents(snapshot), [snapshot]);
-	return useMemo(() => trustInbox(agents, seen, asks), [agents, seen, asks]);
+	const spenders = useMemo(() => runawaySpenders(cost, threshold, cards), [cost, threshold, cards]);
+	return useMemo(() => trustInbox(agents, seen, asks, spenders), [agents, seen, asks, spenders]);
 }
 
 /**

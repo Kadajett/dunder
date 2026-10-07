@@ -97,7 +97,8 @@ const api: OfficeApi = {
 		onCurrent: (listener) => listen(IPC.companiesChanged, listener),
 		switchTo: (id) => ipcRenderer.invoke(IPC.companiesSwitch, id),
 		create: (name, subtitle) => ipcRenderer.invoke(IPC.companiesCreate, { name, subtitle }),
-		rename: (id, name, subtitle) => ipcRenderer.invoke(IPC.companiesRename, { id, name, subtitle }),
+		updateSettings: (id, settings) =>
+			ipcRenderer.invoke(IPC.companiesUpdateSettings, { id, settings }),
 		saveLayout: (layout) => ipcRenderer.invoke(IPC.companiesSaveLayout, layout),
 		ensureWorkspace: (label) => ipcRenderer.invoke(IPC.companiesEnsureWorkspace, label),
 	},

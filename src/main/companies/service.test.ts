@@ -1,7 +1,8 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Company } from "@shared/company/company";
+import { type Company, DEFAULT_SPEND_ALARM_USD } from "@shared/company/company";
+import { firstCompany } from "@shared/company/company-ops";
 import { DEFAULT_LAYOUT } from "@shared/layout/default-layout";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliResult } from "../herdr/cli";
@@ -47,15 +48,35 @@ afterEach(async () => {
 });
 
 describe("companies service", () => {
-	it("renames the company, repaints the sign and survives a restart", async () => {
-		await open().rename("dunder-mifflin", "  Keller Talent ", "AI-native recruiting");
+	it("saves the company's settings, repaints the sign and survives a restart", async () => {
+		await open().updateSettings("dunder-mifflin", {
+			name: "  Keller Talent ",
+			subtitle: "AI-native recruiting",
+			spendAlarmUsd: 12.5,
+		});
 		const current = await open().current();
-		expect(current).toMatchObject({ id: "dunder-mifflin", name: "Keller Talent" });
+		expect(current).toMatchObject({
+			id: "dunder-mifflin",
+			name: "Keller Talent",
+			spendAlarmUsd: 12.5,
+		});
 		expect(current.layout.room.sign).toMatchObject({
 			title: "KELLER TALENT",
 			subtitle: "AI-NATIVE RECRUITING",
 		});
 		expect(emitted.map((company) => company.name)).toEqual(["Keller Talent"]);
+	});
+
+	it("gives a company saved before the spend alarm existed the default threshold", async () => {
+		const { spendAlarmUsd: _dropped, ...older } = firstCompany(NOW);
+		await writeFile(
+			join(dir, "dunder-mifflin.json"),
+			JSON.stringify({ ...older, name: "Older Co" }),
+		);
+		expect(await open().current()).toMatchObject({
+			name: "Older Co",
+			spendAlarmUsd: DEFAULT_SPEND_ALARM_USD,
+		});
 	});
 
 	it("creates companies in a fresh office and switches back to the first one's layout", async () => {
@@ -80,7 +101,12 @@ describe("companies service", () => {
 	it("rejects invalid layouts and names without changing anything", async () => {
 		const companies = open();
 		await expect(companies.saveLayout({ version: 2 })).rejects.toThrow();
-		await expect(companies.rename("dunder-mifflin", "   ", "")).rejects.toThrow();
+		await expect(
+			companies.updateSettings("dunder-mifflin", { name: "   ", subtitle: "", spendAlarmUsd: 5 }),
+		).rejects.toThrow();
+		await expect(
+			companies.updateSettings("dunder-mifflin", { name: "Ok", subtitle: "", spendAlarmUsd: 0 }),
+		).rejects.toThrow();
 		await expect(companies.switchTo("nope")).rejects.toThrow('no company "nope"');
 		expect((await companies.current()).layout).toEqual(DEFAULT_LAYOUT);
 		expect(emitted).toEqual([]);

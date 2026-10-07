@@ -1,3 +1,4 @@
+import type { AgentSpend } from "@shared/office-stats";
 import { z } from "zod";
 
 /** One priced assistant turn from an omp session log. */
@@ -55,4 +56,41 @@ export function costOnDay(sessions: Iterable<ReadonlyMap<string, number>>, day: 
 	let usd = 0;
 	for (const totals of sessions) usd += totals.get(day) ?? 0;
 	return usd;
+}
+
+/** One session log's spend, as far as it has been read: per-day totals and the latest priced turns. */
+export interface SessionSpend {
+	/** The agent that last used this session (sessions outlive respawns). */
+	readonly agent: string | undefined;
+	readonly days: ReadonlyMap<string, number>;
+	/** Turns inside the alarm window, oldest first (older ones are pruned). */
+	readonly recent: readonly CostEntry[];
+}
+
+/** `recent` plus `entries`, keeping only turns since `since`. */
+export function keepRecent(
+	recent: readonly CostEntry[],
+	entries: readonly CostEntry[],
+	since: number,
+): CostEntry[] {
+	return [...recent, ...entries].filter((entry) => entry.at >= since);
+}
+
+/** Per agent, today's and the window's spend summed over its sessions, biggest spender today first. */
+export function agentSpends(
+	sessions: Iterable<SessionSpend>,
+	day: string,
+	since: number,
+): AgentSpend[] {
+	const byAgent = new Map<string, { usd: number; recentUsd: number }>();
+	for (const session of sessions) {
+		if (!session.agent) continue;
+		const spend = byAgent.get(session.agent) ?? { usd: 0, recentUsd: 0 };
+		spend.usd += session.days.get(day) ?? 0;
+		for (const entry of session.recent) if (entry.at >= since) spend.recentUsd += entry.usd;
+		byAgent.set(session.agent, spend);
+	}
+	return [...byAgent]
+		.map(([name, spend]) => ({ name, ...spend }))
+		.sort((a, b) => b.usd - a.usd || a.name.localeCompare(b.name));
 }

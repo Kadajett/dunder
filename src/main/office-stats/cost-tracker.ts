@@ -1,27 +1,41 @@
 import type { SessionSnapshot } from "@shared/herdr/schema";
 import { createLogger } from "@shared/log/logger";
-import type { CostToday } from "@shared/office-stats";
+import { type CostToday, SPEND_WINDOW_MINUTES } from "@shared/office-stats";
 import { SessionTail } from "../omp/session-tail";
-import { addToDays, costOnDay, dayKey, parseCostLine } from "./cost-entries";
+import {
+	addToDays,
+	agentSpends,
+	type CostEntry,
+	costOnDay,
+	dayKey,
+	keepRecent,
+	parseCostLine,
+} from "./cost-entries";
 
 const log = createLogger("office-stats");
 
 const POLL_MS = 5_000;
+const WINDOW_MS = SPEND_WINDOW_MINUTES * 60_000;
 
 interface TrackedSession {
 	readonly tail: SessionTail;
+	agent: string | undefined;
 	readonly days: Map<string, number>;
+	recent: readonly CostEntry[];
 }
 
 /**
  * Today's AI cost across the office: every omp session log an office agent
  * has used since the app started, read incrementally from its first line.
- * Sessions stay counted after their agent leaves, so respawns keep their spend.
+ * Sessions stay counted after their agent leaves, so respawns keep their
+ * spend. Each session is credited to the agent that last used it, which
+ * gives the per-agent spend and the runaway-spend alarm's window.
  */
 export class CostTracker {
 	readonly #sessions = new Map<string, TrackedSession>();
 	readonly #onChange: (cost: CostToday) => void;
 	readonly #now: () => number;
+	#untracked: readonly string[] = [];
 	#timer: NodeJS.Timeout | undefined;
 	#polling = false;
 	#emitted = "";
@@ -40,40 +54,61 @@ export class CostTracker {
 		this.#timer = undefined;
 	}
 
-	/** Pick up the session logs of every omp agent in the office. */
+	/** Pick up the session logs of every omp agent in the office, and who is on another harness. */
 	update(snapshot: SessionSnapshot): void {
 		let added = false;
 		for (const agent of snapshot.agents) {
 			const path = agent.agent === "omp" ? agent.agent_session?.value : undefined;
-			if (!path || this.#sessions.has(path)) continue;
-			this.#sessions.set(path, { tail: new SessionTail(path, "start"), days: new Map() });
+			if (!path) continue;
+			const known = this.#sessions.get(path);
+			if (known) {
+				known.agent = agent.name ?? known.agent;
+				continue;
+			}
+			const tail = new SessionTail(path, "start");
+			this.#sessions.set(path, { tail, agent: agent.name, days: new Map(), recent: [] });
 			added = true;
 		}
+		this.#untracked = snapshot.agents
+			.flatMap((agent) => (agent.agent !== "omp" && agent.name ? [agent.name] : []))
+			.sort();
 		if (added) void this.poll();
+		else this.#emit();
 	}
 
 	current(): CostToday {
 		if (this.#sessions.size === 0) {
 			return { state: "unavailable", reason: "no omp session logs in the office yet" };
 		}
-		const day = dayKey(this.#now());
-		const days = [...this.#sessions.values()].map((session) => session.days);
-		return { state: "ok", day, usd: costOnDay(days, day), sessions: this.#sessions.size };
+		const now = this.#now();
+		const day = dayKey(now);
+		const sessions = [...this.#sessions.values()];
+		return {
+			state: "ok",
+			day,
+			usd: costOnDay(
+				sessions.map((session) => session.days),
+				day,
+			),
+			sessions: this.#sessions.size,
+			agents: agentSpends(sessions, day, now - WINDOW_MS),
+			untracked: this.#untracked,
+		};
 	}
 
 	async poll(): Promise<void> {
 		if (this.#polling) return;
 		this.#polling = true;
 		try {
-			for (const { tail, days } of this.#sessions.values()) {
-				const lines = await tail.lines().catch((error: unknown) => {
-					log.warn("cannot read session log", { path: tail.path, error });
+			const since = this.#now() - WINDOW_MS;
+			for (const session of this.#sessions.values()) {
+				const lines = await session.tail.lines().catch((error: unknown) => {
+					log.warn("cannot read session log", { path: session.tail.path, error });
 					return [];
 				});
-				addToDays(
-					days,
-					lines.flatMap((line) => parseCostLine(line) ?? []),
-				);
+				const entries = lines.flatMap((line) => parseCostLine(line) ?? []);
+				addToDays(session.days, entries);
+				session.recent = keepRecent(session.recent, entries, since);
 			}
 		} finally {
 			this.#polling = false;
