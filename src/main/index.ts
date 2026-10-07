@@ -138,6 +138,7 @@ const appUpdate = createAppUpdater({
 		stopServices();
 		return officeScreens.stop();
 	},
+	tellChief: async (text) => (await chief.send(text)).state !== "rejected",
 });
 /** The pool table: idle agents play 8-ball with the built-in AI; Jeremy can join from the app. */
 const pool = createPool({

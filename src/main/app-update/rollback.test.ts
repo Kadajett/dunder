@@ -66,7 +66,7 @@ describe("previousBuild", () => {
 });
 
 describe("noteRollback", () => {
-	it("comments on each bead in the rolled-back range, and reports the ones bd refused", async () => {
+	it("comments the same text on each bead in the rolled-back range (what broke, the range and its beads), and reports the ones bd refused", async () => {
 		const { dir, commit } = repo();
 		const good = commit("office-a1: good build");
 		commit("office-b2: panel", "panel.ts");
@@ -75,14 +75,22 @@ describe("noteRollback", () => {
 		const run = vi.fn(async (_root: string, args: readonly string[]) => {
 			if (args[2] === "office-b2") throw new Error("bd is locked");
 		});
-		expect(await noteRollback(dir, { good, bad }, run)).toEqual(["office-b2"]);
-		expect(run.mock.calls.map(([, args]) => args[2])).toEqual(["office-c3", "office-b2"]);
-		expect(run.mock.calls[0]?.[1]).toEqual([
-			"comments",
-			"add",
-			"office-c3",
-			"--",
-			expect.stringContaining(`from ${bad.slice(0, 7)} to ${good.slice(0, 7)}`),
+		const { text, failed } = await noteRollback(
+			dir,
+			{ good, bad, whatBroke: "the inbox is blank" },
+			run,
+		);
+		expect(failed).toEqual(["office-b2"]);
+		expect(text).toBe(
+			`Jeremy rolled back ${bad.slice(0, 7)} → ${good.slice(0, 7)}: the inbox is blank. Range: ${good.slice(0, 7)}..${bad.slice(0, 7)} (office-c3, office-b2). Agents' updates stay off until he updates; check whether your change is the cause.`,
+		);
+		expect(run.mock.calls.map(([, args]) => args)).toEqual([
+			["comments", "add", "office-c3", "--", text],
+			["comments", "add", "office-b2", "--", text],
 		]);
+		// Without a reason it says so, so nobody waits for one.
+		expect((await noteRollback(dir, { good, bad }, run)).text).toContain(
+			"(he didn't say what broke)",
+		);
 	});
 });

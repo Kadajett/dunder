@@ -47,20 +47,36 @@ function runBd(root: string, args: readonly string[]): Promise<void> {
 	return done.promise;
 }
 
+export interface RollbackRange {
+	readonly good: string;
+	readonly bad: string;
+	/** Jeremy's one line from the confirm, if he wrote one. */
+	readonly whatBroke?: string;
+}
+
+/** What Max and the beads in the range are told: who rolled back what, why if Jeremy said, and the range. */
+export function rollbackText(range: RollbackRange, beads: readonly string[]): string {
+	const bad = range.bad.slice(0, 7);
+	const good = range.good.slice(0, 7);
+	const why = range.whatBroke ? `: ${range.whatBroke}` : " (he didn't say what broke)";
+	const named = beads.length > 0 ? ` (${beads.join(", ")})` : "";
+	return `Jeremy rolled back ${bad} → ${good}${why}. Range: ${good}..${bad}${named}. Agents' updates stay off until he updates; check whether your change is the cause.`;
+}
+
 /**
- * Tell the engineers: every bead named in `good..bad` gets a comment that
- * Jeremy rolled the app back past it. Resolves with the beads that failed.
+ * Tell the engineers: every bead named in `good..bad` gets `rollbackText` as a
+ * comment. Resolves with the text and the beads bd refused.
  */
 export async function noteRollback(
 	root: string,
-	range: { readonly good: string; readonly bad: string },
+	range: RollbackRange,
 	run: BdRunner = runBd,
-): Promise<string[]> {
+): Promise<{ readonly text: string; readonly failed: string[] }> {
 	const commits = await commitLog(root, [`${range.good}..${range.bad}`]);
-	const text = `Jeremy rolled the app back from ${range.bad.slice(0, 7)} to ${range.good.slice(0, 7)}: something in that range broke it. Check whether this change is the cause.`;
 	const ids = beadIdsIn(commits.map((commit) => commit.subject));
+	const text = rollbackText(range, ids);
 	const results = await Promise.allSettled(
 		ids.map((id) => run(root, ["comments", "add", id, "--", text])),
 	);
-	return ids.filter((_, index) => results[index]?.status === "rejected");
+	return { text, failed: ids.filter((_, index) => results[index]?.status === "rejected") };
 }

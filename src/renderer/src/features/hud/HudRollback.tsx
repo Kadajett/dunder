@@ -1,4 +1,4 @@
-import type { PreviousBuild } from "@shared/app-update";
+import { type PreviousBuild, WHAT_BROKE_MAX } from "@shared/app-update";
 import { createLogger } from "@shared/log/logger";
 import { useEffect, useState } from "react";
 
@@ -36,9 +36,10 @@ function Confirm({
 }) {
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
+	const [whatBroke, setWhatBroke] = useState("");
 	const rollBack = (): void => {
 		setBusy(true);
-		window.office.update.rollback().then(
+		window.office.update.rollback(whatBroke.trim() || undefined).then(
 			(result) => {
 				if (result.ok) onDone();
 				else setError(`Can't roll back: ${result.error}.`);
@@ -57,9 +58,23 @@ function Confirm({
 			<p className="update-note">
 				Roll back to <code>{previous.commit.slice(0, 7)}</code>? Dunder relaunches on it; your
 				agents keep running. Data the newer build changed (whiteboard, pool, roster) stays as it is,
-				and the older build may not read all of it. Agents can't update back onto this build until a
-				newer commit lands.
+				and the older build may not read all of it. Agents' updates stay off until you update; Max
+				is told.
 			</p>
+			<input
+				className="update-rollback-why"
+				aria-label="What broke? (optional, sent to Max)"
+				placeholder="What broke? (optional, sent to Max)"
+				maxLength={WHAT_BROKE_MAX}
+				value={whatBroke}
+				disabled={busy}
+				onChange={(event) => setWhatBroke(event.target.value)}
+				onKeyDown={(event) => {
+					// Typing belongs to the field, not the menu's keys or the room.
+					event.stopPropagation();
+					if (event.key === "Enter" && !busy) rollBack();
+				}}
+			/>
 			{error ? <p className="update-note update-rollback-error">{error}</p> : null}
 			<button
 				type="button"

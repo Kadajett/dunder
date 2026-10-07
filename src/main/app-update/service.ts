@@ -51,8 +51,8 @@ export interface AppUpdaterDeps {
 	relaunch(): void;
 	/** The kept previous build, if there is one to roll back to. */
 	previous(): Promise<PreviousBuild | null>;
-	/** Swap the kept build back into `out/` (and tell the beads in between). */
-	restore(previous: PreviousBuild): Promise<void>;
+	/** Swap the kept build back into `out/`, and tell Max and the beads in between (with what broke, if Jeremy said). */
+	restore(previous: PreviousBuild, whatBroke?: string): Promise<void>;
 	now?(): number;
 }
 
@@ -225,8 +225,9 @@ export class AppUpdater {
 	/**
 	 * Swap the kept previous build back in and relaunch on it. The build left
 	 * behind is remembered, so agents can't update straight back onto it.
+	 * `whatBroke`: Jeremy's optional one line, passed on to Max and the beads.
 	 */
-	async rollback(): Promise<RollbackResult> {
+	async rollback(whatBroke?: string): Promise<RollbackResult> {
 		const bad = this.#deps.built;
 		const before = this.#status;
 		const previous = await this.previous();
@@ -240,7 +241,7 @@ export class AppUpdater {
 		log.info("rolling back", { from: bad, to: previous.commit });
 		this.#set({ state: "building", logTail: `Rolling back to ${previous.commit.slice(0, 7)}…` });
 		try {
-			await this.#deps.restore(previous);
+			await this.#deps.restore(previous, whatBroke);
 		} catch (error) {
 			log.warn("rollback failed; the current build keeps running", { error });
 			this.#set(before);

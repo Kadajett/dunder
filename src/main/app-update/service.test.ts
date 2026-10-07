@@ -205,8 +205,8 @@ describe("rolling back", () => {
 		bad.deps.previous.mockResolvedValue(kept);
 		const updater = new AppUpdater(bad.deps);
 		await updater.start();
-		expect(await updater.rollback()).toEqual({ ok: true });
-		expect(bad.deps.restore).toHaveBeenCalledWith(kept);
+		expect(await updater.rollback("the inbox is blank")).toEqual({ ok: true });
+		expect(bad.deps.restore).toHaveBeenCalledWith(kept, "the inbox is blank");
 		expect(bad.deps.relaunch).toHaveBeenCalledOnce();
 		expect(JSON.parse(readFileSync(paths.statePath, "utf8"))).toMatchObject({
 			rolledBackFrom: BUILT,
